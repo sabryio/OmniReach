@@ -1,0 +1,19 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "home_page": "Home page",
+  "about_page": "About page",
+  "welcome_title": "Welcome to TanStack Start",
+  "edit_instruction": "Edit {code} to get started.",
+  "example_message": "Welcome to your i18n app.",
+  "language_label": "Language",
+  "current_locale": "Current locale: {locale}",
+  "learn_router": "Learn Paraglide JS",
+  "login": "Login",
+  "register": "Register",
+  "sign_in": "Sign In",
+  "create_account": "Create Account",
+  "email": "Email",
+  "password": "Password",
+  "confirm_password": "Confirm Password",
+  "full_name": "Full Name"
+}

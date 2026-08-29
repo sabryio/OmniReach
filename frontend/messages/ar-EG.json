@@ -1,0 +1,19 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "home_page": "الصفحة الرئيسية",
+  "about_page": "من نحن",
+  "welcome_title": "مرحباً بك في TanStack Start",
+  "edit_instruction": "عدّل {code} للبدء.",
+  "example_message": "مرحباً بك في تطبيق i18n الخاص بك.",
+  "language_label": "اللغة",
+  "current_locale": "اللغة الحالية: {locale}",
+  "learn_router": "تعلم Paraglide JS",
+  "login": "تسجيل الدخول",
+  "register": "إنشاء حساب",
+  "sign_in": "تسجيل الدخول",
+  "create_account": "إنشاء حساب",
+  "email": "البريد الإلكتروني",
+  "password": "كلمة المرور",
+  "confirm_password": "تأكيد كلمة المرور",
+  "full_name": "الاسم الكامل"
+}

@@ -21,6 +21,7 @@ export function useModals() {
 
 interface VerifyResult {
   isRegistered: boolean
+  phone: string
   waId?: string
   error?: string
   timestamp: number
@@ -43,6 +44,7 @@ export function useQuickVerifier(sessions: WABridgeSession[], _config: WABridgeC
 
     setResult({
       isRegistered,
+      phone: phone.trim(),
       waId: isRegistered ? `${phone.replace(/\D/g, '')}@c.us` : undefined,
       error: isRegistered ? undefined : 'Number not registered on WhatsApp',
       timestamp: Date.now(),

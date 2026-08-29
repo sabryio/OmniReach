@@ -1,9 +1,23 @@
 /**
- * CampaignsList — master-detail split pane
- * Placeholder
+ * CampaignsList — master-detail split pane matching mockup structure
+ * Styled with shadcn CSS variables via Tailwind utilities
  */
+import { useState } from "react";
+import {
+  Layers,
+  Search,
+  Plus,
+  Pause,
+  Play,
+  Archive,
+  ArchiveRestore,
+  Trash2,
+  Users,
+  Download,
+  Inbox,
+  RotateCcw,
+} from "lucide-react";
 import type { Campaign, QueueItem, WABridgeSession } from "@/types";
-import { useCampaigns } from "../hooks/useCampaigns";
 
 interface CampaignsListProps {
   campaigns: Campaign[];
@@ -11,7 +25,6 @@ interface CampaignsListProps {
   sessions: WABridgeSession[];
   onPauseCampaign: (id: string) => void;
   onResumeCampaign: (id: string) => void;
-  onCancelCampaign: (id: string) => void;
   onRetryFailed: (id: string) => void;
   onDeleteCampaign: (id: string) => void;
   onArchiveCampaign: (id: string) => void;
@@ -19,281 +32,706 @@ interface CampaignsListProps {
   onNewCampaignClick: () => void;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  running: "bg-success/20 text-success",
-  paused: "bg-warning/20 text-warning",
-  completed: "bg-info/20 text-info-foreground",
-  draft: "bg-muted text-muted-foreground",
-  cancelled: "bg-destructive/20 text-destructive",
-};
-
 export function CampaignsList({
   campaigns,
+  queue,
   onPauseCampaign,
   onResumeCampaign,
-  onCancelCampaign,
+  onRetryFailed,
   onDeleteCampaign,
   onArchiveCampaign,
   onUnarchiveCampaign,
   onNewCampaignClick,
 }: CampaignsListProps) {
-  const {
-    selected,
-    setSelectedId,
-    statusFilter,
-    setStatusFilter,
-    showArchived,
-    setShowArchived,
-    search,
-    setSearch,
-    filtered,
-  } = useCampaigns(campaigns);
+  // Tab: 'active' (non-archived) vs 'archived'
+  const [viewTab, setViewTab] = useState<"active" | "archived">("active");
+  const [campaignSearch, setCampaignSearch] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "running" | "paused" | "completed" | "draft"
+  >("all");
+  const [contactSearchQuery, setContactSearchQuery] = useState<string>("");
+  const [recipientStatusFilter, setRecipientStatusFilter] =
+    useState<string>("all");
 
-  const FILTERS = ["all", "running", "paused", "completed", "draft"] as const;
+  // Partition campaigns into active and archived
+  const activeCampaigns = campaigns.filter((c) => !c.isArchived);
+  const archivedCampaigns = campaigns.filter((c) => !!c.isArchived);
+
+  const currentTabList =
+    viewTab === "active" ? activeCampaigns : archivedCampaigns;
+
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>(() => {
+    if (activeCampaigns.length > 0 && activeCampaigns[0]) {
+      return activeCampaigns[0].id;
+    }
+    if (campaigns.length > 0 && campaigns[0]) {
+      return campaigns[0].id;
+    }
+    return "";
+  });
+
+  // Filtered list based on search and status
+  const filteredCampaigns = currentTabList.filter((c) => {
+    const matchesSearch =
+      c.title.toLowerCase().includes(campaignSearch.toLowerCase()) ||
+      c.id.toLowerCase().includes(campaignSearch.toLowerCase());
+    const matchesStatus = statusFilter === "all" || c.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Keep selection valid
+  const selectedCampaign =
+    filteredCampaigns.find((c) => c.id === selectedCampaignId) ||
+    currentTabList.find((c) => c.id === selectedCampaignId) ||
+    filteredCampaigns[0] ||
+    currentTabList[0] ||
+    null;
+
+  const selectedCampaignQueue = selectedCampaign
+    ? queue.filter((q) => q.campaignId === selectedCampaign.id)
+    : [];
+
+  const filteredContacts = selectedCampaign
+    ? (selectedCampaign.contacts ?? []).filter((c) => {
+        const qItem = selectedCampaignQueue.find((q) => q.contactId === c.id);
+        const matchesSearch =
+          c.name.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
+          c.rawPhone.includes(contactSearchQuery);
+
+        if (recipientStatusFilter === "all") return matchesSearch;
+        if (recipientStatusFilter === "sent")
+          return matchesSearch && qItem?.status === "sent";
+        if (recipientStatusFilter === "skipped")
+          return (
+            matchesSearch &&
+            (c.verificationStatus === "unregistered" ||
+              qItem?.status === "skipped_unregistered")
+          );
+        if (recipientStatusFilter === "pending")
+          return (
+            matchesSearch &&
+            (!qItem ||
+              qItem.status === "pending" ||
+              qItem.status === "held_rate_limit")
+          );
+        if (recipientStatusFilter === "failed")
+          return matchesSearch && qItem?.status === "failed";
+        return matchesSearch;
+      })
+    : [];
+
+  if (campaigns.length === 0) {
+    return (
+      <div className="max-w-3xl mx-auto text-center py-16 px-4 bg-card border border-border rounded-xl shadow-md">
+        <div className="w-14 h-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3 border border-primary/20">
+          <Layers className="w-7 h-7" />
+        </div>
+        <h3 className="text-sm font-bold text-foreground">
+          No Broadcast Campaigns Yet
+        </h3>
+        <p className="text-xs text-muted-foreground max-w-md mx-auto mt-1 mb-5">
+          Create your first campaign to start broadcasting messages to your
+          audience
+        </p>
+        <button
+          type="button"
+          onClick={onNewCampaignClick}
+          className="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold inline-flex items-center gap-2 shadow-md transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          <span>New Campaign</span>
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex gap-4 h-full">
-      {/* Left pane */}
-      <div className="w-80 shrink-0 flex flex-col gap-3">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowArchived(false)}
-              className={`text-xs px-2 py-1 rounded transition-colors ${!showArchived ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Active
-            </button>
-            <button
-              onClick={() => setShowArchived(true)}
-              className={`text-xs px-2 py-1 rounded transition-colors ${showArchived ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Archived
-            </button>
+    <div className="space-y-3 max-w-full h-full flex flex-col">
+      {/* Top Action Ribbon */}
+      <div className="bg-card border border-border rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center shrink-0">
+            <Layers className="w-4 h-4" />
           </div>
-          <button
-            onClick={onNewCampaignClick}
-            className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            + New
-          </button>
-        </div>
-
-        {/* Search */}
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search campaigns..."
-          className="w-full bg-input border border-border rounded-md px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-
-        {/* Status filters */}
-        <div className="flex flex-wrap gap-1">
-          {FILTERS.map((f) => (
-            <button
-              key={f}
-              onClick={() => setStatusFilter(f)}
-              className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors capitalize ${
-                statusFilter === f
-                  ? "bg-primary/20 text-primary border-primary/30"
-                  : "border-border text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-
-        {/* List */}
-        <ul className="flex-1 overflow-y-auto space-y-1.5">
-          {filtered.length === 0 ? (
-            <li className="text-xs text-muted-foreground text-center py-6">
-              No campaigns found
-            </li>
-          ) : (
-            filtered.map((c) => (
-              <li key={c.id}>
-                <button
-                  onClick={() => setSelectedId(c.id)}
-                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                    selected?.id === c.id
-                      ? "bg-accent border-primary/40"
-                      : "bg-card border-border hover:bg-muted/50"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-1.5">
-                    <span className="text-xs font-medium text-foreground truncate">
-                      {c.title}
-                    </span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 capitalize ${STATUS_COLORS[c.status] ?? "bg-muted text-muted-foreground"}`}
-                    >
-                      {c.status}
-                    </span>
-                  </div>
-                  <div className="h-1 bg-muted rounded-full overflow-hidden mb-1">
-                    <div
-                      className="h-full bg-primary rounded-full"
-                      style={{
-                        width: `${c.totalContacts > 0 ? Math.round((c.sentCount / c.totalContacts) * 100) : 0}%`,
-                      }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground font-mono">
-                    {c.sentCount}/{c.totalContacts} sent
-                  </p>
-                </button>
-              </li>
-            ))
-          )}
-        </ul>
-      </div>
-
-      {/* Right pane — detail */}
-      <div className="flex-1 bg-card border border-border rounded-lg overflow-hidden">
-        {!selected ? (
-          <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-            Select a campaign to view details
-          </div>
-        ) : (
-          <div className="flex flex-col h-full">
-            {/* Detail header */}
-            <div className="px-5 py-4 border-b border-border flex items-start justify-between gap-4">
-              <div>
-                <h2 className="font-semibold text-foreground">
-                  {selected.title}
-                </h2>
-                <p className="text-xs text-muted-foreground font-mono mt-0.5">
-                  {selected.id}
-                </p>
-              </div>
-              <span
-                className={`text-xs px-2 py-1 rounded-full capitalize shrink-0 ${STATUS_COLORS[selected.status] ?? ""}`}
-              >
-                {selected.status}
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xs font-bold text-foreground">
+                Broadcast Campaigns
+              </h2>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-mono border border-border">
+                {activeCampaigns.length} Active • {archivedCampaigns.length}{" "}
+                Archived
               </span>
             </div>
+            <p className="text-[11px] text-muted-foreground">
+              Manage and monitor your WhatsApp broadcast campaigns
+            </p>
+          </div>
+        </div>
 
-            {/* Action toolbar */}
-            <div className="px-5 py-2 border-b border-border flex items-center gap-2 flex-wrap">
-              {selected.status === "running" && (
+        {/* View Tabs (Active vs Archived) + New Campaign Button */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-muted/50 p-1 rounded-xl border border-border">
+            <button
+              type="button"
+              onClick={() => {
+                setViewTab("active");
+                if (activeCampaigns.length > 0 && activeCampaigns[0]) {
+                  setSelectedCampaignId(activeCampaigns[0].id);
+                }
+              }}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                viewTab === "active"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Inbox className="w-3.5 h-3.5" />
+              <span>Active ({activeCampaigns.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setViewTab("archived");
+                if (archivedCampaigns.length > 0 && archivedCampaigns[0]) {
+                  setSelectedCampaignId(archivedCampaigns[0].id);
+                }
+              }}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                viewTab === "archived"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Archive className="w-3.5 h-3.5" />
+              <span>Archived ({archivedCampaigns.length})</span>
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={onNewCampaignClick}
+            className="px-3.5 py-1.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold flex items-center gap-1.5 shadow-md transition-all active:scale-95"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Campaign</span>
+          </button>
+        </div>
+      </div>
+
+      {/* MASTER-DETAIL SPLIT PANE */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 flex-1 min-h-0">
+        {/* LEFT PANE: CAMPAIGN MASTER LIST (5 Cols) */}
+        <div className="lg:col-span-5 flex flex-col gap-2 min-h-0">
+          {/* Search & Filter Bar */}
+          <div className="bg-card border border-border rounded-xl p-2.5 space-y-2 shadow-sm">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-muted-foreground" />
+              <input
+                type="text"
+                value={campaignSearch}
+                onChange={(e) => setCampaignSearch(e.target.value)}
+                placeholder="Search campaigns by title or ID..."
+                className="w-full pl-8 pr-8 py-1.5 rounded-lg bg-muted/50 border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              {campaignSearch && (
                 <button
-                  onClick={() => onPauseCampaign(selected.id)}
-                  className="text-xs px-2 py-1 rounded bg-warning/20 text-warning border border-warning/30 hover:bg-warning/30 transition-colors"
+                  type="button"
+                  onClick={() => setCampaignSearch("")}
+                  className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground text-xs font-bold"
                 >
-                  ⏸ Pause
+                  ✕
                 </button>
               )}
-              {selected.status === "paused" && (
-                <button
-                  onClick={() => onResumeCampaign(selected.id)}
-                  className="text-xs px-2 py-1 rounded bg-success/20 text-success border border-success/30 hover:bg-success/30 transition-colors"
-                >
-                  ▶ Resume
-                </button>
-              )}
-              <button
-                onClick={() => onCancelCampaign(selected.id)}
-                className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground border border-border hover:bg-accent transition-colors"
-              >
-                ✕ Cancel
-              </button>
-              {selected.isArchived ? (
-                <button
-                  onClick={() => onUnarchiveCampaign(selected.id)}
-                  className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground border border-border hover:bg-accent transition-colors"
-                >
-                  ↑ Unarchive
-                </button>
-              ) : (
-                <button
-                  onClick={() => onArchiveCampaign(selected.id)}
-                  className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground border border-border hover:bg-accent transition-colors"
-                >
-                  ↓ Archive
-                </button>
-              )}
-              <button
-                onClick={() => onDeleteCampaign(selected.id)}
-                className="text-xs px-2 py-1 rounded bg-destructive/20 text-destructive border border-destructive/30 hover:bg-destructive/30 transition-colors ml-auto"
-              >
-                🗑 Delete
-              </button>
             </div>
 
-            {/* Metrics */}
-            <div className="px-5 py-4 grid grid-cols-4 gap-3 border-b border-border">
-              {[
-                { label: "Total", value: selected.totalContacts },
-                { label: "Sent", value: selected.sentCount },
-                { label: "Unregistered", value: selected.unregisteredCount },
-                { label: "Failed", value: selected.failedCount },
-              ].map(({ label, value }) => (
-                <div
-                  key={label}
-                  className="bg-muted/40 rounded-lg p-3 text-center"
+            <div className="flex items-center gap-1 overflow-x-auto text-[11px] no-scrollbar">
+              {(
+                ["all", "running", "paused", "completed", "draft"] as const
+              ).map((st) => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setStatusFilter(st)}
+                  className={`px-2 py-0.5 rounded-lg font-semibold capitalize transition-colors whitespace-nowrap ${
+                    statusFilter === st
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted/50 text-muted-foreground hover:text-foreground border border-border"
+                  }`}
                 >
-                  <p className="text-lg font-bold font-mono text-foreground">
-                    {value}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground uppercase">
-                    {label}
-                  </p>
-                </div>
+                  {st === "all" ? "All" : st}
+                </button>
               ))}
             </div>
-
-            {/* Template preview */}
-            <div className="px-5 py-4 border-b border-border">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                Template
-              </p>
-              <p className="text-xs text-foreground bg-muted/30 rounded p-3 border border-border">
-                {selected.templateText}
-              </p>
-            </div>
-
-            {/* Contacts table */}
-            <div className="flex-1 overflow-y-auto px-5 py-4">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                Recipients ({selected.contacts?.length ?? 0})
-              </p>
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground">
-                    <th className="text-left pb-2 font-medium">Name</th>
-                    <th className="text-left pb-2 font-medium">Phone</th>
-                    <th className="text-left pb-2 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {(selected.contacts ?? []).map((c) => (
-                    <tr key={c.id}>
-                      <td className="py-1.5 text-foreground">{c.name}</td>
-                      <td className="py-1.5 text-muted-foreground font-mono">
-                        {c.rawPhone}
-                      </td>
-                      <td className="py-1.5">
-                        <span
-                          className={`px-1.5 py-0.5 rounded-full text-[10px] capitalize ${
-                            c.verificationStatus === "registered"
-                              ? "bg-success/20 text-success"
-                              : c.verificationStatus === "unregistered"
-                                ? "bg-destructive/20 text-destructive"
-                                : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {c.verificationStatus}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </div>
-        )}
+
+          {/* Compact Campaign Items List */}
+          <div className="flex-1 space-y-1.5 overflow-y-auto pr-0.5 min-h-0">
+            {filteredCampaigns.length === 0 ? (
+              <div className="p-8 text-center bg-card border border-border rounded-xl space-y-2">
+                {viewTab === "archived" ? (
+                  <>
+                    <Archive className="w-8 h-8 mx-auto text-muted-foreground opacity-50" />
+                    <p className="text-xs font-medium text-foreground">
+                      No Archived Campaigns
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      You can archive completed campaigns to keep your active
+                      list clean.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Inbox className="w-8 h-8 mx-auto text-muted-foreground opacity-50" />
+                    <p className="text-xs font-medium text-foreground">
+                      No Campaigns Found
+                    </p>
+                    <button
+                      type="button"
+                      onClick={onNewCampaignClick}
+                      className="text-xs text-primary font-semibold hover:underline"
+                    >
+                      Create New Campaign
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : (
+              filteredCampaigns.map((c) => {
+                const isSelected = selectedCampaign?.id === c.id;
+                const total = c.totalContacts || 1;
+                const sent = c.sentCount || 0;
+                const percent = Math.round((sent / total) * 100);
+
+                return (
+                  <div
+                    key={c.id}
+                    onClick={() => setSelectedCampaignId(c.id)}
+                    className={`p-3 rounded-xl border cursor-pointer transition-all space-y-2 group ${
+                      isSelected
+                        ? "bg-primary/5 border-primary/40 shadow-md ring-1 ring-primary/20"
+                        : "bg-card border-border hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <h3 className="text-xs font-bold text-foreground truncate">
+                          {c.title}
+                        </h3>
+                        {c.isArchived && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-warning/10 text-warning border border-warning/20 font-semibold shrink-0">
+                            Archived
+                          </span>
+                        )}
+                      </div>
+
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider shrink-0 ${
+                          c.status === "running"
+                            ? "bg-success/15 text-success border border-success/30"
+                            : c.status === "completed"
+                              ? "bg-primary/10 text-primary border border-primary/20"
+                              : c.status === "paused"
+                                ? "bg-warning/15 text-warning border border-warning/30"
+                                : "bg-muted text-muted-foreground border border-border"
+                        }`}
+                      >
+                        {c.status}
+                      </span>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
+                        <span>Progress: {percent}%</span>
+                        <span>
+                          {sent} / {total} sent
+                        </span>
+                      </div>
+                      <div className="w-full bg-muted/80 h-1.5 rounded-full overflow-hidden flex border border-border/50">
+                        <div
+                          className="bg-success h-full transition-all duration-300"
+                          style={{ width: `${percent}%` }}
+                        />
+                        {c.unregisteredCount > 0 && (
+                          <div
+                            className="bg-warning h-full"
+                            style={{
+                              width: `${(c.unregisteredCount / total) * 100}%`,
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/30">
+                      <span className="font-mono">
+                        {new Date(c.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {c.isArchived ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onUnarchiveCampaign(c.id);
+                            }}
+                            className="text-[10px] text-primary font-semibold hover:underline flex items-center gap-0.5"
+                          >
+                            <ArchiveRestore className="w-3 h-3" />
+                            <span>Unarchive</span>
+                          </button>
+                        ) : (
+                          c.status === "completed" && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onArchiveCampaign(c.id);
+                              }}
+                              className="text-[10px] text-muted-foreground hover:text-foreground font-medium flex items-center gap-0.5"
+                            >
+                              <Archive className="w-3 h-3" />
+                              <span>Archive</span>
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT PANE: DETAIL INSPECTOR & RECIPIENTS BREAKDOWN (7 Cols) */}
+        <div className="lg:col-span-7 min-h-0">
+          {selectedCampaign ? (
+            <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-4 h-full flex flex-col">
+              {/* Campaign Inspector Header & Actions */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border/60">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-sm font-bold text-foreground">
+                      {selectedCampaign.title}
+                    </h3>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        selectedCampaign.status === "running"
+                          ? "bg-success/15 text-success border border-success/30"
+                          : selectedCampaign.status === "completed"
+                            ? "bg-primary/10 text-primary border border-primary/20"
+                            : "bg-warning/15 text-warning border border-warning/30"
+                      }`}
+                    >
+                      {selectedCampaign.status}
+                    </span>
+
+                    {selectedCampaign.isArchived && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-warning/15 text-warning border border-warning/30 flex items-center gap-1">
+                        <Archive className="w-3 h-3" />
+                        <span>Archived</span>
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    ID:{" "}
+                    <code className="font-mono text-primary">
+                      {selectedCampaign.id}
+                    </code>{" "}
+                    • {new Date(selectedCampaign.createdAt).toLocaleString()}
+                    {selectedCampaign.archivedAt && (
+                      <span className="ml-2 text-muted-foreground">
+                        (Archived at:{" "}
+                        {new Date(
+                          selectedCampaign.archivedAt,
+                        ).toLocaleDateString()}
+                        )
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                {/* Toolbar */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {selectedCampaign.status === "running" ? (
+                    <button
+                      type="button"
+                      onClick={() => onPauseCampaign(selectedCampaign.id)}
+                      className="px-2.5 py-1.5 rounded-lg bg-warning/10 hover:bg-warning/20 text-warning text-xs font-semibold border border-warning/30 flex items-center gap-1 transition-colors"
+                    >
+                      <Pause className="w-3.5 h-3.5" />
+                      <span>Pause</span>
+                    </button>
+                  ) : selectedCampaign.status === "paused" ? (
+                    <button
+                      type="button"
+                      onClick={() => onResumeCampaign(selectedCampaign.id)}
+                      className="px-2.5 py-1.5 rounded-lg bg-success hover:bg-success/90 text-white text-xs font-semibold flex items-center gap-1 transition-colors"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                      <span>Resume</span>
+                    </button>
+                  ) : null}
+
+                  {selectedCampaign.failedCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => onRetryFailed(selectedCampaign.id)}
+                      className="px-2.5 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-primary text-xs font-semibold border border-border flex items-center gap-1 transition-colors"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Retry ({selectedCampaign.failedCount})</span>
+                    </button>
+                  )}
+
+                  {/* Archive / Unarchive Action */}
+                  {selectedCampaign.isArchived ? (
+                    <button
+                      type="button"
+                      onClick={() => onUnarchiveCampaign(selectedCampaign.id)}
+                      className="px-2.5 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold border border-primary/20 flex items-center gap-1 transition-colors"
+                    >
+                      <ArchiveRestore className="w-3.5 h-3.5" />
+                      <span>Unarchive</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onArchiveCampaign(selectedCampaign.id)}
+                      className="px-2.5 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground text-xs font-semibold border border-border flex items-center gap-1 transition-colors"
+                    >
+                      <Archive className="w-3.5 h-3.5" />
+                      <span>Archive</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    className="px-2.5 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-foreground text-xs font-semibold border border-border flex items-center gap-1 transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5 text-warning" />
+                    <span>Export CSV</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        confirm(
+                          `Delete campaign "${selectedCampaign.title}" permanently?`,
+                        )
+                      ) {
+                        onDeleteCampaign(selectedCampaign.id);
+                      }
+                    }}
+                    className="p-1.5 rounded-lg bg-muted hover:bg-destructive/15 text-destructive text-xs font-semibold border border-border hover:border-destructive/30 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Metric Breakdown Tiles */}
+              <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                <div className="p-2.5 rounded-xl bg-muted/40 border border-border/40">
+                  <span className="text-[10px] text-muted-foreground block uppercase font-medium">
+                    Total Recipients
+                  </span>
+                  <span className="font-mono font-bold text-foreground text-sm">
+                    {selectedCampaign.totalContacts.toLocaleString()}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-muted/40 border border-border/40">
+                  <span className="text-[10px] text-muted-foreground block uppercase font-medium">
+                    Sent Success
+                  </span>
+                  <span className="font-mono font-bold text-success text-sm">
+                    {selectedCampaign.sentCount.toLocaleString()}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-muted/40 border border-border/40">
+                  <span className="text-[10px] text-muted-foreground block uppercase font-medium">
+                    Unregistered
+                  </span>
+                  <span className="font-mono font-bold text-warning text-sm">
+                    {selectedCampaign.unregisteredCount.toLocaleString()}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-muted/40 border border-border/40">
+                  <span className="text-[10px] text-muted-foreground block uppercase font-medium">
+                    Failed
+                  </span>
+                  <span className="font-mono font-bold text-destructive text-sm">
+                    {selectedCampaign.failedCount.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Template & Rendered Sample */}
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Message & Image Template
+                  </span>
+                  {selectedCampaign.imageUrl && (
+                    <span className="text-[10px] text-emerald-500 flex items-center gap-1 font-medium">
+                      ✓ Photo Attached
+                    </span>
+                  )}
+                </div>
+                <div className="p-3 rounded-xl bg-muted/50 border border-border text-foreground font-sans leading-relaxed flex gap-3 shadow-sm">
+                  {selectedCampaign.imageUrl && (
+                    <img
+                      src={selectedCampaign.imageUrl}
+                      alt=""
+                      className="w-16 h-16 rounded-lg object-cover border border-border/50 shrink-0 shadow-sm"
+                    />
+                  )}
+                  <p className="flex-1 text-xs whitespace-pre-wrap text-foreground/90 leading-[1.6]">
+                    {selectedCampaign.templateText}
+                  </p>
+                </div>
+              </div>
+
+              {/* Recipient Roster Table */}
+              <div className="flex-1 space-y-2 pt-2 border-t border-border/60 min-h-0 flex flex-col">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-primary" />
+                    <span>
+                      Recipients (
+                      {(
+                        selectedCampaign.contacts?.length ?? 0
+                      ).toLocaleString()}
+                      )
+                    </span>
+                  </span>
+
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={recipientStatusFilter}
+                      onChange={(e) => setRecipientStatusFilter(e.target.value)}
+                      className="px-2 py-1 rounded-lg bg-muted/50 border border-border text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="all">All</option>
+                      <option value="sent">Sent</option>
+                      <option value="pending">Pending</option>
+                      <option value="skipped">Skipped</option>
+                      <option value="failed">Failed</option>
+                    </select>
+
+                    <input
+                      type="text"
+                      value={contactSearchQuery}
+                      onChange={(e) => setContactSearchQuery(e.target.value)}
+                      placeholder="Search recipients..."
+                      className="px-2 py-1 rounded-lg bg-muted/50 border border-border text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 w-36"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto rounded-xl border border-border/60 min-h-0">
+                  {filteredContacts.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <Users className="w-8 h-8 mx-auto mb-2 text-muted-foreground opacity-50" />
+                      <p className="text-xs text-muted-foreground">
+                        No recipients found
+                      </p>
+                    </div>
+                  ) : (
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/50 text-muted-foreground font-semibold border-b border-border/60 sticky top-0">
+                        <tr>
+                          <th className="text-left px-4 py-2.5 font-semibold">
+                            Name
+                          </th>
+                          <th className="text-left px-4 py-2.5 font-semibold">
+                            Phone
+                          </th>
+                          <th className="text-left px-4 py-2.5 font-semibold">
+                            Verification
+                          </th>
+                          <th className="text-left px-4 py-2.5 font-semibold">
+                            Status
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40 bg-card">
+                        {filteredContacts.map((c) => {
+                          const qItem = selectedCampaignQueue.find(
+                            (q) => q.contactId === c.id,
+                          );
+                          return (
+                            <tr
+                              key={c.id}
+                              className="hover:bg-muted/30 transition-colors"
+                            >
+                              <td className="px-4 py-3 text-foreground font-medium">
+                                {c.name}
+                              </td>
+                              <td className="px-4 py-3 text-muted-foreground font-mono">
+                                {c.rawPhone}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] capitalize font-semibold border ${
+                                    c.verificationStatus === "registered"
+                                      ? "bg-success/10 text-success border-success/30"
+                                      : c.verificationStatus === "unregistered"
+                                        ? "bg-destructive/10 text-destructive border-destructive/30"
+                                        : "bg-muted text-muted-foreground border-border"
+                                  }`}
+                                >
+                                  {c.verificationStatus}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] capitalize font-semibold border ${
+                                    qItem?.status === "sent"
+                                      ? "bg-success/10 text-success border-success/30"
+                                      : qItem?.status === "failed"
+                                        ? "bg-destructive/10 text-destructive border-destructive/30"
+                                        : qItem?.status === "pending" ||
+                                            qItem?.status === "held_rate_limit"
+                                          ? "bg-warning/10 text-warning border-warning/30"
+                                          : "bg-muted text-muted-foreground border-border"
+                                  }`}
+                                >
+                                  {qItem?.status || "pending"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-card border border-border rounded-xl h-full flex items-center justify-center shadow-sm">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted border border-border flex items-center justify-center">
+                  <Layers className="w-7 h-7 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-foreground mb-1">
+                  No Campaign Selected
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Select a campaign from the list to view details
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

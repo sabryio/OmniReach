@@ -20,6 +20,7 @@ export interface Contact {
   id: string
   rawPhone: string
   formattedPhone: string
+  normalizedPhone: string
   name: string
   customFields: Record<string, string>
   verificationStatus: ContactVerificationStatus

@@ -28,6 +28,14 @@ import type {
   MessageTemplate,
 } from "@/types";
 
+// Import centralized mock data
+import {
+  MOCK_CAMPAIGNS,
+  MOCK_SESSIONS,
+  MOCK_QUEUE,
+  MOCK_LOGS,
+} from "@/mock-data";
+
 export const Route = createFileRoute("/$locale/")({ component: App });
 
 // ─── Default state ────────────────────────────────────────────────────────────
@@ -61,32 +69,11 @@ function App() {
   const layout = useLayout();
   const modals = useModals();
 
-  // App-level data state
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [queue] = useState<QueueItem[]>([]);
-  const [sessions] = useState<WABridgeSession[]>([
-    {
-      id: "session-alpha",
-      name: "Session Alpha",
-      phoneNumber: "+1 415 555 0001",
-      status: "connected",
-      hourlyLimit: 5,
-      dailyLimit: 30,
-      hourlySentTimestamps: [],
-      dailySentTimestamps: [],
-    },
-    {
-      id: "session-beta",
-      name: "Session Beta",
-      phoneNumber: "+1 415 555 0002",
-      status: "connected",
-      hourlyLimit: 5,
-      dailyLimit: 30,
-      hourlySentTimestamps: [],
-      dailySentTimestamps: [],
-    },
-  ]);
-  const [logs] = useState<LogEntry[]>([]);
+  // App-level data state - using centralized mock data
+  const [campaigns, setCampaigns] = useState<Campaign[]>(MOCK_CAMPAIGNS);
+  const [queue] = useState<QueueItem[]>(MOCK_QUEUE);
+  const [sessions] = useState<WABridgeSession[]>(MOCK_SESSIONS);
+  const [logs] = useState<LogEntry[]>(MOCK_LOGS);
   const [schedulerState, setSchedulerState] =
     useState<SchedulerState>(DEFAULT_SCHEDULER);
   const [config, setConfig] = useState<WABridgeConfig>(DEFAULT_CONFIG);
@@ -235,24 +222,17 @@ function App() {
               campaigns={campaigns}
               queue={queue}
               sessions={sessions}
-              onPauseCampaign={(id) =>
+              onPauseCampaign={(id: string) =>
                 setCampaigns((p) =>
                   p.map((c) => (c.id === id ? { ...c, status: "paused" } : c)),
                 )
               }
-              onResumeCampaign={(id) =>
+              onResumeCampaign={(id: string) =>
                 setCampaigns((p) =>
                   p.map((c) => (c.id === id ? { ...c, status: "running" } : c)),
                 )
               }
-              onCancelCampaign={(id) =>
-                setCampaigns((p) =>
-                  p.map((c) =>
-                    c.id === id ? { ...c, status: "cancelled" } : c,
-                  ),
-                )
-              }
-              onRetryFailed={(id) =>
+              onRetryFailed={(id: string) =>
                 setCampaigns((p) =>
                   p.map((c) =>
                     c.id === id
@@ -261,15 +241,15 @@ function App() {
                   ),
                 )
               }
-              onDeleteCampaign={(id) =>
+              onDeleteCampaign={(id: string) =>
                 setCampaigns((p) => p.filter((c) => c.id !== id))
               }
-              onArchiveCampaign={(id) =>
+              onArchiveCampaign={(id: string) =>
                 setCampaigns((p) =>
                   p.map((c) => (c.id === id ? { ...c, isArchived: true } : c)),
                 )
               }
-              onUnarchiveCampaign={(id) =>
+              onUnarchiveCampaign={(id: string) =>
                 setCampaigns((p) =>
                   p.map((c) => (c.id === id ? { ...c, isArchived: false } : c)),
                 )

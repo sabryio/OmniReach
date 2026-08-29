@@ -38,76 +38,6 @@ interface DashboardViewProps {
   onToggleScheduler: () => void;
 }
 
-// Mock campaign data for demonstration (matches pharmacy/healthcare broadcast scenarios)
-const MOCK_CAMPAIGNS: Campaign[] = [
-  {
-    id: "camp-001",
-    title: "Monthly Prescription Refill Reminder",
-    status: "running",
-    totalContacts: 1247,
-    sentCount: 892,
-    unregisteredCount: 43,
-    failedCount: 8,
-    createdAt: Date.now() - 3600000 * 4,
-    startedAt: Date.now() - 3600000 * 3,
-    templateText: "Your prescription is ready for refill",
-    templateImageUrl: undefined,
-  },
-  {
-    id: "camp-002",
-    title: "COVID-19 Booster Dose Available",
-    status: "running",
-    totalContacts: 2156,
-    sentCount: 2089,
-    unregisteredCount: 54,
-    failedCount: 13,
-    createdAt: Date.now() - 3600000 * 24,
-    startedAt: Date.now() - 3600000 * 23,
-    templateText: "Schedule your booster shot today",
-    templateImageUrl: undefined,
-  },
-  {
-    id: "camp-003",
-    title: "Lab Results Ready for Collection",
-    status: "completed",
-    totalContacts: 487,
-    sentCount: 467,
-    unregisteredCount: 18,
-    failedCount: 2,
-    createdAt: Date.now() - 3600000 * 48,
-    startedAt: Date.now() - 3600000 * 47,
-    completedAt: Date.now() - 3600000 * 46,
-    templateText: "Your lab results are ready",
-    templateImageUrl: undefined,
-  },
-  {
-    id: "camp-004",
-    title: "Annual Health Checkup Campaign",
-    status: "scheduled",
-    totalContacts: 3542,
-    sentCount: 0,
-    unregisteredCount: 0,
-    failedCount: 0,
-    createdAt: Date.now() - 3600000 * 2,
-    scheduledFor: Date.now() + 3600000 * 24,
-    templateText: "Book your annual checkup appointment",
-    templateImageUrl: undefined,
-  },
-  {
-    id: "camp-005",
-    title: "Diabetes Care Program Enrollment",
-    status: "running",
-    totalContacts: 856,
-    sentCount: 342,
-    unregisteredCount: 27,
-    failedCount: 5,
-    createdAt: Date.now() - 3600000 * 12,
-    startedAt: Date.now() - 3600000 * 10,
-    templateText: "Join our diabetes care program",
-    templateImageUrl: undefined,
-  },
-];
-
 export function DashboardView({
   campaigns,
   queue,
@@ -118,9 +48,6 @@ export function DashboardView({
   onNewCampaignClick,
   onToggleScheduler,
 }: DashboardViewProps) {
-  // Use mock data for demonstration if no real campaigns exist
-  const displayCampaigns = campaigns.length > 0 ? campaigns : MOCK_CAMPAIGNS;
-
   const {
     totalAudience,
     totalDelivered,
@@ -132,7 +59,7 @@ export function DashboardView({
     totalHourlyLimit,
     sessionQuotas,
   } = useDashboard({
-    campaigns: displayCampaigns,
+    campaigns,
     queue,
     sessions,
     schedulerState,
@@ -204,7 +131,7 @@ export function DashboardView({
             {totalAudience}
           </p>
           <p className="text-[10px] text-muted-foreground">
-            Across {displayCampaigns.length} campaigns
+            Across {campaigns.length} campaigns
           </p>
         </div>
 
@@ -305,12 +232,12 @@ export function DashboardView({
                 onClick={() => onNavigate("campaigns")}
                 className="text-[11px] text-primary hover:text-primary/80 flex items-center gap-1 font-medium transition-colors group"
               >
-                <span>View All ({displayCampaigns.length})</span>
+                <span>View All ({campaigns.length})</span>
                 <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>
 
-            {displayCampaigns.length === 0 ? (
+            {campaigns.length === 0 ? (
               <div className="text-center py-8 px-4">
                 <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-muted border border-border flex items-center justify-center">
                   <Layers className="w-5 h-5 text-muted-foreground" />
@@ -340,7 +267,7 @@ export function DashboardView({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/40 text-foreground bg-card">
-                      {displayCampaigns.slice(0, 5).map((c) => {
+                      {campaigns.slice(0, 5).map((c) => {
                         const processed =
                           c.sentCount + c.unregisteredCount + c.failedCount;
                         const pct =

@@ -1,138 +1,430 @@
 /**
- * SessionsDashboard — WhatsApp session management
- * Placeholder
+ * SessionsDashboard — WhatsApp session management with rate limiting
+ * Beautiful UI with exact mockup structure and enhanced functionality
  */
-import type { WABridgeSession, WABridgeConfig } from '@/types'
-import { useSessions } from '../hooks/useSessions'
+import { useState, useEffect } from "react";
+import {
+  Server,
+  Zap,
+  RotateCcw,
+  Clock,
+  Send,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
+import type { WABridgeSession, WABridgeConfig } from "@/types";
 
 interface SessionsDashboardProps {
-  sessions: WABridgeSession[]
-  config: WABridgeConfig
-  onResetSessionLimits: (id: string) => void
-  onUpdateSessions: (sessions: WABridgeSession[]) => void
+  sessions: WABridgeSession[];
+  config: WABridgeConfig;
+  onResetSessionLimits: (id: string) => void;
+  onUpdateSessions: (sessions: WABridgeSession[]) => void;
 }
 
-const STATUS_STYLE: Record<string, string> = {
-  connected: 'bg-success/20 text-success',
-  disconnected: 'bg-destructive/20 text-destructive',
-  connecting: 'bg-warning/20 text-warning',
-  qr_required: 'bg-info/20 text-info-foreground',
+// Helper to format duration
+function formatDuration(ms: number): string {
+  const seconds = Math.ceil(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${minutes}m ${secs}s`;
+}
+
+// Helper to calculate quota
+function getSessionQuota(session: WABridgeSession, now: number) {
+  const hourAgo = now - 60 * 60 * 1000;
+  const dayAgo = now - 24 * 60 * 60 * 1000;
+
+  const hourlyUsed = session.hourlySentTimestamps.filter(
+    (t) => t > hourAgo,
+  ).length;
+  const dailyUsed = session.dailySentTimestamps.filter(
+    (t) => t > dayAgo,
+  ).length;
+
+  const hourlyLimit = session.hourlyLimit || 5;
+  const dailyLimit = session.dailyLimit || 30;
+
+  const isHourlyCapped = hourlyUsed >= hourlyLimit;
+  const isDailyCapped = dailyUsed >= dailyLimit;
+
+  const hourlyRemaining = Math.max(0, hourlyLimit - hourlyUsed);
+  const dailyRemaining = Math.max(0, dailyLimit - dailyUsed);
+
+  let nextHourlySlotMs: number | null = null;
+  if (isHourlyCapped && session.hourlySentTimestamps.length > 0) {
+    const oldest = session.hourlySentTimestamps
+      .filter((t) => t > hourAgo)
+      .sort((a, b) => a - b)[0];
+    if (oldest) {
+      nextHourlySlotMs = oldest + 60 * 60 * 1000 - now;
+    }
+  }
+
+  let nextDailySlotMs: number | null = null;
+  if (isDailyCapped && session.dailySentTimestamps.length > 0) {
+    const oldest = session.dailySentTimestamps
+      .filter((t) => t > dayAgo)
+      .sort((a, b) => a - b)[0];
+    if (oldest) {
+      nextDailySlotMs = oldest + 24 * 60 * 60 * 1000 - now;
+    }
+  }
+
+  const canSend = !isHourlyCapped && !isDailyCapped;
+  let reason = "";
+  if (isHourlyCapped) reason = "Hourly limit reached";
+  else if (isDailyCapped) reason = "Daily limit reached";
+
+  return {
+    hourlyUsed,
+    hourlyLimit,
+    hourlyRemaining,
+    isHourlyCapped,
+    dailyUsed,
+    dailyLimit,
+    dailyRemaining,
+    isDailyCapped,
+    canSend,
+    reason,
+    nextHourlySlotMs,
+    nextDailySlotMs,
+  };
 }
 
 export function SessionsDashboard({
   sessions,
-  config,
   onResetSessionLimits,
   onUpdateSessions,
 }: SessionsDashboardProps) {
-  const { testPhone, setTestPhone, testResults, resetLimits, testVerify } =
-    useSessions(sessions, config, onResetSessionLimits, onUpdateSessions)
+  const [testPhone, setTestPhone] = useState<string>("+966 50 123 4567");
+  const [testResult, setTestResult] = useState<{
+    sessionId: string;
+    message: string;
+    success: boolean;
+  } | null>(null);
+  const [isTesting, setIsTesting] = useState<boolean>(false);
+  const [now, setNow] = useState<number>(Date.now());
+
+  // Update clock every second for smooth reset countdowns
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleTestVerifyNumber = async (sessionId: string) => {
+    setIsTesting(true);
+    setTestResult(null);
+
+    // Simulate verification
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    const isRegistered = Math.random() > 0.2; // 80% success rate
+
+    setIsTesting(false);
+
+    if (isRegistered) {
+      setTestResult({
+        sessionId,
+        success: true,
+        message: `✅ Number ${testPhone} is REGISTERED on WhatsApp!`,
+      });
+    } else {
+      setTestResult({
+        sessionId,
+        success: false,
+        message: `❌ Number ${testPhone} is NOT registered on WhatsApp`,
+      });
+    }
+  };
+
+  const handleSendTestMessage = async (sessionId: string) => {
+    const session = sessions.find((s) => s.id === sessionId);
+    if (!session) return;
+
+    const quota = getSessionQuota(session, now);
+    if (!quota.canSend) {
+      setTestResult({
+        sessionId,
+        success: false,
+        message: `🚫 Cannot send: ${quota.reason}`,
+      });
+      return;
+    }
+
+    setIsTesting(true);
+    setTestResult(null);
+
+    // Simulate sending
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    const success = Math.random() > 0.1; // 90% success rate
+
+    setIsTesting(false);
+
+    if (success) {
+      // Record send
+      const updatedSession = {
+        ...session,
+        hourlySentTimestamps: [...session.hourlySentTimestamps, Date.now()],
+        dailySentTimestamps: [...session.dailySentTimestamps, Date.now()],
+      };
+      const updatedList = sessions.map((s) =>
+        s.id === sessionId ? updatedSession : s,
+      );
+      onUpdateSessions(updatedList);
+
+      setTestResult({
+        sessionId,
+        success: true,
+        message: `🚀 Test message sent successfully! Msg ID: ${Date.now()}`,
+      });
+    } else {
+      setTestResult({
+        sessionId,
+        success: false,
+        message: "❌ Send failed: Network error",
+      });
+    }
+  };
 
   return (
-    <div className="space-y-4">
-      {/* Header + global test input */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-lg font-bold text-foreground">Sessions</h1>
-        <div className="flex items-center gap-2 ml-auto">
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Overview Top Bar */}
+      <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-base font-bold text-foreground flex items-center gap-2">
+            <Server className="w-5 h-5 text-primary" />
+            <span>WhatsApp Sessions</span>
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Monitor and manage WhatsApp Business sessions with rate limiting
+          </p>
+        </div>
+
+        {/* Quick Test Box */}
+        <div className="flex items-center gap-2 bg-muted/30 p-2 rounded-xl border border-border">
           <input
             type="text"
             value={testPhone}
             onChange={(e) => setTestPhone(e.target.value)}
-            placeholder="Test phone number..."
-            className="bg-input border border-border rounded-md px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring w-52"
+            placeholder="Enter test phone..."
+            className="px-3 py-1.5 text-xs rounded-lg border border-border bg-card text-foreground font-mono w-44 focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground transition-all"
           />
+          <span className="text-[10px] text-muted-foreground">
+            Check Number
+          </span>
         </div>
       </div>
 
+      {/* Test Result Banner */}
+      {testResult && (
+        <div
+          className={`p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 shadow-sm ${
+            testResult.success
+              ? "bg-success/10 border-success/30 text-success"
+              : "bg-destructive/10 border-destructive/30 text-destructive"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {testResult.success ? (
+              <CheckCircle2 className="w-4 h-4" />
+            ) : (
+              <XCircle className="w-4 h-4" />
+            )}
+            <span>{testResult.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setTestResult(null)}
+            className="text-[10px] font-bold uppercase hover:underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Sessions Grid */}
       {sessions.length === 0 ? (
-        <div className="bg-card border border-border rounded-lg p-8 text-center text-sm text-muted-foreground">
-          No sessions configured. Add sessions in Settings.
+        <div className="bg-card border border-border rounded-2xl p-12 text-center shadow-md">
+          <Server className="w-12 h-12 mx-auto text-muted-foreground opacity-30 mb-3" />
+          <p className="text-sm text-muted-foreground">
+            No sessions configured. Add sessions in Settings.
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {sessions.map((s) => {
-            const hourlyUsed = s.hourlySentTimestamps.length
-            const dailyUsed = s.dailySentTimestamps.length
-            const hourlyPct = Math.min(Math.round((hourlyUsed / s.hourlyLimit) * 100), 100)
-            const dailyPct = Math.min(Math.round((dailyUsed / s.dailyLimit) * 100), 100)
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {sessions.map((session) => {
+            const quota = getSessionQuota(session, now);
 
             return (
-              <div key={s.id} className="bg-card border border-border rounded-lg p-4 space-y-4">
-                {/* Session header */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-foreground text-sm">{s.name}</p>
-                    <p className="text-xs text-muted-foreground font-mono">{s.phoneNumber ?? '—'}</p>
+              <div
+                key={session.id}
+                className="bg-card border border-border rounded-2xl p-5 shadow-md space-y-4 hover:border-primary/40 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  {/* Session Header */}
+                  <div className="flex items-center justify-between pb-3 border-b border-border">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-xs border border-primary/20">
+                        WA
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-foreground truncate max-w-[170px]">
+                          {session.name}
+                        </h3>
+                        <p className="text-[10px] text-muted-foreground font-mono">
+                          {session.phoneNumber || session.id}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                        session.status === "connected"
+                          ? "bg-success/10 text-success border border-success/30"
+                          : "bg-warning/10 text-warning border border-warning/30"
+                      }`}
+                    >
+                      {session.status}
+                    </span>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${STATUS_STYLE[s.status] ?? 'bg-muted text-muted-foreground'}`}>
-                    {s.status.replace('_', ' ')}
-                  </span>
+
+                  {/* Quota Counters */}
+                  <div className="space-y-4 pt-3">
+                    {/* Hourly Rate Limit */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-primary" />
+                          <span>Hourly Limit</span>
+                        </span>
+                        <span
+                          className={`font-mono font-bold ${
+                            quota.isHourlyCapped
+                              ? "text-destructive"
+                              : "text-success"
+                          }`}
+                        >
+                          {quota.hourlyUsed} / {quota.hourlyLimit} msgs
+                        </span>
+                      </div>
+
+                      {/* Visual Segment Bars (5 slots) */}
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {Array.from({ length: quota.hourlyLimit }).map(
+                          (_, idx) => {
+                            const isUsed = idx < quota.hourlyUsed;
+                            return (
+                              <div
+                                key={idx}
+                                className={`h-2 rounded-sm transition-all ${
+                                  isUsed
+                                    ? quota.isHourlyCapped
+                                      ? "bg-destructive"
+                                      : "bg-success"
+                                    : "bg-muted border border-border"
+                                }`}
+                                title={
+                                  isUsed
+                                    ? `Used slot #${idx + 1}`
+                                    : `Available slot #${idx + 1}`
+                                }
+                              />
+                            );
+                          },
+                        )}
+                      </div>
+
+                      {quota.isHourlyCapped && quota.nextHourlySlotMs && (
+                        <p className="text-[11px] text-warning flex items-center gap-1 font-medium pt-0.5">
+                          <Clock className="w-3 h-3 animate-spin" />
+                          <span>
+                            Next slot opens in:{" "}
+                            {formatDuration(quota.nextHourlySlotMs)}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Daily Rate Limit */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-muted-foreground flex items-center gap-1">
+                          <Zap className="w-3.5 h-3.5 text-primary" />
+                          <span>Daily Limit</span>
+                        </span>
+                        <span className="font-mono font-bold text-foreground">
+                          {quota.dailyUsed} / {quota.dailyLimit} msgs
+                        </span>
+                      </div>
+
+                      <div className="w-full bg-muted h-2 rounded-full overflow-hidden border border-border">
+                        <div
+                          className={`h-full transition-all ${
+                            quota.isDailyCapped
+                              ? "bg-destructive"
+                              : "bg-primary"
+                          }`}
+                          style={{
+                            width: `${(quota.dailyUsed / quota.dailyLimit) * 100}%`,
+                          }}
+                        />
+                      </div>
+
+                      {quota.isDailyCapped && quota.nextDailySlotMs && (
+                        <p className="text-[11px] text-destructive font-medium">
+                          Daily cap reached! Resets in:{" "}
+                          {formatDuration(quota.nextDailySlotMs)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                {/* Quota bars */}
-                <div className="space-y-2">
-                  {/* Hourly */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="text-muted-foreground">Hourly</span>
-                      <span className="font-mono text-foreground">{hourlyUsed}/{s.hourlyLimit}</span>
-                    </div>
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${hourlyPct >= 100 ? 'bg-destructive' : hourlyPct >= 80 ? 'bg-warning' : 'bg-primary'}`}
-                        style={{ width: `${hourlyPct}%` }}
-                      />
-                    </div>
-                  </div>
-                  {/* Daily */}
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="text-muted-foreground">Daily</span>
-                      <span className="font-mono text-foreground">{dailyUsed}/{s.dailyLimit}</span>
-                    </div>
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${dailyPct >= 100 ? 'bg-destructive' : dailyPct >= 80 ? 'bg-warning' : 'bg-success'}`}
-                        style={{ width: `${dailyPct}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
+                {/* Action Buttons for Session */}
+                <div className="pt-3 border-t border-border space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      disabled={isTesting}
+                      onClick={() => handleTestVerifyNumber(session.id)}
+                      className="px-2.5 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-foreground text-[11px] font-semibold border border-border transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                    >
+                      <span>Check Number</span>
+                    </button>
 
-                {/* Actions */}
-                <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      disabled={isTesting || !quota.canSend}
+                      onClick={() => handleSendTestMessage(session.id)}
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-colors flex items-center justify-center gap-1 ${
+                        quota.canSend
+                          ? "bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
+                          : "bg-muted text-muted-foreground border border-border cursor-not-allowed"
+                      }`}
+                    >
+                      <Send className="w-3 h-3" />
+                      <span>Send Test</span>
+                    </button>
+                  </div>
+
                   <button
-                    onClick={() => resetLimits(s.id)}
-                    className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground border border-border hover:bg-accent hover:text-accent-foreground transition-colors"
+                    type="button"
+                    id={`reset-limits-${session.id}`}
+                    onClick={() => onResetSessionLimits(session.id)}
+                    className="w-full px-2.5 py-1 rounded-lg text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent hover:border-border transition-colors flex items-center justify-center gap-1"
+                    title="Reset rate counters to test edge cases"
                   >
-                    Reset Limits
-                  </button>
-                  <button
-                    onClick={() => testVerify(s.id)}
-                    disabled={!testPhone.trim()}
-                    className="text-xs px-2 py-1 rounded bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30 disabled:opacity-40 transition-colors"
-                  >
-                    Test Verify
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Reset Limits</span>
                   </button>
                 </div>
-
-                {/* Test result */}
-                {testResults[s.id] && (
-                  <p className={`text-xs font-mono px-2 py-1.5 rounded border ${
-                    testResults[s.id]?.startsWith('✓')
-                      ? 'bg-success/10 text-success border-success/20'
-                      : testResults[s.id] === 'checking…'
-                        ? 'bg-muted text-muted-foreground border-border'
-                        : 'bg-destructive/10 text-destructive border-destructive/20'
-                  }`}>
-                    {testResults[s.id]}
-                  </p>
-                )}
               </div>
-            )
+            );
           })}
         </div>
       )}
     </div>
-  )
+  );
 }

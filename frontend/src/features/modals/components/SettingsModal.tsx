@@ -1,8 +1,35 @@
 /**
- * SettingsModal — full-screen overlay with 4 tabs: Appearance / WABridge / Schedule / System
- * Placeholder
+ * SettingsModal — full-screen overlay with 4 tabs:
+ *   Appearance · WABridge · Schedule · System
+ *
+ * Keeps mine's professional structure (scheduler debug, danger zone,
+ * system info) + adds mockup's superior visual polish:
+ *   - Icon-rich tab bar
+ *   - Sectioned cards per setting group
+ *   - Language picker
+ *   - Theme mode 3-up card layout
+ *   - Color palette with check-in-dot
+ *   - Simulation sliders side-by-side
+ *   - Tauri setup guide
+ *   - Footer Save / Cancel buttons
  */
 import { useState } from "react";
+import {
+  Settings,
+  Server,
+  Clock,
+  Sliders,
+  Check,
+  Copy,
+  Cpu,
+  Trash2,
+  Palette,
+  Globe,
+  Sun,
+  Moon,
+  Laptop,
+  X,
+} from "lucide-react";
 import type {
   WABridgeConfig,
   SchedulerState,
@@ -25,17 +52,108 @@ interface SettingsModalProps {
   onClearAllData: () => void;
 }
 
-type Tab = "appearance" | "wabridge" | "schedule" | "system";
-const TABS: Tab[] = ["appearance", "wabridge", "schedule", "system"];
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-const COLORS: { id: ThemeColor; label: string; bg: string }[] = [
-  { id: "blue", label: "Blue", bg: "bg-blue-500" },
-  { id: "emerald", label: "Emerald", bg: "bg-emerald-500" },
-  { id: "violet", label: "Violet", bg: "bg-violet-500" },
-  { id: "amber", label: "Amber", bg: "bg-amber-500" },
-  { id: "rose", label: "Rose", bg: "bg-rose-500" },
-  { id: "cyan", label: "Cyan", bg: "bg-cyan-500" },
+const COLOR_PALETTES: {
+  id: ThemeColor;
+  label: string;
+  dot: string;
+  desc: string;
+}[] = [
+  {
+    id: "blue",
+    label: "Blue",
+    dot: "bg-blue-500",
+    desc: "Classic Desktop Default",
+  },
+  {
+    id: "emerald",
+    label: "Emerald",
+    dot: "bg-emerald-500",
+    desc: "Medical / Pharmacy Focus",
+  },
+  {
+    id: "violet",
+    label: "Violet",
+    dot: "bg-violet-500",
+    desc: "Modern Royal Violet",
+  },
+  {
+    id: "amber",
+    label: "Amber",
+    dot: "bg-amber-500",
+    desc: "Warm Golden Glow",
+  },
+  {
+    id: "rose",
+    label: "Rose",
+    dot: "bg-rose-500",
+    desc: "Vibrant Ruby Accent",
+  },
+  { id: "cyan", label: "Cyan", dot: "bg-cyan-500", desc: "Clinical Cyan Tone" },
 ];
+
+const TAURI_COMMANDS = `# 1. Install frontend dependencies
+npm install
+
+# 2. Install Tauri v2 CLI (if not installed)
+cargo install tauri-cli --version "^2.0.0"
+
+# 3. Run desktop app in development mode
+cargo tauri dev
+
+# 4. Build standalone native production installer
+cargo tauri build`;
+
+type Tab = "appearance" | "wabridge" | "schedule" | "system";
+
+const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  {
+    id: "appearance",
+    label: "Appearance",
+    icon: <Palette className="w-3.5 h-3.5" />,
+  },
+  {
+    id: "wabridge",
+    label: "WABridge",
+    icon: <Server className="w-3.5 h-3.5" />,
+  },
+  {
+    id: "schedule",
+    label: "Schedule",
+    icon: <Clock className="w-3.5 h-3.5" />,
+  },
+  { id: "system", label: "System", icon: <Cpu className="w-3.5 h-3.5" /> },
+];
+
+// ─── Shared sub-components ────────────────────────────────────────────────────
+
+function SectionCard({
+  icon,
+  title,
+  desc,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  desc?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-muted/30 border border-border rounded-xl p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="text-primary">{icon}</div>
+        <div>
+          <h4 className="text-xs font-bold text-foreground">{title}</h4>
+          {desc && <p className="text-[11px] text-muted-foreground">{desc}</p>}
+        </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export function SettingsModal({
   isOpen,
@@ -52,345 +170,519 @@ export function SettingsModal({
   onClearAllData,
 }: SettingsModalProps) {
   const [tab, setTab] = useState<Tab>("appearance");
-  const [localConfig, setLocalConfig] = useState(config);
+
+  // WABridge local state
+  const [baseUrl, setBaseUrl] = useState(config.baseUrl);
+  const [apiKey, setApiKey] = useState(config.apiKey ?? "");
+  const [useSimulation, setUseSimulation] = useState(config.useSimulationMode);
+  const [latencyMs, setLatencyMs] = useState(config.simulatedNetworkLatencyMs);
+  const [unregisteredRate, setUnregisteredRate] = useState(
+    config.simulatedUnregisteredRate,
+  );
+
+  // Schedule local state
+  const [strictWindow, setStrictWindow] = useState(
+    schedulerState.strictTimeWindow,
+  );
+  const [hourOffset, setHourOffset] = useState(
+    schedulerState.simulatedHourOffset ?? 0,
+  );
+
+  // Copy helper for Tauri code block
+  const [copiedTauri, setCopiedTauri] = useState(false);
+  const copyTauri = () => {
+    navigator.clipboard.writeText(TAURI_COMMANDS);
+    setCopiedTauri(true);
+    setTimeout(() => setCopiedTauri(false), 2000);
+  };
+
+  const handleSave = () => {
+    onSaveConfig({
+      baseUrl: baseUrl.trim() || "http://127.0.0.1:8080",
+      apiKey: apiKey.trim() || undefined,
+      timeoutMs: config.timeoutMs,
+      useSimulationMode: useSimulation,
+      simulatedNetworkLatencyMs: latencyMs,
+      simulatedUnregisteredRate: unregisteredRate,
+    });
+    onSetStrictTimeWindow(strictWindow);
+    onSetSimulatedHourOffset(hourOffset);
+    onClose();
+  };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative bg-card border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-card border border-border rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-          <h2 className="text-base font-bold text-foreground">Settings</h2>
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary border border-primary/20 flex items-center justify-center">
+              <Settings className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-foreground">Settings</h3>
+              <p className="text-[11px] text-muted-foreground">
+                Appearance, API connection, scheduling and system
+              </p>
+            </div>
+          </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground text-lg leading-none transition-colors"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-0 border-b border-border px-6 shrink-0">
+        {/* Tab bar */}
+        <div className="px-5 border-b border-border flex items-center gap-0 overflow-x-auto shrink-0">
           {TABS.map((t) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-2 text-xs font-medium capitalize transition-colors border-b-2 -mb-px ${
-                tab === t
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={`pb-2.5 pt-2 px-3 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition-all shrink-0 ${
+                tab === t.id
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t}
+              {t.icon}
+              {t.label}
             </button>
           ))}
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-          {/* Appearance */}
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+          {/* ── APPEARANCE ── */}
           {tab === "appearance" && (
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-foreground">
-                  Theme Mode
-                </p>
-                <div className="flex gap-2">
-                  {(["dark", "light", "system"] as ThemeMode[]).map((m) => (
+            <div className="space-y-4">
+              {/* Language */}
+              <SectionCard
+                icon={<Globe className="w-4 h-4" />}
+                title="Interface Language"
+                desc="Changes display language across the application"
+              >
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    {
+                      code: "en",
+                      flag: "🇬🇧",
+                      name: "English",
+                      sub: "Standard LTR interface",
+                    },
+                    {
+                      code: "ar",
+                      flag: "🇸🇦",
+                      name: "العربية",
+                      sub: "واجهة عربية RTL",
+                    },
+                  ].map((lang) => (
                     <button
-                      key={m}
-                      onClick={onToggleThemeMode}
-                      className={`flex-1 py-2 text-xs rounded border capitalize transition-colors ${
-                        themeMode === m
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "border-border text-muted-foreground hover:border-primary/40"
-                      }`}
+                      key={lang.code}
+                      type="button"
+                      disabled
+                      title="Language switching via URL (/en/ or /ar-EG/)"
+                      className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30 text-start opacity-60 cursor-not-allowed"
                     >
-                      {m === "dark"
-                        ? "☾ Dark"
-                        : m === "light"
-                          ? "☀ Light"
-                          : "⬡ System"}
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{lang.flag}</span>
+                        <div>
+                          <div className="text-xs font-semibold text-foreground">
+                            {lang.name}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">
+                            {lang.sub}
+                          </div>
+                        </div>
+                      </div>
                     </button>
                   ))}
                 </div>
-              </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Language is set via URL prefix — navigate to{" "}
+                  <code className="bg-muted px-1 rounded font-mono">/en/</code>{" "}
+                  or{" "}
+                  <code className="bg-muted px-1 rounded font-mono">
+                    /ar-EG/
+                  </code>
+                </p>
+              </SectionCard>
 
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-foreground">
-                  Accent Color
-                </p>
+              {/* Theme Mode */}
+              <SectionCard
+                icon={<Sun className="w-4 h-4" />}
+                title="Theme Mode"
+              >
                 <div className="grid grid-cols-3 gap-2">
-                  {COLORS.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => onSetThemeColor(c.id)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded border text-xs transition-colors ${
-                        themeColor === c.id
-                          ? "border-primary bg-primary/10 text-foreground"
-                          : "border-border text-muted-foreground hover:border-primary/40"
-                      }`}
-                    >
-                      <span
-                        className={`w-3 h-3 rounded-full ${c.bg} shrink-0`}
-                      />
-                      {c.label}
-                      {themeColor === c.id && (
-                        <span className="ml-auto">✓</span>
-                      )}
-                    </button>
-                  ))}
+                  {[
+                    {
+                      id: "dark" as ThemeMode,
+                      label: "Dark",
+                      icon: Moon,
+                      desc: "Elegant Dark",
+                    },
+                    {
+                      id: "light" as ThemeMode,
+                      label: "Light",
+                      icon: Sun,
+                      desc: "Crisp Light",
+                    },
+                    {
+                      id: "system" as ThemeMode,
+                      label: "System",
+                      icon: Laptop,
+                      desc: "System Match",
+                    },
+                  ].map(({ id, label, icon: Icon, desc }) => {
+                    const active = themeMode === id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => onToggleThemeMode()}
+                        className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
+                          active
+                            ? "bg-primary/10 border-primary/50 ring-1 ring-primary/30"
+                            : "bg-muted/20 border-border hover:bg-muted/50"
+                        }`}
+                      >
+                        <Icon
+                          className={`w-5 h-5 mb-1 ${active ? "text-primary" : "text-muted-foreground"}`}
+                        />
+                        <span className="text-xs font-bold text-foreground">
+                          {label}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground mt-0.5">
+                          {desc}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
+              </SectionCard>
+
+              {/* Accent Color */}
+              <SectionCard
+                icon={<Palette className="w-4 h-4" />}
+                title="Accent Color"
+                desc="Applied to buttons, active states, and highlights"
+              >
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {COLOR_PALETTES.map((c) => {
+                    const active = themeColor === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => onSetThemeColor(c.id)}
+                        className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-start transition-all ${
+                          active
+                            ? "bg-primary/10 border-primary/50 ring-1 ring-primary/30"
+                            : "bg-muted/20 border-border hover:bg-muted/50"
+                        }`}
+                      >
+                        <span
+                          className={`w-4 h-4 rounded-full ${c.dot} shrink-0 flex items-center justify-center shadow-sm`}
+                        >
+                          {active && (
+                            <Check className="w-2.5 h-2.5 text-white stroke-3" />
+                          )}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-foreground">
+                            {c.label}
+                          </div>
+                          <div className="text-[9px] text-muted-foreground truncate">
+                            {c.desc}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </SectionCard>
             </div>
           )}
 
-          {/* WABridge */}
+          {/* ── WABRIDGE ── */}
           {tab === "wabridge" && (
             <div className="space-y-4">
-              {[
-                {
-                  label: "Base URL",
-                  key: "baseUrl",
-                  type: "text",
-                  placeholder: "http://127.0.0.1:8080",
-                },
-                {
-                  label: "API Key",
-                  key: "apiKey",
-                  type: "password",
-                  placeholder: "optional",
-                },
-                {
-                  label: "Timeout (ms)",
-                  key: "timeoutMs",
-                  type: "number",
-                  placeholder: "5000",
-                },
-              ].map(({ label, key, type, placeholder }) => (
-                <div key={key} className="space-y-1">
-                  <label className="text-xs text-muted-foreground">
-                    {label}
-                  </label>
-                  <input
-                    type={type}
-                    value={String(
-                      (localConfig as unknown as Record<string, unknown>)[
-                        key
-                      ] ?? "",
-                    )}
-                    onChange={(e) =>
-                      setLocalConfig({
-                        ...localConfig,
-                        [key]:
-                          type === "number"
-                            ? Number(e.target.value)
-                            : e.target.value,
-                      })
-                    }
-                    placeholder={placeholder}
-                    className="w-full bg-input border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
-              ))}
-
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={localConfig.useSimulationMode}
-                  onChange={(e) =>
-                    setLocalConfig({
-                      ...localConfig,
-                      useSimulationMode: e.target.checked,
-                    })
-                  }
-                  className="accent-primary w-4 h-4"
-                />
-                <div>
-                  <p className="text-xs font-medium text-foreground">
-                    Simulation Mode
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Mock API responses without a live WABridge server
-                  </p>
-                </div>
-              </label>
-
-              {localConfig.useSimulationMode && (
-                <div className="space-y-3 pl-4 border-l-2 border-primary/30">
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">
-                      Simulated Latency (ms)
-                    </label>
-                    <input
-                      type="range"
-                      min={0}
-                      max={3000}
-                      step={100}
-                      value={localConfig.simulatedNetworkLatencyMs}
-                      onChange={(e) =>
-                        setLocalConfig({
-                          ...localConfig,
-                          simulatedNetworkLatencyMs: Number(e.target.value),
-                        })
-                      }
-                      className="w-full accent-primary"
-                    />
-                    <p className="text-[10px] text-muted-foreground font-mono">
-                      {localConfig.simulatedNetworkLatencyMs}ms
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-muted-foreground">
-                      Unregistered Rate (0–1.0)
-                    </label>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      value={localConfig.simulatedUnregisteredRate}
-                      onChange={(e) =>
-                        setLocalConfig({
-                          ...localConfig,
-                          simulatedUnregisteredRate: Number(e.target.value),
-                        })
-                      }
-                      className="w-full accent-primary"
-                    />
-                    <p className="text-[10px] text-muted-foreground font-mono">
-                      {(localConfig.simulatedUnregisteredRate * 100).toFixed(0)}
-                      %
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={() => onSaveConfig(localConfig)}
-                className="w-full py-2 text-xs rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              <SectionCard
+                icon={<Server className="w-4 h-4" />}
+                title="API Connection"
               >
-                Save Configuration
-              </button>
-            </div>
-          )}
-
-          {/* Schedule */}
-          {tab === "schedule" && (
-            <div className="space-y-5">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={schedulerState.strictTimeWindow}
-                  onChange={(e) => onSetStrictTimeWindow(e.target.checked)}
-                  className="accent-primary w-4 h-4"
-                />
-                <div>
-                  <p className="text-xs font-medium text-foreground">
-                    Strict Time Window (9AM – 9PM)
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Block sending outside approved hours
-                  </p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                      Base URL
+                    </label>
+                    <input
+                      type="text"
+                      value={baseUrl}
+                      onChange={(e) => setBaseUrl(e.target.value)}
+                      placeholder="http://127.0.0.1:8080"
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-muted/30 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                      API Key
+                    </label>
+                    <input
+                      type="password"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder="Optional WABridge token..."
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-muted/30 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                    />
+                  </div>
                 </div>
-              </label>
+              </SectionCard>
 
-              <div className="space-y-2">
-                <label className="text-xs text-muted-foreground">
-                  Simulated Hour Offset (for testing)
+              <SectionCard
+                icon={<Cpu className="w-4 h-4" />}
+                title="Simulation Mode"
+                desc="Mock API responses without a live WABridge server"
+              >
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div>
+                    <p className="text-xs font-medium text-foreground">
+                      Enable Simulation
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Safe testing without real WhatsApp dispatch
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={useSimulation}
+                    onChange={(e) => setUseSimulation(e.target.checked)}
+                    className="w-4 h-4 accent-primary rounded"
+                  />
                 </label>
-                <input
-                  type="range"
-                  min={-12}
-                  max={12}
-                  step={1}
-                  value={schedulerState.simulatedHourOffset}
-                  onChange={(e) =>
-                    onSetSimulatedHourOffset(Number(e.target.value))
-                  }
-                  className="w-full accent-primary"
-                />
-                <p className="text-[10px] text-muted-foreground font-mono">
-                  Offset: {schedulerState.simulatedHourOffset > 0 ? "+" : ""}
-                  {schedulerState.simulatedHourOffset}h → Simulated:{" "}
-                  {schedulerState.currentLocalTimeStr}
-                </p>
-              </div>
 
-              <div className="bg-muted/40 border border-border rounded-lg p-3 space-y-1 text-xs font-mono">
-                <p className="text-muted-foreground">Scheduler State</p>
-                <p>
-                  Running:{" "}
-                  <span
-                    className={
-                      schedulerState.isRunning
-                        ? "text-success"
-                        : "text-destructive"
-                    }
-                  >
-                    {String(schedulerState.isRunning)}
-                  </span>
-                </p>
-                <p>
-                  Within window:{" "}
-                  <span
-                    className={
-                      schedulerState.isWithinTimeWindow
-                        ? "text-success"
-                        : "text-warning"
-                    }
-                  >
-                    {String(schedulerState.isWithinTimeWindow)}
-                  </span>
-                </p>
-                <p>
-                  Queue pending:{" "}
-                  <span className="text-foreground">
-                    {schedulerState.totalQueuePending}
-                  </span>
-                </p>
-                <p>
-                  Queue held:{" "}
-                  <span className="text-warning">
-                    {schedulerState.totalQueueHeld}
-                  </span>
-                </p>
-              </div>
+                {useSimulation && (
+                  <div className="grid grid-cols-2 gap-4 pt-3 border-t border-border text-xs">
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-muted-foreground block">
+                        Network Latency ({latencyMs}ms)
+                      </label>
+                      <input
+                        type="range"
+                        min={50}
+                        max={1000}
+                        step={50}
+                        value={latencyMs}
+                        onChange={(e) => setLatencyMs(Number(e.target.value))}
+                        className="w-full accent-primary"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-muted-foreground block">
+                        Unregistered Rate ({Math.round(unregisteredRate * 100)}
+                        %)
+                      </label>
+                      <input
+                        type="range"
+                        min={0}
+                        max={0.5}
+                        step={0.05}
+                        value={unregisteredRate}
+                        onChange={(e) =>
+                          setUnregisteredRate(Number(e.target.value))
+                        }
+                        className="w-full accent-primary"
+                      />
+                    </div>
+                  </div>
+                )}
+              </SectionCard>
             </div>
           )}
 
-          {/* System */}
+          {/* ── SCHEDULE ── */}
+          {tab === "schedule" && (
+            <div className="space-y-4">
+              <SectionCard
+                icon={<Clock className="w-4 h-4" />}
+                title="Time Window"
+              >
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div>
+                    <p className="text-xs font-medium text-foreground">
+                      Strict Time Window (9AM – 9PM)
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Block sending outside approved hours
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={strictWindow}
+                    onChange={(e) => setStrictWindow(e.target.checked)}
+                    className="w-4 h-4 accent-primary rounded"
+                  />
+                </label>
+              </SectionCard>
+
+              <SectionCard
+                icon={<Sliders className="w-4 h-4" />}
+                title="Time Travel (Testing)"
+                desc="Simulate a different local hour for testing time-window logic"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Hour offset</span>
+                    <span className="font-mono font-bold text-primary">
+                      {hourOffset > 0 ? `+${hourOffset}` : hourOffset}h →{" "}
+                      {schedulerState.currentLocalTimeStr}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={-12}
+                    max={12}
+                    step={1}
+                    value={hourOffset}
+                    onChange={(e) => setHourOffset(Number(e.target.value))}
+                    className="w-full accent-primary"
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
+                    <span>-12h</span>
+                    <button
+                      type="button"
+                      onClick={() => setHourOffset(0)}
+                      className="text-primary hover:underline"
+                    >
+                      Reset to Real Time
+                    </button>
+                    <span>+12h</span>
+                  </div>
+                </div>
+              </SectionCard>
+
+              {/* Scheduler state debug panel */}
+              <SectionCard
+                icon={<Server className="w-4 h-4" />}
+                title="Scheduler State"
+              >
+                <div className="bg-muted/30 rounded-xl p-3 font-mono text-[11px] space-y-1 border border-border">
+                  {[
+                    {
+                      label: "Running",
+                      value: String(schedulerState.isRunning),
+                      ok: schedulerState.isRunning,
+                    },
+                    {
+                      label: "Within window",
+                      value: String(schedulerState.isWithinTimeWindow),
+                      ok: schedulerState.isWithinTimeWindow,
+                    },
+                    {
+                      label: "Queue pending",
+                      value: String(schedulerState.totalQueuePending),
+                      ok: schedulerState.totalQueuePending === 0,
+                    },
+                    {
+                      label: "Queue held",
+                      value: String(schedulerState.totalQueueHeld),
+                      ok: schedulerState.totalQueueHeld === 0,
+                    },
+                    {
+                      label: "Active sends",
+                      value: String(schedulerState.activeSendingCount),
+                      ok: true,
+                    },
+                  ].map(({ label, value, ok }) => (
+                    <div
+                      key={label}
+                      className="flex items-center justify-between"
+                    >
+                      <span className="text-muted-foreground">{label}:</span>
+                      <span className={ok ? "text-success" : "text-warning"}>
+                        {value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+            </div>
+          )}
+
+          {/* ── SYSTEM ── */}
           {tab === "system" && (
             <div className="space-y-4">
-              <div className="bg-muted/40 border border-border rounded-lg p-4 space-y-2 text-xs font-mono">
-                <p className="text-muted-foreground font-semibold not-italic font-sans uppercase tracking-wide text-[10px]">
-                  App Info
-                </p>
-                <p>
-                  Version: <span className="text-foreground">0.1.0</span>
-                </p>
-                <p>
-                  Runtime:{" "}
-                  <span className="text-foreground">
-                    React + Vite + TanStack
-                  </span>
-                </p>
-                <p>
-                  DB:{" "}
-                  <span className="text-foreground">TanStack DB (local)</span>
-                </p>
-              </div>
+              {/* App info */}
+              <SectionCard icon={<Cpu className="w-4 h-4" />} title="App Info">
+                <div className="space-y-1 font-mono text-[11px]">
+                  {[
+                    ["Version", "0.1.0"],
+                    ["Runtime", "React 19 + Vite + TanStack Router"],
+                    ["Storage", "TanStack DB (local IndexedDB)"],
+                    ["Platform", "Web / Tauri v2 compatible"],
+                  ].map(([k, v]) => (
+                    <div
+                      key={k}
+                      className="flex items-center justify-between py-1 border-b border-border/50 last:border-0"
+                    >
+                      <span className="text-muted-foreground">{k}</span>
+                      <span className="text-foreground">{v}</span>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
 
-              <div className="border border-destructive/30 rounded-lg p-4 space-y-3">
-                <p className="text-xs font-semibold text-destructive">
+              {/* Tauri setup guide */}
+              <SectionCard
+                icon={<Cpu className="w-4 h-4" />}
+                title="Tauri v2 Desktop Setup"
+                desc="Build a native desktop app from this codebase"
+              >
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={copyTauri}
+                    className="absolute top-2 right-2 px-2 py-1 rounded bg-card text-[10px] text-foreground border border-border flex items-center gap-1 hover:bg-muted/50 transition-colors z-10"
+                  >
+                    {copiedTauri ? (
+                      <Check className="w-3 h-3 text-success" />
+                    ) : (
+                      <Copy className="w-3 h-3" />
+                    )}
+                    {copiedTauri ? "Copied!" : "Copy"}
+                  </button>
+                  <pre className="text-[11px] font-mono text-success bg-muted/30 rounded-xl p-4 pr-16 overflow-x-auto border border-border leading-relaxed">
+                    {TAURI_COMMANDS}
+                  </pre>
+                </div>
+                <ul className="space-y-1 text-xs text-muted-foreground list-disc list-inside">
+                  <li>
+                    <strong className="text-foreground">
+                      tauri-plugin-http
+                    </strong>{" "}
+                    — local WABridge daemon communication
+                  </li>
+                  <li>
+                    <strong className="text-foreground">
+                      tauri-plugin-store
+                    </strong>{" "}
+                    — SQLite & local persistence
+                  </li>
+                  <li>
+                    <strong className="text-foreground">tauri-plugin-fs</strong>{" "}
+                    — CSV file parsing from disk
+                  </li>
+                </ul>
+              </SectionCard>
+
+              {/* Danger zone */}
+              <div className="border border-destructive/30 rounded-xl p-4 space-y-3 bg-destructive/5">
+                <p className="text-xs font-bold text-destructive">
                   Danger Zone
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -398,19 +690,42 @@ export function SettingsModal({
                   logs. This cannot be undone.
                 </p>
                 <button
+                  type="button"
                   onClick={() => {
                     if (
                       window.confirm("Clear ALL data? This cannot be undone.")
-                    )
+                    ) {
                       onClearAllData();
+                      onClose();
+                    }
                   }}
-                  className="px-3 py-1.5 text-xs rounded bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+                  className="px-3 py-1.5 text-xs rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors flex items-center gap-1.5 font-semibold"
                 >
-                  🗑 Clear All Data
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Clear All Data
                 </button>
               </div>
             </div>
           )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-3.5 border-t border-border flex items-center justify-end gap-2.5 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            id="save-settings-submit-btn"
+            onClick={handleSave}
+            className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold shadow-md transition-all"
+          >
+            Save Changes
+          </button>
         </div>
       </div>
     </div>

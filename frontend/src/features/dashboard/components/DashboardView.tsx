@@ -70,13 +70,14 @@ export function DashboardView({
           </div>
           <div>
             <h1 className="text-sm font-bold text-foreground flex items-center gap-2">
-              <span>Broadcast Dashboard</span>
+              <span>Broadcast &amp; Compliance Operations</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-mono">
-                Real-Time
+                LIVE
               </span>
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Monitoring active campaigns &amp; dispatch queue
+              Real-time monitoring of WhatsApp number verification, rate quotas,
+              and channel health
             </p>
           </div>
         </div>
@@ -115,7 +116,9 @@ export function DashboardView({
         {/* 1 — Total Audience */}
         <div className="bg-card border border-border rounded-xl p-3">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] font-medium">Total Audience</span>
+            <span className="text-[11px] font-medium">
+              Total Registered Audience
+            </span>
             <Users className="w-3.5 h-3.5 text-primary" />
           </div>
           <p className="text-lg font-bold text-foreground font-mono">
@@ -129,7 +132,7 @@ export function DashboardView({
         {/* 2 — Delivered */}
         <div className="bg-card border border-border rounded-xl p-3">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] font-medium">Delivered</span>
+            <span className="text-[11px] font-medium">Messages Delivered</span>
             <CheckCircle2 className="w-3.5 h-3.5 text-success" />
           </div>
           <p className="text-lg font-bold text-success font-mono">
@@ -143,7 +146,9 @@ export function DashboardView({
         {/* 3 — Unregistered */}
         <div className="bg-card border border-border rounded-xl p-3">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] font-medium">Unregistered</span>
+            <span className="text-[11px] font-medium">
+              Anti-Ban Shield (Filtered)
+            </span>
             <ShieldCheck className="w-3.5 h-3.5 text-warning" />
           </div>
           <p className="text-lg font-bold text-warning font-mono">
@@ -157,7 +162,9 @@ export function DashboardView({
         {/* 4 — Pending Queue */}
         <div className="bg-card border border-border rounded-xl p-3">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] font-medium">Pending Queue</span>
+            <span className="text-[11px] font-medium">
+              Messages Pending in Queue
+            </span>
             <Activity className="w-3.5 h-3.5 text-primary" />
           </div>
           <p className="text-lg font-bold text-primary font-mono">
@@ -171,7 +178,9 @@ export function DashboardView({
         {/* 5 — Hourly Quota */}
         <div className="bg-card border border-border rounded-xl p-3">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] font-medium">Hourly Quota</span>
+            <span className="text-[11px] font-medium">
+              Hourly Capacity Left
+            </span>
             <Zap className="w-3.5 h-3.5 text-warning" />
           </div>
           <p className="text-lg font-bold text-foreground font-mono">
@@ -185,7 +194,9 @@ export function DashboardView({
         {/* 6 — Sessions */}
         <div className="bg-card border border-border rounded-xl p-3">
           <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-[11px] font-medium">Sessions</span>
+            <span className="text-[11px] font-medium">
+              Active WABridge Channels
+            </span>
             <Server className="w-3.5 h-3.5 text-success" />
           </div>
           <p className="text-lg font-bold text-foreground font-mono">
@@ -205,7 +216,7 @@ export function DashboardView({
               <div className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-primary" />
                 <h3 className="text-xs font-bold text-foreground">
-                  Active Campaigns
+                  Active &amp; Scheduled Broadcasts
                 </h3>
               </div>
               <button
@@ -213,14 +224,14 @@ export function DashboardView({
                 onClick={() => onNavigate("campaigns")}
                 className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium"
               >
-                <span>View all ({campaigns.length})</span>
+                <span>View All ({campaigns.length})</span>
                 <ArrowRight className="w-3 h-3" />
               </button>
             </div>
 
             {campaigns.length === 0 ? (
               <div className="text-center py-6 text-xs text-muted-foreground">
-                No campaigns yet. Create your first broadcast.
+                No broadcast campaigns recorded yet
               </div>
             ) : (
               <div className="overflow-x-auto rounded-lg border border-border">
@@ -247,7 +258,7 @@ export function DashboardView({
                           onClick={() => onNavigate("campaigns")}
                           className="hover:bg-muted/50 cursor-pointer transition-colors"
                         >
-                          <td className="px-3 py-2.5 font-medium max-w-[200px] truncate">
+                          <td className="px-3 py-2.5 font-medium max-w-50 truncate">
                             {c.title}
                           </td>
                           <td className="px-3 py-2.5">
@@ -263,7 +274,7 @@ export function DashboardView({
                               {c.status}
                             </span>
                           </td>
-                          <td className="px-3 py-2.5 min-w-[120px]">
+                          <td className="px-3 py-2.5 min-w-30">
                             <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden border border-border">
                               <div
                                 className="bg-primary h-full rounded-full"
@@ -298,7 +309,7 @@ export function DashboardView({
               <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4 text-primary" />
                 <h3 className="text-xs font-bold text-foreground">
-                  Live Dispatch Queue
+                  Live Send Queue
                 </h3>
               </div>
               <button
@@ -306,14 +317,14 @@ export function DashboardView({
                 onClick={() => onNavigate("queue")}
                 className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium"
               >
-                <span>Open Queue ({queue.length})</span>
+                <span>Open Full Queue ({queue.length})</span>
                 <ArrowRight className="w-3 h-3" />
               </button>
             </div>
 
             {queue.length === 0 ? (
               <div className="text-center py-6 text-xs text-muted-foreground">
-                Queue is empty
+                Send queue is currently empty.
               </div>
             ) : (
               <div className="space-y-1.5 max-h-48 overflow-y-auto font-mono text-xs">
@@ -323,7 +334,7 @@ export function DashboardView({
                     className="p-2 rounded-lg bg-muted border border-border flex items-center justify-between"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-foreground font-medium truncate max-w-[140px]">
+                      <span className="text-foreground font-medium truncate max-w-35">
                         {item.recipientName ?? "Customer"}
                       </span>
                       <span className="text-muted-foreground text-[11px]">
@@ -356,7 +367,7 @@ export function DashboardView({
               <div className="flex items-center gap-2">
                 <Server className="w-4 h-4 text-primary" />
                 <h3 className="text-xs font-bold text-foreground">
-                  Sessions Quota
+                  Connected WABridge Channels
                 </h3>
               </div>
               <button
@@ -364,7 +375,7 @@ export function DashboardView({
                 onClick={() => onNavigate("sessions")}
                 className="text-[11px] text-primary hover:underline font-medium"
               >
-                Inspect
+                Inspect Quotas
               </button>
             </div>
 
@@ -388,7 +399,7 @@ export function DashboardView({
                       className="p-2.5 rounded-lg bg-muted border border-border space-y-1.5"
                     >
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-semibold text-foreground truncate max-w-[140px]">
+                        <span className="font-semibold text-foreground truncate max-w-35">
                           {session.name}
                         </span>
                         <span className="text-[10px] text-success font-mono font-medium">
@@ -419,23 +430,23 @@ export function DashboardView({
           {/* Quick Shortcuts Panel */}
           <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-2.5">
             <h3 className="text-xs font-bold text-foreground pb-1 border-b border-border">
-              Quick Shortcuts
+              Pharmacy SOP Quick Operations
             </h3>
             {[
               {
-                label: "Templates",
+                label: "Approved Prescription Templates",
                 tab: "templates",
                 Icon: FileText,
                 iconClass: "text-primary",
               },
               {
-                label: "Customers",
+                label: "Patient Directory & Phone Verifier",
                 tab: "customers",
                 Icon: Users,
                 iconClass: "text-success",
               },
               {
-                label: "Reports",
+                label: "Compliance Reports & Audit Logs",
                 tab: "reports",
                 Icon: TrendingUp,
                 iconClass: "text-warning",

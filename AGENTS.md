@@ -2,7 +2,25 @@
 
 ## Styling
 
-### Rule: Use shadcn CSS variables via Tailwind utilities only
+### Rule: Match mockup exactly — text, layout, and styling
+
+When implementing components, **EXACTLY MATCH** the mockup's text content, layout structure, and visual styling. This ensures design consistency and proper behavior.
+
+#### Text & Content
+
+- Use the **exact text strings** from the mockup (e.g., "Broadcast & Compliance Operations", not "Broadcast Dashboard")
+- Copy UI labels, button text, status messages, and placeholders character-for-character
+- Maintain the mockup's information hierarchy and content grouping
+- For now, hardcode English text directly (i18n will be added via Paraglide in Phase 3)
+
+#### Layout & Structure
+
+- Match the mockup's grid layouts, spacing, and component positioning precisely
+- Preserve panel arrangements (e.g., 3-column dashboard: campaigns+queue left 2 cols, sessions right 1 col)
+- Use the same icon placements, badge positions, and visual groupings
+- Keep consistent sizing for cards, buttons, inputs, and other UI elements
+
+#### Styling Rule: Use shadcn CSS variables via Tailwind utilities only
 
 **NEVER** use hardcoded colors, hex values, rgb/hsl values, or custom semantic
 class names (e.g. `bg-card-theme`, `text-main`, `text-sub`, `bg-accent-subtle`,
@@ -10,6 +28,14 @@ class names (e.g. `bg-card-theme`, `text-main`, `text-sub`, `bg-accent-subtle`,
 
 **ALWAYS** use the standard Tailwind utility classes that are backed by the
 shadcn CSS variables defined in `src/styles.css` via the `@theme inline` block.
+
+This means translating the mockup's visual intent into proper shadcn variables:
+
+- Mockup uses `bg-card-theme` → Use `bg-card`
+- Mockup uses `text-main` → Use `text-foreground`
+- Mockup uses `text-sub` → Use `text-muted-foreground`
+- Mockup uses `bg-accent-subtle` → Use `bg-primary/10`
+- Mockup uses custom colors → Map to shadcn semantic tokens
 
 #### Mapping reference
 
@@ -46,6 +72,20 @@ bg-warning/20     → warning tint background
 border-primary/30 → accent tint border
 text-success      → success text (from --color-success)
 ```
+
+#### Visual Polish Guidelines
+
+When implementing from the mockup:
+
+- **Shadows**: Use `shadow-sm`, `shadow-md` appropriately for depth hierarchy
+- **Rounded corners**: Maintain consistent `rounded-xl`, `rounded-lg` radius from mockup
+- **Spacing**: Preserve the mockup's `gap-*` and `space-y-*` rhythm
+- **Transitions**: Add `transition-colors`, `transition-all` for interactive elements
+- **Hover states**: Include `hover:` variants for clickable elements (buttons, rows, links)
+- **Font weights**: Match `font-bold`, `font-semibold`, `font-medium` exactly
+- **Font sizes**: Use the mockup's text scale (`text-xs`, `text-sm`, `text-lg`, etc.)
+- **Icon sizing**: Keep icon sizes consistent (`w-3.5 h-3.5`, `w-4 h-4`, `w-5 h-5`)
+- **Responsive**: Preserve breakpoints (`sm:`, `md:`, `lg:`) for mobile/tablet/desktop layouts
 
 #### What NOT to do
 

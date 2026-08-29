@@ -183,7 +183,9 @@ export function SettingsModal({
                   <input
                     type={type}
                     value={String(
-                      (localConfig as Record<string, unknown>)[key] ?? "",
+                      (localConfig as unknown as Record<string, unknown>)[
+                        key
+                      ] ?? "",
                     )}
                     onChange={(e) =>
                       setLocalConfig({

@@ -155,7 +155,7 @@ function App() {
     [layout],
   );
 
-  const allContacts = campaigns.flatMap((c) => c.contacts);
+  const allContacts = campaigns.flatMap((c) => c.contacts ?? []);
   const compactPadding = layout.compactMode ? "p-3" : "p-5";
 
   return (

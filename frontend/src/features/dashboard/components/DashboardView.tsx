@@ -38,6 +38,76 @@ interface DashboardViewProps {
   onToggleScheduler: () => void;
 }
 
+// Mock campaign data for demonstration (matches pharmacy/healthcare broadcast scenarios)
+const MOCK_CAMPAIGNS: Campaign[] = [
+  {
+    id: "camp-001",
+    title: "Monthly Prescription Refill Reminder",
+    status: "running",
+    totalContacts: 1247,
+    sentCount: 892,
+    unregisteredCount: 43,
+    failedCount: 8,
+    createdAt: Date.now() - 3600000 * 4,
+    startedAt: Date.now() - 3600000 * 3,
+    templateText: "Your prescription is ready for refill",
+    templateImageUrl: undefined,
+  },
+  {
+    id: "camp-002",
+    title: "COVID-19 Booster Dose Available",
+    status: "running",
+    totalContacts: 2156,
+    sentCount: 2089,
+    unregisteredCount: 54,
+    failedCount: 13,
+    createdAt: Date.now() - 3600000 * 24,
+    startedAt: Date.now() - 3600000 * 23,
+    templateText: "Schedule your booster shot today",
+    templateImageUrl: undefined,
+  },
+  {
+    id: "camp-003",
+    title: "Lab Results Ready for Collection",
+    status: "completed",
+    totalContacts: 487,
+    sentCount: 467,
+    unregisteredCount: 18,
+    failedCount: 2,
+    createdAt: Date.now() - 3600000 * 48,
+    startedAt: Date.now() - 3600000 * 47,
+    completedAt: Date.now() - 3600000 * 46,
+    templateText: "Your lab results are ready",
+    templateImageUrl: undefined,
+  },
+  {
+    id: "camp-004",
+    title: "Annual Health Checkup Campaign",
+    status: "scheduled",
+    totalContacts: 3542,
+    sentCount: 0,
+    unregisteredCount: 0,
+    failedCount: 0,
+    createdAt: Date.now() - 3600000 * 2,
+    scheduledFor: Date.now() + 3600000 * 24,
+    templateText: "Book your annual checkup appointment",
+    templateImageUrl: undefined,
+  },
+  {
+    id: "camp-005",
+    title: "Diabetes Care Program Enrollment",
+    status: "running",
+    totalContacts: 856,
+    sentCount: 342,
+    unregisteredCount: 27,
+    failedCount: 5,
+    createdAt: Date.now() - 3600000 * 12,
+    startedAt: Date.now() - 3600000 * 10,
+    templateText: "Join our diabetes care program",
+    templateImageUrl: undefined,
+  },
+];
+
 export function DashboardView({
   campaigns,
   queue,
@@ -48,6 +118,9 @@ export function DashboardView({
   onNewCampaignClick,
   onToggleScheduler,
 }: DashboardViewProps) {
+  // Use mock data for demonstration if no real campaigns exist
+  const displayCampaigns = campaigns.length > 0 ? campaigns : MOCK_CAMPAIGNS;
+
   const {
     totalAudience,
     totalDelivered,
@@ -58,7 +131,13 @@ export function DashboardView({
     totalHourlyRemaining,
     totalHourlyLimit,
     sessionQuotas,
-  } = useDashboard({ campaigns, queue, sessions, schedulerState, logs });
+  } = useDashboard({
+    campaigns: displayCampaigns,
+    queue,
+    sessions,
+    schedulerState,
+    logs,
+  });
 
   return (
     <div className="space-y-4 max-w-full">
@@ -125,7 +204,7 @@ export function DashboardView({
             {totalAudience}
           </p>
           <p className="text-[10px] text-muted-foreground">
-            Across {campaigns.length} campaigns
+            Across {displayCampaigns.length} campaigns
           </p>
         </div>
 
@@ -212,9 +291,11 @@ export function DashboardView({
         <div className="lg:col-span-2 space-y-4">
           {/* Active Campaigns Panel */}
           <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-border">
+            <div className="flex items-center justify-between pb-2.5 border-b border-border/60">
               <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-primary" />
+                <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <Layers className="w-3.5 h-3.5 text-primary" />
+                </div>
                 <h3 className="text-xs font-bold text-foreground">
                   Active &amp; Scheduled Broadcasts
                 </h3>
@@ -222,83 +303,104 @@ export function DashboardView({
               <button
                 type="button"
                 onClick={() => onNavigate("campaigns")}
-                className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium"
+                className="text-[11px] text-primary hover:text-primary/80 flex items-center gap-1 font-medium transition-colors group"
               >
-                <span>View All ({campaigns.length})</span>
-                <ArrowRight className="w-3 h-3" />
+                <span>View All ({displayCampaigns.length})</span>
+                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>
 
-            {campaigns.length === 0 ? (
-              <div className="text-center py-6 text-xs text-muted-foreground">
-                No broadcast campaigns recorded yet
+            {displayCampaigns.length === 0 ? (
+              <div className="text-center py-8 px-4">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-muted border border-border flex items-center justify-center">
+                  <Layers className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  No broadcast campaigns recorded yet
+                </p>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted text-muted-foreground font-semibold border-b border-border">
-                    <tr>
-                      <th className="px-3 py-2 text-left">Title</th>
-                      <th className="px-3 py-2 text-left">Status</th>
-                      <th className="px-3 py-2 text-left">Progress</th>
-                      <th className="px-3 py-2 text-right">Sent / Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border text-foreground">
-                    {campaigns.slice(0, 5).map((c) => {
-                      const processed =
-                        c.sentCount + c.unregisteredCount + c.failedCount;
-                      const pct =
-                        c.totalContacts > 0
-                          ? Math.round((processed / c.totalContacts) * 100)
-                          : 0;
-                      return (
-                        <tr
-                          key={c.id}
-                          onClick={() => onNavigate("campaigns")}
-                          className="hover:bg-muted/50 cursor-pointer transition-colors"
-                        >
-                          <td className="px-3 py-2.5 font-medium max-w-50 truncate">
-                            {c.title}
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${
-                                c.status === "running"
-                                  ? "bg-success/10 text-success border-success/30"
-                                  : c.status === "completed"
-                                    ? "bg-primary/10 text-primary border-primary/20"
-                                    : "bg-warning/10 text-warning border-warning/30"
-                              }`}
-                            >
-                              {c.status}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5 min-w-30">
-                            <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden border border-border">
-                              <div
-                                className="bg-primary h-full rounded-full"
-                                style={{ width: `${pct}%` }}
-                              />
-                            </div>
-                            <span className="text-[10px] text-muted-foreground font-mono mt-0.5 block">
-                              {pct}% complete
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5 text-right font-mono">
-                            <span className="text-success font-semibold">
-                              {c.sentCount}
-                            </span>
-                            {" / "}
-                            <span className="text-muted-foreground">
-                              {c.totalContacts}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div className="overflow-hidden rounded-lg border border-border/60 shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/50 text-muted-foreground font-semibold border-b border-border/60">
+                      <tr>
+                        <th className="px-4 py-2.5 text-left font-semibold">
+                          Title
+                        </th>
+                        <th className="px-4 py-2.5 text-left font-semibold">
+                          Status
+                        </th>
+                        <th className="px-4 py-2.5 text-left font-semibold">
+                          Progress
+                        </th>
+                        <th className="px-4 py-2.5 text-right font-semibold">
+                          Sent / Total
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40 text-foreground bg-card">
+                      {displayCampaigns.slice(0, 5).map((c) => {
+                        const processed =
+                          c.sentCount + c.unregisteredCount + c.failedCount;
+                        const pct =
+                          c.totalContacts > 0
+                            ? Math.round((processed / c.totalContacts) * 100)
+                            : 0;
+                        return (
+                          <tr
+                            key={c.id}
+                            onClick={() => onNavigate("campaigns")}
+                            className="hover:bg-muted/30 cursor-pointer transition-all group"
+                          >
+                            <td className="px-4 py-3 font-medium max-w-50 truncate">
+                              <span className="group-hover:text-primary transition-colors">
+                                {c.title}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border transition-all ${
+                                  c.status === "running"
+                                    ? "bg-success/10 text-success border-success/30 group-hover:bg-success/15"
+                                    : c.status === "completed"
+                                      ? "bg-primary/10 text-primary border-primary/20 group-hover:bg-primary/15"
+                                      : "bg-warning/10 text-warning border-warning/30 group-hover:bg-warning/15"
+                                }`}
+                              >
+                                {c.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 min-w-35">
+                              <div className="space-y-1">
+                                <div className="w-full bg-muted/80 h-1.5 rounded-full overflow-hidden border border-border/50 shadow-inner">
+                                  <div
+                                    className="bg-linear-to-r from-primary to-primary/80 h-full rounded-full transition-all duration-300"
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                                <span className="text-[10px] text-muted-foreground font-mono">
+                                  {pct}% complete
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono tabular-nums">
+                              <span className="text-success font-bold">
+                                {c.sentCount.toLocaleString()}
+                              </span>
+                              <span className="text-muted-foreground mx-1">
+                                /
+                              </span>
+                              <span className="text-muted-foreground">
+                                {c.totalContacts.toLocaleString()}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>

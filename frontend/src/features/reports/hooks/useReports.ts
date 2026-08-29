@@ -16,7 +16,7 @@ export function useReports(campaigns: Campaign[], queue: QueueItem[]) {
   const exportCampaignCsv = useCallback((campaign: Campaign) => {
     const rows = [
       ['Name', 'Phone', 'WA Status', 'waId'],
-      ...campaign.contacts.map((c) => [c.name, c.rawPhone, c.verificationStatus, c.waId ?? '']),
+      ...(campaign.contacts ?? []).map((c) => [c.name, c.rawPhone, c.verificationStatus, c.waId ?? '']),
     ]
     const csv = rows.map((r) => r.join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })

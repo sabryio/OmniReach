@@ -42,20 +42,22 @@ export interface Campaign {
   id: string
   title: string
   templateText: string
+  templateImageUrl?: string
   imageUrl?: string
   imageFileName?: string
-  sessionIds: string[]
+  sessionIds?: string[]
   status: CampaignStatus
   createdAt: number
   startedAt?: number
   completedAt?: number
+  scheduledFor?: number
   totalContacts: number
-  verifiedContacts: number
+  verifiedContacts?: number
   unregisteredCount: number
   sentCount: number
-  skippedCount: number
+  skippedCount?: number
   failedCount: number
-  contacts: Contact[]
+  contacts?: Contact[]
   isArchived?: boolean
   archivedAt?: number
 }

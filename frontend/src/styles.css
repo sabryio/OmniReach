@@ -231,13 +231,6 @@
 }
 
 @layer utilities {
-  .bg-app {
-    background-color: var(--color-background);
-  }
-  .bg-card-theme {
-    background-color: var(--color-card);
-  }
-  .text-main {
-    color: var(--color-foreground);
-  }
+  /* .bg-app is a convenience alias — use bg-background directly in components */
+  .bg-app { background-color: var(--color-background); }
 }

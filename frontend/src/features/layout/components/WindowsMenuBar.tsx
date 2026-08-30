@@ -46,7 +46,7 @@ interface WindowsMenuBarProps {
   onOpenSettings: () => void;
   onOpenVerifier: () => void;
   onOpenAbout: () => void;
-  onNavigate: (tab: string) => void;
+  // onNavigate removed — using internal useNavigate
   onToggleScheduler: () => void;
   onClearQueue: () => void;
   onResetSessionLimits: () => void;
@@ -110,7 +110,6 @@ export function WindowsMenuBar({
   onOpenSettings,
   onOpenVerifier,
   onOpenAbout,
-  onNavigate,
   onToggleScheduler,
   onClearQueue,
   onResetSessionLimits,
@@ -125,6 +124,14 @@ export function WindowsMenuBar({
   const navigate = useNavigate();
   const routerState = useRouterState();
   const currentLocale = getLocale();
+
+  const goTo = (path: string) => {
+    navigate({
+      to: `/$locale/${path}`,
+      params: { locale: currentLocale },
+    });
+    setOpenMenu(null);
+  };
 
   useEffect(() => {
     const handleMouseDown = (e: MouseEvent) => {
@@ -315,7 +322,7 @@ export function WindowsMenuBar({
             <div className="py-1">
               <button
                 type="button"
-                onClick={() => run(() => onNavigate("campaigns"))}
+                onClick={() => run(() => goTo("campaigns"))}
                 className={itemCls}
               >
                 <span className="flex items-center gap-2">
@@ -325,7 +332,7 @@ export function WindowsMenuBar({
               </button>
               <button
                 type="button"
-                onClick={() => run(() => onNavigate("customers"))}
+                onClick={() => run(() => goTo("customers"))}
                 className={itemCls}
               >
                 <span className="flex items-center gap-2">
@@ -370,7 +377,7 @@ export function WindowsMenuBar({
                 <button
                   key={id}
                   type="button"
-                  onClick={() => run(() => onNavigate(id))}
+                  onClick={() => run(() => goTo(id))}
                   className={itemCls}
                 >
                   <span className="flex items-center gap-2">

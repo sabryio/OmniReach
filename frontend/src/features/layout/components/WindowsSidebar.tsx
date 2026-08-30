@@ -3,7 +3,7 @@
  * Matches mockup: Lucide icons, per-badge colors, version badge, section headers, Language/Theme toggles
  */
 import { getLocale } from "@/paraglide/runtime";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useNavigate, useRouterState, Link } from "@tanstack/react-router";
 import {
   Activity,
   BarChart3,
@@ -17,14 +17,12 @@ import {
   PhoneCall,
   PlusCircle,
   Server,
-  Settings,
   Sun,
   Users,
 } from "lucide-react";
 
 interface WindowsSidebarProps {
-  activeTab: string;
-  onNavigate: (tab: string) => void;
+  // activeTab and onNavigate removed — TanStack Router handles active state
   campaignsCount: number;
   activeCampaignsCount: number;
   customersCount: number;
@@ -41,6 +39,7 @@ interface WindowsSidebarProps {
 const NAV_ITEMS = [
   {
     id: "dashboard",
+    to: "/$locale",
     Icon: LayoutDashboard,
     label: "Dashboard",
     shortcut: "Alt+1",
@@ -48,6 +47,7 @@ const NAV_ITEMS = [
   },
   {
     id: "campaigns",
+    to: "/$locale/campaigns",
     Icon: Layers,
     label: "Campaigns",
     shortcut: "Alt+2",
@@ -56,6 +56,7 @@ const NAV_ITEMS = [
   },
   {
     id: "new_campaign",
+    to: "/$locale/campaigns/new",
     Icon: PlusCircle,
     label: "New Broadcast",
     shortcut: "Ctrl+N",
@@ -64,6 +65,7 @@ const NAV_ITEMS = [
   },
   {
     id: "customers",
+    to: "/$locale/customers",
     Icon: Users,
     label: "Customers",
     shortcut: "Alt+3",
@@ -72,6 +74,7 @@ const NAV_ITEMS = [
   },
   {
     id: "templates",
+    to: "/$locale/templates",
     Icon: FileText,
     label: "Templates",
     shortcut: "Alt+4",
@@ -80,6 +83,7 @@ const NAV_ITEMS = [
   },
   {
     id: "sessions",
+    to: "/$locale/sessions",
     Icon: Server,
     label: "Sessions",
     shortcut: "Alt+5",
@@ -88,6 +92,7 @@ const NAV_ITEMS = [
   },
   {
     id: "queue",
+    to: "/$locale/queue",
     Icon: Activity,
     label: "Queue & Logs",
     shortcut: "Alt+6",
@@ -96,23 +101,15 @@ const NAV_ITEMS = [
   },
   {
     id: "reports",
+    to: "/$locale/reports",
     Icon: BarChart3,
     label: "Reports",
     shortcut: "Alt+7",
     badgeKey: null as string | null,
   },
-  {
-    id: "settings",
-    Icon: Settings,
-    label: "Settings",
-    shortcut: "Ctrl+,",
-    badgeKey: null as string | null,
-  },
 ] as const;
 
 export function WindowsSidebar({
-  activeTab,
-  onNavigate,
   campaignsCount,
   activeCampaignsCount,
   customersCount,
@@ -128,6 +125,7 @@ export function WindowsSidebar({
   const navigate = useNavigate();
   const routerState = useRouterState();
   const currentLocale = getLocale();
+  const currentPath = routerState.location.pathname;
 
   const badges: Record<string, string | number | null> = {
     campaigns:
@@ -175,18 +173,25 @@ export function WindowsSidebar({
         <nav className="p-1.5 space-y-0.5">
           {NAV_ITEMS.map((item) => {
             const Icon = item.Icon;
-            const isActive = activeTab === item.id;
             const badge = item.badgeKey ? badges[item.badgeKey] : null;
             const badgeColor =
               "badgeColor" in item
                 ? item.badgeColor
                 : "bg-primary/15 text-primary border-primary/20";
+            // Determine active: exact match for dashboard, startsWith for others
+            const isActive =
+              item.id === "dashboard"
+                ? currentPath === `/${currentLocale}` ||
+                  currentPath === `/${currentLocale}/`
+                : currentPath.startsWith(
+                    `/${currentLocale}/${item.id === "new_campaign" ? "campaigns/new" : item.id}`,
+                  );
 
             return (
-              <button
+              <Link
                 key={item.id}
-                type="button"
-                onClick={() => onNavigate(item.id)}
+                to={item.to}
+                params={{ locale: currentLocale }}
                 title={
                   isCollapsed ? `${item.label} (${item.shortcut})` : undefined
                 }
@@ -222,7 +227,7 @@ export function WindowsSidebar({
                     )}
                   </>
                 )}
-              </button>
+              </Link>
             );
           })}
         </nav>

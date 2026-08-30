@@ -419,3 +419,566 @@ Current variables: `OMNIREACH_ADDR`, `OMNIREACH_TOKEN`, `DATABASE_URL`,
 `WABRIDGE_BASE_URL`, `WABRIDGE_TIMEOUT_MS`, `RUST_LOG`.
 
 ---
+
+---
+
+## Frontend API Layer & Data Fetching
+
+### Rule: TanStack Query + File-Based Routing Architecture
+
+The frontend uses **TanStack Query** for server state management and **TanStack Router** for file-based routing. Each feature follows a strict three-layer pattern: API functions → Query/Mutation hooks → Route components.
+
+#### Per-Feature Structure
+
+Every feature **must** have this exact folder structure:
+
+```
+features/<feature>/
+  api/
+    queryKeys.ts           ← Query key constants
+    <feature>.api.ts       ← API functions (return mocks for now)
+  hooks/
+    use<Feature>.ts        ← Query hooks (GET operations)
+    use<Feature>Mutations.ts  ← Mutation hooks (POST/PATCH/DELETE)
+    use<Feature>List.ts    ← UI state hooks (filters, selection) — existing
+  components/
+    <Feature>View.tsx      ← Presentational components
+  index.ts                 ← Barrel export (api, hooks, components)
+```
+
+#### Layer 1: API Functions (Pure Data Fetching)
+
+**Location:** `features/<feature>/api/<feature>.api.ts`
+
+**Rules:**
+
+- Return mocks from `@/mock-data` initially (Phase 1)
+- Return domain types directly — **no wrapper objects**
+- Use DTO objects for mutations with multiple params
+- Use `Partial<T>` for flexible updates
+- Add `// TODO: Phase 2 — await fetch(...)` comments for HTTP integration
+
+**Pattern:**
+
+```typescript
+// features/sessions/api/sessions.api.ts
+import type { WABridgeSession } from "@/types";
+import { MOCK_SESSIONS } from "@/mock-data";
+
+// ─── Queries ─────────────────────────────────────────────────────────────────
+
+export async function getSessions(): Promise<WABridgeSession[]> {
+  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/sessions`)
+  return MOCK_SESSIONS;
+}
+
+export async function getSession(id: string): Promise<WABridgeSession> {
+  const session = MOCK_SESSIONS.find((s) => s.id === id);
+  if (!session) throw new Error(`Session ${id} not found`);
+  return session;
+}
+
+// ─── Mutations ───────────────────────────────────────────────────────────────
+
+export type CreateSessionParams = {
+  id: string;
+  accountName: string;
+};
+
+export async function createSession(
+  params: CreateSessionParams,
+): Promise<WABridgeSession> {
+  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/sessions`, { method: 'POST', ... })
+  const newSession: WABridgeSession = {
+    id: params.id,
+    accountName: params.accountName,
+    isConnected: false,
+    messagesSentLast24h: 0,
+    limitLast24h: 1000,
+    sessionCreatedAt: new Date().toISOString(),
+    lastSeenAt: null,
+  };
+  return newSession;
+}
+
+export async function deleteSession(id: string): Promise<void> {
+  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/sessions/${id}`, { method: 'DELETE' })
+  return;
+}
+```
+
+#### Layer 2: Query Keys (Hierarchical Cache Management)
+
+**Location:** `features/<feature>/api/queryKeys.ts`
+
+**Pattern:** Functional composition with `const base` for hierarchical invalidation.
+
+```typescript
+// features/sessions/api/queryKeys.ts
+const base = ["sessions"] as const;
+
+export const SessionQueryKeys = {
+  all: base,
+  lists: () => [...base, "list"] as const,
+  list: (filters?: SessionFilters) => [...base, "list", filters] as const,
+  details: () => [...base, "detail"] as const,
+  detail: (id: string) => [...base, "detail", id] as const,
+} as const;
+```
+
+**Invalidation examples:**
+
+```typescript
+// Invalidate ALL session queries
+queryClient.invalidateQueries({ queryKey: SessionQueryKeys.all });
+
+// Invalidate all list queries (but not details)
+queryClient.invalidateQueries({ queryKey: SessionQueryKeys.lists() });
+
+// Invalidate specific detail
+queryClient.invalidateQueries({
+  queryKey: SessionQueryKeys.detail("session-123"),
+});
+```
+
+#### Layer 3: Query Hooks (TanStack Query Wrappers)
+
+**Location:** `features/<feature>/hooks/use<Feature>.ts`
+
+**Rules:**
+
+- Import query keys from `../api/queryKeys`
+- Import API functions from `../api/<feature>.api`
+- Return **named exports with defaults** (e.g., `sessions: data ?? []`)
+- Use semantic boolean names (`isLoading`, `isFetching`, not generic `loading`)
+
+**Pattern:**
+
+```typescript
+// features/sessions/hooks/useSessions.ts
+import { useQuery } from "@tanstack/react-query";
+import { SessionQueryKeys } from "../api/queryKeys";
+import { getSessions, getSession } from "../api/sessions.api";
+import type { WABridgeSession } from "@/types";
+
+export function useSessions() {
+  const query = useQuery({
+    queryKey: SessionQueryKeys.lists(),
+    queryFn: getSessions,
+  });
+
+  return {
+    sessions: query.data ?? [],
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    error: query.error,
+    refetch: query.refetch,
+  };
+}
+
+export function useSession(id: string) {
+  const query = useQuery({
+    queryKey: SessionQueryKeys.detail(id),
+    queryFn: () => getSession(id),
+    enabled: !!id,
+  });
+
+  return {
+    session: query.data,
+    isLoading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+  };
+}
+```
+
+#### Layer 4: Mutation Hooks (With Cache Invalidation)
+
+**Location:** `features/<feature>/hooks/use<Feature>Mutations.ts`
+
+**Rules:**
+
+- Use `useMutation` from TanStack Query
+- **ALWAYS** invalidate queries in `onSuccess` callback
+- Use semantic names: `isCreating`, `isUpdating`, `isDeleting` (not just `isPending`)
+- Return both `mutate` and `mutateAsync` for flexibility
+- Include `reset()` for clearing errors
+
+**Pattern:**
+
+```typescript
+// features/sessions/hooks/useSessionMutations.ts
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { SessionQueryKeys } from "../api/queryKeys";
+import { createSession, deleteSession } from "../api/sessions.api";
+import type { CreateSessionParams } from "../api/sessions.api";
+
+export function useCreateSession() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: createSession,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SessionQueryKeys.all });
+    },
+  });
+
+  return {
+    createSession: mutation.mutate,
+    createSessionAsync: mutation.mutateAsync,
+    isCreating: mutation.isPending,
+    error: mutation.error,
+    reset: mutation.reset,
+  };
+}
+
+export function useDeleteSession() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: deleteSession,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SessionQueryKeys.all });
+    },
+  });
+
+  return {
+    deleteSession: mutation.mutate,
+    deleteSessionAsync: mutation.mutateAsync,
+    isDeleting: mutation.isPending,
+    error: mutation.error,
+  };
+}
+```
+
+**Cross-feature invalidation:**
+When a mutation affects multiple features, invalidate all related query keys:
+
+```typescript
+// Example: Creating a campaign invalidates campaigns + queue + dashboard
+export function useCreateCampaign() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: createCampaign,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CampaignQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: QueueQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: DashboardQueryKeys.all });
+    },
+  });
+
+  return {
+    createCampaign: mutation.mutate,
+    createCampaignAsync: mutation.mutateAsync,
+    isCreating: mutation.isPending,
+    error: mutation.error,
+    reset: mutation.reset,
+  };
+}
+```
+
+#### Layer 5: Route Components (Data Owners)
+
+**Location:** `routes/$locale/<feature>.tsx`
+
+**Rules:**
+
+- Each route **owns** its data fetching via hooks
+- Route component calls hooks and passes data to presentational components
+- **No direct mock imports** in route files — use hooks only
+- Handle loading states explicitly
+- Use TanStack Router's `loader` for prefetching (optional)
+
+**Pattern:**
+
+```typescript
+// routes/$locale/sessions.tsx
+import { createFileRoute } from '@tanstack/react-router';
+import { SessionsDashboard } from '@/features/sessions';
+import { useSessions, useSessionMutations } from '@/features/sessions';
+
+export const Route = createFileRoute('/$locale/sessions')({
+  component: SessionsRoute,
+});
+
+function SessionsRoute() {
+  const { sessions, isLoading } = useSessions();
+  const { deleteSession } = useSessionMutations();
+
+  if (isLoading) {
+    return <div className="p-5">Loading sessions...</div>;
+  }
+
+  return (
+    <SessionsDashboard
+      sessions={sessions}
+      onDeleteSession={deleteSession}
+    />
+  );
+}
+```
+
+**With prefetching (optional):**
+
+```typescript
+import { SessionQueryKeys } from "@/features/sessions/api/queryKeys";
+import { getSessions } from "@/features/sessions/api/sessions.api";
+
+export const Route = createFileRoute("/$locale/sessions")({
+  loader: ({ context }) => {
+    return context.queryClient.ensureQueryData({
+      queryKey: SessionQueryKeys.lists(),
+      queryFn: getSessions,
+    });
+  },
+  component: SessionsRoute,
+});
+```
+
+#### Shared Layout Structure
+
+**Location:** `routes/$locale/route.tsx`
+
+The shared layout contains the app shell (title bar, menu, sidebar, footer) and renders child routes via `<Outlet />`:
+
+```typescript
+// routes/$locale/route.tsx
+import { Outlet, createFileRoute } from '@tanstack/react-router';
+import { WindowsTitleBar, WindowsMenuBar, WindowsSidebar, AppFooter } from '@/features/layout';
+import { useLayout } from '@/features/layout';
+
+export const Route = createFileRoute('/$locale')({
+  component: SharedLayout,
+});
+
+function SharedLayout() {
+  const { locale } = Route.useParams();
+  const layout = useLayout();
+
+  return (
+    <div className="h-screen w-screen flex flex-col overflow-hidden bg-background text-foreground antialiased">
+      <WindowsTitleBar />
+      <WindowsMenuBar />
+
+      <div className="flex-1 flex overflow-hidden">
+        <WindowsSidebar />
+        <main className="flex-1 overflow-y-auto bg-background p-5">
+          <Outlet key={locale} />
+        </main>
+      </div>
+
+      <AppFooter />
+    </div>
+  );
+}
+```
+
+#### Navigation
+
+**Use TanStack Router's `<Link>` and `navigate()` — NOT manual state management:**
+
+```typescript
+// ✅ CORRECT — TanStack Router Link
+import { Link } from '@tanstack/react-router';
+
+<Link
+  to="/$locale/sessions"
+  params={{ locale }}
+  activeProps={{ className: "bg-primary/10" }}
+>
+  Sessions
+</Link>
+
+// ✅ CORRECT — Programmatic navigation
+import { useNavigate } from '@tanstack/react-router';
+
+const navigate = useNavigate();
+const { locale } = useParams({ from: '/$locale' });
+navigate({ to: '/$locale/campaigns', params: { locale } });
+
+// ❌ WRONG — Manual activeTab state (DO NOT USE)
+const [activeTab, setActiveTab] = useState('dashboard');
+<button onClick={() => setActiveTab('campaigns')}>Campaigns</button>
+```
+
+#### UI State Hooks (Separate from Data Hooks)
+
+**Existing UI state hooks remain unchanged** and are composed **explicitly** with data hooks:
+
+```typescript
+// Existing: features/campaigns/hooks/useCampaignsList.ts
+export function useCampaignsList(campaigns: Campaign[]) {
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'running' | 'paused'>('all');
+
+  const filtered = useMemo(
+    () => campaigns.filter(c =>
+      c.title.includes(search) &&
+      (filter === 'all' || c.status === filter)
+    ),
+    [campaigns, search, filter]
+  );
+
+  return { search, setSearch, filter, setFilter, filteredCampaigns: filtered };
+}
+
+// Usage in route component:
+function CampaignsRoute() {
+  const { campaigns } = useCampaigns();           // ← Data hook
+  const uiState = useCampaignsList(campaigns);    // ← UI state hook
+
+  return <CampaignsList campaigns={uiState.filteredCampaigns} {...uiState} />;
+}
+```
+
+**DO NOT merge data and UI hooks** — keep them separate for testability.
+
+#### TanStack Query Provider Setup
+
+**Location:** `routes/__root.tsx`
+
+```typescript
+import { Outlet, createRootRoute } from '@tanstack/react-router';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { queryClient } from '@/lib/query-client';
+
+export const Route = createRootRoute({
+  component: RootComponent,
+});
+
+function RootComponent() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Outlet />
+      <ReactQueryDevtools position="bottom-right" />
+    </QueryClientProvider>
+  );
+}
+```
+
+**Query client configuration** (`src/lib/query-client.ts`):
+
+```typescript
+import { QueryClient } from "@tanstack/react-query";
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+```
+
+#### Mock Data Consolidation
+
+**All mock data lives in `frontend/src/mock-data/`** — features NEVER import mocks directly:
+
+```typescript
+// ✅ CORRECT — API layer imports mocks
+// features/sessions/api/sessions.api.ts
+import { MOCK_SESSIONS } from '@/mock-data';
+
+export async function getSessions(): Promise<WABridgeSession[]> {
+  return MOCK_SESSIONS;
+}
+
+// ❌ WRONG — Component imports mocks (DO NOT DO THIS)
+// features/sessions/components/SessionsDashboard.tsx
+import { MOCK_SESSIONS } from '@/mock-data';  // ❌ Never import in components
+
+function SessionsDashboard() {
+  return <div>{MOCK_SESSIONS.map(...)}</div>;  // ❌ Wrong pattern
+}
+```
+
+**Why:** Mock data serves as the **contract** between frontend and backend. Backend will return the same mocks initially to verify type parity before real implementation.
+
+#### What NOT to Do
+
+```typescript
+// ❌ WRONG — useState for server data in route
+function CampaignsRoute() {
+  const [campaigns, setCampaigns] = useState<Campaign[]>(MOCK_CAMPAIGNS);
+  return <CampaignsList campaigns={campaigns} />;
+}
+
+// ❌ WRONG — Direct mock imports in components
+import { MOCK_CAMPAIGNS } from '@/mock-data';
+function CampaignsList() {
+  return <div>{MOCK_CAMPAIGNS.map(...)}</div>;
+}
+
+// ❌ WRONG — setQueryData for cache updates (use invalidateQueries)
+queryClient.setQueryData(CampaignQueryKeys.all, newCampaigns);
+
+// ❌ WRONG — Wrapper response types
+export async function getCampaigns(): Promise<{ data: Campaign[] }> {
+  return { data: MOCK_CAMPAIGNS };  // Don't wrap — return direct types
+}
+
+// ❌ WRONG — Merged data + UI hooks
+export function useCampaigns() {
+  const query = useQuery(...);
+  const [search, setSearch] = useState('');  // Don't mix
+  return { campaigns: query.data, search, setSearch };
+}
+```
+
+#### What TO Do
+
+```typescript
+// ✅ CORRECT — TanStack Query in route
+function CampaignsRoute() {
+  const { campaigns } = useCampaigns();
+  return <CampaignsList campaigns={campaigns} />;
+}
+
+// ✅ CORRECT — API layer imports mocks
+export async function getCampaigns(): Promise<Campaign[]> {
+  return MOCK_CAMPAIGNS;
+}
+
+// ✅ CORRECT — invalidateQueries for cache updates
+queryClient.invalidateQueries({ queryKey: CampaignQueryKeys.all });
+
+// ✅ CORRECT — Direct domain types
+export async function getCampaigns(): Promise<Campaign[]> {
+  return MOCK_CAMPAIGNS;
+}
+
+// ✅ CORRECT — Separate data and UI hooks
+const { campaigns } = useCampaigns();           // Data
+const uiState = useCampaignsList(campaigns);    // UI state
+```
+
+#### Key Principles
+
+1. **TanStack Query cache is the single source of truth** — not route `useState`
+2. **Each route owns its data** — fetches via hooks, passes to components
+3. **Components are purely presentational** — receive data as props, no data fetching
+4. **API layer is the only mock consumer** — components never import mocks
+5. **Use `invalidateQueries`, not `setQueryData`** — let TanStack Query refetch
+6. **Hierarchical query keys** — enables partial invalidation (all/lists/detail)
+7. **Explicit composition** — data hooks + UI hooks stay separate, composed in route
+
+#### Migration Checklist Reference
+
+For detailed per-feature migration steps, see:
+
+- **12-phase checklist:** `.ai/wayfinder/migration-checklist-template.md`
+- **Feature audit:** `.ai/wayfinder/feature-coverage-audit.md`
+- **79-task roadmap:** `.ai/blueprints/001-frontend-api-layer-migration-2026-08-30-tasks.md`
+
+**Implementation order:**
+
+1. Foundation (TanStack Query setup, shared layout)
+2. Sessions (pilot — validates pattern)
+3. Templates, Customers, Campaigns, Queue, Dashboard, Reports, Settings
+
+**Success validation:** TypeScript compiles (`bunx tsc --noEmit`), all features render, CRUD operations work with mocks, TanStack Query devtools shows queries, cache invalidation works.

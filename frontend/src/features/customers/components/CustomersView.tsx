@@ -1,8 +1,7 @@
 /**
- * CustomersView — contacts management list with verification
- * Beautiful UI with exact mockup structure and enhanced functionality
+ * CustomersView — purely presentational
+ * All state and handlers come from useCustomerManager via the route component.
  */
-import { useState } from "react";
 import {
   Users,
   Search,
@@ -20,271 +19,80 @@ import {
 import type { Contact, WABridgeSession, WABridgeConfig } from "@/types";
 
 interface CustomersViewProps {
-  campaignContacts: Contact[];
-  sessions: WABridgeSession[];
-  config: WABridgeConfig;
+  // Data
+  contacts: Contact[];
+  filteredContacts: Contact[];
+  categories: string[];
+  // Filters
+  searchQuery: string;
+  setSearchQuery: (v: string) => void;
+  statusFilter: "all" | "registered" | "unregistered" | "unverified";
+  setStatusFilter: (
+    v: "all" | "registered" | "unregistered" | "unverified",
+  ) => void;
+  categoryFilter: string;
+  setCategoryFilter: (v: string) => void;
+  // Selection
+  selectedContactIds: Set<string>;
+  selectedContacts: Contact[];
+  toggleSelectAll: () => void;
+  toggleSelectContact: (id: string) => void;
+  // Verification
+  verifyingId: string | null;
+  handleVerifySingle: (contact: Contact) => void;
+  // Add modal
+  isAddModalOpen: boolean;
+  setIsAddModalOpen: (v: boolean) => void;
+  newName: string;
+  setNewName: (v: string) => void;
+  newPhone: string;
+  setNewPhone: (v: string) => void;
+  newCategory: string;
+  setNewCategory: (v: string) => void;
+  newPrescription: string;
+  setNewPrescription: (v: string) => void;
+  handleAddContact: (e: React.FormEvent) => void;
+  // Export & navigation
+  handleExportCsv: () => void;
   onLaunchCampaignWithContacts: (contacts: Contact[]) => void;
   onOpenVerifier: () => void;
+  // Unused but kept for API compatibility
+  sessions?: WABridgeSession[];
+  config?: WABridgeConfig;
+  campaignContacts?: Contact[];
 }
 
-// Built-in pharmacy contacts
-const DEFAULT_CONTACTS: Contact[] = [
-  {
-    id: "cust_01",
-    name: "Dr. Sabry El-Sayed",
-    rawPhone: "+1 (415) 555-9901",
-    formattedPhone: "14155559901",
-    normalizedPhone: "+14155559901",
-    customFields: {
-      category: "Chronic Care",
-      prescription: "Lipitor 20mg",
-      doctor: "Dr. Roberts",
-    },
-    verificationStatus: "registered",
-    waId: "14155559901@c.us",
-  },
-  {
-    id: "cust_02",
-    name: "Victoria Sterling",
-    rawPhone: "+44 7700 900888",
-    formattedPhone: "447700900888",
-    normalizedPhone: "+447700900888",
-    customFields: {
-      category: "VIP Patient",
-      prescription: "Amoxicillin 500mg",
-      doctor: "Dr. Evans",
-    },
-    verificationStatus: "registered",
-    waId: "447700900888@c.us",
-  },
-  {
-    id: "cust_03",
-    name: "Liam O'Connor",
-    rawPhone: "+353 87 123 4564",
-    formattedPhone: "353871234564",
-    normalizedPhone: "+353871234564",
-    customFields: {
-      category: "Refill Due",
-      prescription: "Metformin 500mg",
-      doctor: "Dr. Kelly",
-    },
-    verificationStatus: "unregistered",
-    verificationError: "Not registered on WhatsApp",
-  },
-  {
-    id: "cust_04",
-    name: "Sarah Jenkins",
-    rawPhone: "+1 415-555-0122",
-    formattedPhone: "14155550122",
-    normalizedPhone: "+14155550122",
-    customFields: {
-      category: "Wellness VIP",
-      prescription: "Vitamin D3 50000 IU",
-      doctor: "Dr. Adams",
-    },
-    verificationStatus: "registered",
-    waId: "14155550122@c.us",
-  },
-  {
-    id: "cust_05",
-    name: "Kenji Takahashi",
-    rawPhone: "+81 90 1234 5678",
-    formattedPhone: "819012345678",
-    normalizedPhone: "+81901234567",
-    customFields: {
-      category: "Chronic Care",
-      prescription: "Amlodipine 10mg",
-      doctor: "Dr. Sato",
-    },
-    verificationStatus: "unverified",
-  },
-  {
-    id: "cust_06",
-    name: "Chloe Dubois",
-    rawPhone: "+33 6 12 34 56 78",
-    formattedPhone: "33612345678",
-    normalizedPhone: "+33612345678",
-    customFields: {
-      category: "Dermatology",
-      prescription: "Retin-A 0.05%",
-      doctor: "Dr. Moreau",
-    },
-    verificationStatus: "registered",
-    waId: "33612345678@c.us",
-  },
-];
-
 export function CustomersView({
-  campaignContacts,
-  sessions,
+  contacts,
+  filteredContacts,
+  categories,
+  searchQuery,
+  setSearchQuery,
+  statusFilter,
+  setStatusFilter,
+  categoryFilter,
+  setCategoryFilter,
+  selectedContactIds,
+  selectedContacts,
+  toggleSelectAll,
+  toggleSelectContact,
+  verifyingId,
+  handleVerifySingle,
+  isAddModalOpen,
+  setIsAddModalOpen,
+  newName,
+  setNewName,
+  newPhone,
+  setNewPhone,
+  newCategory,
+  setNewCategory,
+  newPrescription,
+  setNewPrescription,
+  handleAddContact,
+  handleExportCsv,
   onLaunchCampaignWithContacts,
   onOpenVerifier,
 }: CustomersViewProps) {
-  // Merge unique contacts
-  const [contacts, setContacts] = useState<Contact[]>(() => {
-    const existingIds = new Set(DEFAULT_CONTACTS.map((c) => c.formattedPhone));
-    const additional = campaignContacts.filter(
-      (c) => !existingIds.has(c.formattedPhone),
-    );
-    return [...DEFAULT_CONTACTS, ...additional];
-  });
-
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | "registered" | "unregistered" | "unverified"
-  >("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(
-    new Set(),
-  );
-  const [verifyingId, setVerifyingId] = useState<string | null>(null);
-
-  // New Contact Form State
-  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
-  const [newName, setNewName] = useState("");
-  const [newPhone, setNewPhone] = useState("");
-  const [newCategory, setNewCategory] = useState("Chronic Care");
-  const [newPrescription, setNewPrescription] = useState("");
-
-  // Extract unique categories
-  const categories = Array.from(
-    new Set(contacts.map((c) => c.customFields?.category || "General")),
-  );
-
-  // Filter contacts
-  const filteredContacts = contacts.filter((c) => {
-    const matchesSearch =
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.rawPhone.includes(searchQuery) ||
-      c.formattedPhone.includes(searchQuery) ||
-      (c.customFields?.prescription &&
-        c.customFields.prescription
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()));
-
-    const matchesStatus =
-      statusFilter === "all" || c.verificationStatus === statusFilter;
-    const matchesCategory =
-      categoryFilter === "all" || c.customFields?.category === categoryFilter;
-
-    return matchesSearch && matchesStatus && matchesCategory;
-  });
-
-  const toggleSelectAll = () => {
-    if (selectedContactIds.size === filteredContacts.length) {
-      setSelectedContactIds(new Set());
-    } else {
-      setSelectedContactIds(new Set(filteredContacts.map((c) => c.id)));
-    }
-  };
-
-  const toggleSelectContact = (id: string) => {
-    const next = new Set(selectedContactIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedContactIds(next);
-  };
-
-  const handleVerifySingle = async (contact: Contact) => {
-    if (!sessions[0]) return;
-    setVerifyingId(contact.id);
-
-    try {
-      // TODO: Implement actual WABridge verification
-      // Simulate verification for now
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      const isRegistered = Math.random() > 0.2; // 80% success rate
-
-      setContacts((prev) =>
-        prev.map((c) => {
-          if (c.id === contact.id) {
-            return {
-              ...c,
-              verificationStatus: isRegistered ? "registered" : "unregistered",
-              waId: isRegistered ? `${contact.formattedPhone}@c.us` : undefined,
-              verificationError: isRegistered
-                ? undefined
-                : "Not registered on WhatsApp",
-              verifiedAt: Date.now(),
-            };
-          }
-          return c;
-        }),
-      );
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setVerifyingId(null);
-    }
-  };
-
-  const handleAddContact = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName || !newPhone) return;
-
-    const clean = newPhone.replace(/\D/g, "");
-    const newContact: Contact = {
-      id: `cust_${Date.now()}`,
-      name: newName,
-      rawPhone: newPhone,
-      formattedPhone: clean,
-      normalizedPhone: `+${clean}`,
-      customFields: {
-        category: newCategory,
-        prescription: newPrescription || "Standard Care",
-      },
-      verificationStatus: "unverified",
-    };
-
-    setContacts([newContact, ...contacts]);
-    setIsAddModalOpen(false);
-    setNewName("");
-    setNewPhone("");
-    setNewPrescription("");
-  };
-
-  const handleExportCsv = () => {
-    const rows = filteredContacts.map((c, i) => ({
-      Index: i + 1,
-      Name: c.name,
-      Phone: c.rawPhone,
-      FormattedPhone: c.formattedPhone,
-      VerificationStatus: c.verificationStatus,
-      WhatsAppJID: c.waId || "",
-      Category: c.customFields?.category || "",
-      Prescription: c.customFields?.prescription || "",
-      Doctor: c.customFields?.doctor || "",
-    }));
-
-    const headers = Object.keys(rows[0] || {}).join(",");
-    const csvContent =
-      "data:text/csv;charset=utf-8," +
-      [
-        headers,
-        ...rows.map((r) =>
-          Object.values(r)
-            .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-            .join(","),
-        ),
-      ].join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `pharmacy_patients_${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleCreateCampaignWithSelected = () => {
-    const selected = contacts.filter((c) => selectedContactIds.has(c.id));
-    if (selected.length > 0) {
-      onLaunchCampaignWithContacts(selected);
-    }
-  };
-
   return (
     <div className="space-y-4 max-w-full">
       {/* Top Header & Quick Actions */}
@@ -310,7 +118,7 @@ export function CustomersView({
           {selectedContactIds.size > 0 && (
             <button
               type="button"
-              onClick={handleCreateCampaignWithSelected}
+              onClick={() => onLaunchCampaignWithContacts(selectedContacts)}
               className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold flex items-center gap-1.5 shadow-md transition-all"
             >
               <Send className="w-3.5 h-3.5" />
@@ -352,16 +160,18 @@ export function CustomersView({
         <div className="flex flex-wrap items-center gap-2">
           {/* Status Filter */}
           <div className="flex items-center gap-1 bg-muted/50 p-0.5 rounded-lg border border-border">
-            {[
-              { id: "all", label: "All Status" },
-              { id: "registered", label: "Registered" },
-              { id: "unregistered", label: "Unregistered" },
-              { id: "unverified", label: "Unverified" },
-            ].map((f) => (
+            {(
+              [
+                { id: "all", label: "All Status" },
+                { id: "registered", label: "Registered" },
+                { id: "unregistered", label: "Unregistered" },
+                { id: "unverified", label: "Unverified" },
+              ] as const
+            ).map((f) => (
               <button
                 key={f.id}
                 type="button"
-                onClick={() => setStatusFilter(f.id as any)}
+                onClick={() => setStatusFilter(f.id)}
                 className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
                   statusFilter === f.id
                     ? "bg-primary text-primary-foreground font-semibold shadow-sm"
@@ -450,13 +260,10 @@ export function CustomersView({
                 {filteredContacts.map((contact) => {
                   const isSelected = selectedContactIds.has(contact.id);
                   const isVerifying = verifyingId === contact.id;
-
                   return (
                     <tr
                       key={contact.id}
-                      className={`hover:bg-muted/30 transition-colors ${
-                        isSelected ? "bg-primary/5" : ""
-                      }`}
+                      className={`hover:bg-muted/30 transition-colors ${isSelected ? "bg-primary/5" : ""}`}
                     >
                       <td className="px-3 py-2 text-center">
                         <button

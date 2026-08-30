@@ -6,7 +6,6 @@ export function useLayout() {
   const [compactMode, setCompactMode] = useState(true)
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark')
   const [themeColor, setThemeColor] = useState<ThemeColor>('blue')
-  const [activeTab, setActiveTab] = useState('dashboard')
 
   const toggleSidebar = useCallback(() => setIsSidebarCollapsed((p) => !p), [])
   const toggleCompactMode = useCallback(() => setCompactMode((p) => !p), [])
@@ -24,7 +23,5 @@ export function useLayout() {
     themeColor,
     setThemeColor,
     toggleThemeMode,
-    activeTab,
-    setActiveTab,
   }
 }

@@ -13,8 +13,15 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as LocaleRouteRouteImport } from './routes/$locale/route'
 import { Route as LocaleIndexRouteImport } from './routes/$locale/index'
 import { Route as LocaleAuthRouteRouteImport } from './routes/$locale/_auth/route'
+import { Route as LocaleCustomersRouteImport } from './routes/$locale/customers'
+import { Route as LocaleQueueRouteImport } from './routes/$locale/queue'
+import { Route as LocaleReportsRouteImport } from './routes/$locale/reports'
+import { Route as LocaleSessionsRouteImport } from './routes/$locale/sessions'
+import { Route as LocaleTemplatesRouteImport } from './routes/$locale/templates'
 import { Route as LocaleAuthLoginRouteImport } from './routes/$locale/_auth/login'
 import { Route as LocaleAuthRegisterRouteImport } from './routes/$locale/_auth/register'
+import { Route as LocaleCampaignsIndexRouteImport } from './routes/$locale/campaigns/index'
+import { Route as LocaleCampaignsNewRouteImport } from './routes/$locale/campaigns/new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -35,6 +42,31 @@ const LocaleAuthRouteRoute = LocaleAuthRouteRouteImport.update({
   id: '/_auth',
   getParentRoute: () => LocaleRouteRoute,
 } as any)
+const LocaleCustomersRoute = LocaleCustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => LocaleRouteRoute,
+} as any)
+const LocaleQueueRoute = LocaleQueueRouteImport.update({
+  id: '/queue',
+  path: '/queue',
+  getParentRoute: () => LocaleRouteRoute,
+} as any)
+const LocaleReportsRoute = LocaleReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => LocaleRouteRoute,
+} as any)
+const LocaleSessionsRoute = LocaleSessionsRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
+  getParentRoute: () => LocaleRouteRoute,
+} as any)
+const LocaleTemplatesRoute = LocaleTemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
+  getParentRoute: () => LocaleRouteRoute,
+} as any)
 const LocaleAuthLoginRoute = LocaleAuthLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -45,43 +77,103 @@ const LocaleAuthRegisterRoute = LocaleAuthRegisterRouteImport.update({
   path: '/register',
   getParentRoute: () => LocaleAuthRouteRoute,
 } as any)
+const LocaleCampaignsIndexRoute = LocaleCampaignsIndexRouteImport.update({
+  id: '/campaigns/',
+  path: '/campaigns/',
+  getParentRoute: () => LocaleRouteRoute,
+} as any)
+const LocaleCampaignsNewRoute = LocaleCampaignsNewRouteImport.update({
+  id: '/campaigns/new',
+  path: '/campaigns/new',
+  getParentRoute: () => LocaleRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$locale': typeof LocaleRouteRouteWithChildren
+  '/$locale/customers': typeof LocaleCustomersRoute
+  '/$locale/queue': typeof LocaleQueueRoute
+  '/$locale/reports': typeof LocaleReportsRoute
+  '/$locale/sessions': typeof LocaleSessionsRoute
+  '/$locale/templates': typeof LocaleTemplatesRoute
   '/$locale/': typeof LocaleIndexRoute
   '/$locale/login': typeof LocaleAuthLoginRoute
   '/$locale/register': typeof LocaleAuthRegisterRoute
+  '/$locale/campaigns/new': typeof LocaleCampaignsNewRoute
+  '/$locale/campaigns/': typeof LocaleCampaignsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$locale': typeof LocaleIndexRoute
+  '/$locale/customers': typeof LocaleCustomersRoute
+  '/$locale/queue': typeof LocaleQueueRoute
+  '/$locale/reports': typeof LocaleReportsRoute
+  '/$locale/sessions': typeof LocaleSessionsRoute
+  '/$locale/templates': typeof LocaleTemplatesRoute
   '/$locale/login': typeof LocaleAuthLoginRoute
   '/$locale/register': typeof LocaleAuthRegisterRoute
+  '/$locale/campaigns/new': typeof LocaleCampaignsNewRoute
+  '/$locale/campaigns': typeof LocaleCampaignsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$locale': typeof LocaleRouteRouteWithChildren
   '/$locale/_auth': typeof LocaleAuthRouteRouteWithChildren
+  '/$locale/customers': typeof LocaleCustomersRoute
+  '/$locale/queue': typeof LocaleQueueRoute
+  '/$locale/reports': typeof LocaleReportsRoute
+  '/$locale/sessions': typeof LocaleSessionsRoute
+  '/$locale/templates': typeof LocaleTemplatesRoute
   '/$locale/': typeof LocaleIndexRoute
   '/$locale/_auth/login': typeof LocaleAuthLoginRoute
   '/$locale/_auth/register': typeof LocaleAuthRegisterRoute
+  '/$locale/campaigns/new': typeof LocaleCampaignsNewRoute
+  '/$locale/campaigns/': typeof LocaleCampaignsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/$locale' | '/$locale/' | '/$locale/login' | '/$locale/register'
+    | '/'
+    | '/$locale'
+    | '/$locale/customers'
+    | '/$locale/queue'
+    | '/$locale/reports'
+    | '/$locale/sessions'
+    | '/$locale/templates'
+    | '/$locale/'
+    | '/$locale/login'
+    | '/$locale/register'
+    | '/$locale/campaigns/new'
+    | '/$locale/campaigns/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$locale' | '/$locale/login' | '/$locale/register'
+  to:
+    | '/'
+    | '/$locale'
+    | '/$locale/customers'
+    | '/$locale/queue'
+    | '/$locale/reports'
+    | '/$locale/sessions'
+    | '/$locale/templates'
+    | '/$locale/login'
+    | '/$locale/register'
+    | '/$locale/campaigns/new'
+    | '/$locale/campaigns'
   id:
     | '__root__'
     | '/'
     | '/$locale'
     | '/$locale/_auth'
+    | '/$locale/customers'
+    | '/$locale/queue'
+    | '/$locale/reports'
+    | '/$locale/sessions'
+    | '/$locale/templates'
     | '/$locale/'
     | '/$locale/_auth/login'
     | '/$locale/_auth/register'
+    | '/$locale/campaigns/new'
+    | '/$locale/campaigns/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +211,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LocaleAuthRouteRouteImport
       parentRoute: typeof LocaleRouteRoute
     }
+    '/$locale/customers': {
+      id: '/$locale/customers'
+      path: '/customers'
+      fullPath: '/$locale/customers'
+      preLoaderRoute: typeof LocaleCustomersRouteImport
+      parentRoute: typeof LocaleRouteRoute
+    }
+    '/$locale/queue': {
+      id: '/$locale/queue'
+      path: '/queue'
+      fullPath: '/$locale/queue'
+      preLoaderRoute: typeof LocaleQueueRouteImport
+      parentRoute: typeof LocaleRouteRoute
+    }
+    '/$locale/reports': {
+      id: '/$locale/reports'
+      path: '/reports'
+      fullPath: '/$locale/reports'
+      preLoaderRoute: typeof LocaleReportsRouteImport
+      parentRoute: typeof LocaleRouteRoute
+    }
+    '/$locale/sessions': {
+      id: '/$locale/sessions'
+      path: '/sessions'
+      fullPath: '/$locale/sessions'
+      preLoaderRoute: typeof LocaleSessionsRouteImport
+      parentRoute: typeof LocaleRouteRoute
+    }
+    '/$locale/templates': {
+      id: '/$locale/templates'
+      path: '/templates'
+      fullPath: '/$locale/templates'
+      preLoaderRoute: typeof LocaleTemplatesRouteImport
+      parentRoute: typeof LocaleRouteRoute
+    }
     '/$locale/_auth/login': {
       id: '/$locale/_auth/login'
       path: '/login'
@@ -132,6 +259,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/$locale/register'
       preLoaderRoute: typeof LocaleAuthRegisterRouteImport
       parentRoute: typeof LocaleAuthRouteRoute
+    }
+    '/$locale/campaigns/': {
+      id: '/$locale/campaigns/'
+      path: '/campaigns'
+      fullPath: '/$locale/campaigns/'
+      preLoaderRoute: typeof LocaleCampaignsIndexRouteImport
+      parentRoute: typeof LocaleRouteRoute
+    }
+    '/$locale/campaigns/new': {
+      id: '/$locale/campaigns/new'
+      path: '/campaigns/new'
+      fullPath: '/$locale/campaigns/new'
+      preLoaderRoute: typeof LocaleCampaignsNewRouteImport
+      parentRoute: typeof LocaleRouteRoute
     }
   }
 }
@@ -152,12 +293,26 @@ const LocaleAuthRouteRouteWithChildren = LocaleAuthRouteRoute._addFileChildren(
 
 interface LocaleRouteRouteChildren {
   LocaleAuthRouteRoute: typeof LocaleAuthRouteRouteWithChildren
+  LocaleCustomersRoute: typeof LocaleCustomersRoute
+  LocaleQueueRoute: typeof LocaleQueueRoute
+  LocaleReportsRoute: typeof LocaleReportsRoute
+  LocaleSessionsRoute: typeof LocaleSessionsRoute
+  LocaleTemplatesRoute: typeof LocaleTemplatesRoute
   LocaleIndexRoute: typeof LocaleIndexRoute
+  LocaleCampaignsNewRoute: typeof LocaleCampaignsNewRoute
+  LocaleCampaignsIndexRoute: typeof LocaleCampaignsIndexRoute
 }
 
 const LocaleRouteRouteChildren: LocaleRouteRouteChildren = {
   LocaleAuthRouteRoute: LocaleAuthRouteRouteWithChildren,
+  LocaleCustomersRoute: LocaleCustomersRoute,
+  LocaleQueueRoute: LocaleQueueRoute,
+  LocaleReportsRoute: LocaleReportsRoute,
+  LocaleSessionsRoute: LocaleSessionsRoute,
+  LocaleTemplatesRoute: LocaleTemplatesRoute,
   LocaleIndexRoute: LocaleIndexRoute,
+  LocaleCampaignsNewRoute: LocaleCampaignsNewRoute,
+  LocaleCampaignsIndexRoute: LocaleCampaignsIndexRoute,
 }
 
 const LocaleRouteRouteWithChildren = LocaleRouteRoute._addFileChildren(

@@ -1,8 +1,8 @@
 /**
- * TemplatesView — template library with CRUD + live WhatsApp preview
- * Beautiful UI with exact mockup structure and enhanced functionality
+ * TemplatesView — purely presentational.
+ * All state and handlers come from useTemplateManager via the route component.
  */
-import { useState, useRef } from "react";
+import type { RefObject } from "react";
 import {
   FileText,
   Plus,
@@ -23,9 +23,7 @@ import {
 } from "lucide-react";
 import type { MessageTemplate } from "@/types";
 
-interface TemplatesViewProps {
-  onUseTemplateInCampaign: (template: MessageTemplate) => void;
-}
+// ─── Constants (UI-only, not data) ───────────────────────────────────────────
 
 const SAMPLE_IMAGE_PRESETS = [
   {
@@ -58,7 +56,7 @@ const SAMPLE_IMAGE_PRESETS = [
     url: "https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=600&q=80",
     fileName: "pharmacy_store.jpg",
   },
-];
+] as const;
 
 const AVAILABLE_MERGE_TAGS = [
   { tag: "name", label: "Recipient Name", example: "Dr. Sabry El-Sayed" },
@@ -67,319 +65,93 @@ const AVAILABLE_MERGE_TAGS = [
   { tag: "date", label: "Date", example: "Oct 24, 2026" },
   { tag: "pharmacy", label: "Pharmacy", example: "Main St Pharmacy" },
   { tag: "company", label: "Company", example: "Care Corp" },
-  {
-    tag: "portal_url",
-    label: "Portal Link",
-    example: "https://rx.care/login",
-  },
-];
+  { tag: "portal_url", label: "Portal Link", example: "https://rx.care/login" },
+] as const;
 
-// Default templates
-const DEFAULT_TEMPLATES: MessageTemplate[] = [
-  {
-    id: "tmpl_001",
-    title: "Prescription Ready for Pickup",
-    category: "Pharmacy",
-    text: "Hello {{name}}, your prescription for {{prescription}} is ready for pickup at our pharmacy. Please bring your ID.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1631815589968-fdb09a223b1e?auto=format&fit=crop&w=600&q=80",
-    imageFileName: "prescription_ready.jpg",
-    suggestedVariables: ["name", "prescription"],
-    createdAt: Date.now() - 86400000 * 30,
-    updatedAt: Date.now() - 86400000 * 30,
-  },
-  {
-    id: "tmpl_002",
-    title: "Lab Results Available",
-    category: "Lab Results",
-    text: "Dear {{name}}, your lab results are now available. Please visit us during business hours or log into the patient portal at {{portal_url}}.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&w=600&q=80",
-    imageFileName: "lab_results.jpg",
-    suggestedVariables: ["name", "portal_url"],
-    createdAt: Date.now() - 86400000 * 25,
-    updatedAt: Date.now() - 86400000 * 25,
-  },
-  {
-    id: "tmpl_003",
-    title: "Flu Vaccine Reminder",
-    category: "Vaccination",
-    text: "Hi {{name}}, flu season is here! Protect yourself and your family with our flu vaccine. Book your appointment today at {{pharmacy}}.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=600&q=80",
-    imageFileName: "flu_vaccine.jpg",
-    suggestedVariables: ["name", "pharmacy"],
-    createdAt: Date.now() - 86400000 * 20,
-    updatedAt: Date.now() - 86400000 * 20,
-  },
-  {
-    id: "tmpl_004",
-    title: "VIP Membership Benefits",
-    category: "VIP Care",
-    text: "Exclusive offer for {{name}}! As a VIP member, enjoy 20% off all purchases this month. Visit us at {{pharmacy}} to claim your rewards.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=600&q=80",
-    imageFileName: "vip_benefits.jpg",
-    suggestedVariables: ["name", "pharmacy"],
-    createdAt: Date.now() - 86400000 * 15,
-    updatedAt: Date.now() - 86400000 * 15,
-  },
-  {
-    id: "tmpl_005",
-    title: "Refill Reminder",
-    category: "Refill Reminder",
-    text: "Hello {{name}}, it's time to refill your {{prescription}}. Call us or order online for convenient pickup or delivery.",
-    suggestedVariables: ["name", "prescription"],
-    createdAt: Date.now() - 86400000 * 10,
-    updatedAt: Date.now() - 86400000 * 10,
-  },
-];
+const CATEGORY_TABS = [
+  { id: "all", label: "All Templates" },
+  { id: "Pharmacy", label: "Pharmacy" },
+  { id: "Refill Reminder", label: "Refills" },
+  { id: "Lab Results", label: "Lab Results" },
+  { id: "Vaccination", label: "Vaccination" },
+  { id: "VIP Care", label: "VIP Care" },
+] as const;
 
-export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
-  const [templates, setTemplates] =
-    useState<MessageTemplate[]>(DEFAULT_TEMPLATES);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
-    DEFAULT_TEMPLATES[0]?.id || "",
-  );
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+// ─── Props ────────────────────────────────────────────────────────────────────
 
-  // Modal State for Create & Edit
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] =
-    useState<Partial<MessageTemplate> | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const selectedTemplate =
-    templates.find((t) => t.id === selectedTemplateId) || templates[0] || null;
-
-  // Filter templates based on category & search query
-  const filteredTemplates = templates.filter((tmpl) => {
-    const matchesCat =
-      selectedCategory === "all" ||
-      tmpl.category.toLowerCase() === selectedCategory.toLowerCase();
-
-    if (!matchesCat) return false;
-
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      tmpl.title.toLowerCase().includes(q) ||
-      tmpl.text.toLowerCase().includes(q) ||
-      tmpl.category.toLowerCase().includes(q)
-    );
-  });
-
-  const handleCopyText = (tmpl: MessageTemplate) => {
-    navigator.clipboard.writeText(tmpl.text);
-    setCopiedId(tmpl.id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const handleOpenCreateModal = () => {
-    setUploadError(null);
-    setEditingTemplate({
-      title: "",
-      category: "Pharmacy",
-      text: "Hello {{name}}, your prescription for {{prescription}} is ready for pickup at our pharmacy.",
-      imageUrl: "",
-      imageFileName: "",
-      suggestedVariables: ["name", "prescription"],
-    });
-    setIsEditorOpen(true);
-  };
-
-  const handleOpenEditModal = (tmpl: MessageTemplate) => {
-    setUploadError(null);
-    setEditingTemplate({ ...tmpl });
-    setIsEditorOpen(true);
-  };
-
-  const handleImageFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setUploadError("Please select a valid image file (PNG, JPG, WebP)");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadError("Image size must not exceed 5MB");
-      return;
-    }
-
-    setUploadError(null);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      setEditingTemplate((prev) =>
-        prev
-          ? {
-              ...prev,
-              imageUrl: dataUrl,
-              imageFileName: file.name,
-            }
-          : null,
-      );
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleRemoveImage = () => {
-    setEditingTemplate((prev) =>
-      prev
-        ? {
-            ...prev,
-            imageUrl: undefined,
-            imageFileName: undefined,
-          }
-        : null,
-    );
-  };
-
-  const handleInsertVariable = (varName: string) => {
-    if (!editingTemplate) return;
-    const currentText = editingTemplate.text || "";
-    const tag = `{{${varName}}}`;
-    const newText =
-      currentText + (currentText.endsWith(" ") ? "" : " ") + tag + " ";
-
-    const currentVars = editingTemplate.suggestedVariables || [];
-    const newVars = currentVars.includes(varName)
-      ? currentVars
-      : [...currentVars, varName];
-
-    setEditingTemplate({
-      ...editingTemplate,
-      text: newText,
-      suggestedVariables: newVars,
-    });
-  };
-
-  const handleSaveTemplate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingTemplate?.title?.trim() || !editingTemplate?.text?.trim()) {
-      return;
-    }
-
-    const title = editingTemplate.title.trim();
-    const text = editingTemplate.text.trim();
-    const category = editingTemplate.category?.trim() || "Custom";
-    const imageUrl = editingTemplate.imageUrl?.trim() || undefined;
-    const imageFileName =
-      editingTemplate.imageFileName ||
-      (imageUrl ? "attached_image.jpg" : undefined);
-
-    // Extract variables inside {{...}}
-    const detectedVars: string[] = [];
-    const matches = text.matchAll(/\{\{([a-zA-Z0-9_-]+)\}\}/g);
-    for (const match of matches) {
-      if (match[1] && !detectedVars.includes(match[1])) {
-        detectedVars.push(match[1]);
-      }
-    }
-
-    if (editingTemplate.id) {
-      // Update existing
-      const updatedTemplate: MessageTemplate = {
-        id: editingTemplate.id,
-        title,
-        category,
-        text,
-        imageUrl,
-        imageFileName,
-        suggestedVariables:
-          detectedVars.length > 0
-            ? detectedVars
-            : editingTemplate.suggestedVariables || ["name"],
-        updatedAt: Date.now(),
-        createdAt: editingTemplate.createdAt || Date.now(),
-      };
-
-      const next = templates.map((t) =>
-        t.id === updatedTemplate.id ? updatedTemplate : t,
-      );
-      setTemplates(next);
-      setSelectedTemplateId(updatedTemplate.id);
-    } else {
-      // Create new
-      const createdTemplate: MessageTemplate = {
-        id: `tmpl_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        title,
-        category,
-        text,
-        imageUrl,
-        imageFileName,
-        suggestedVariables:
-          detectedVars.length > 0 ? detectedVars : ["name", "prescription"],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-
-      const next = [createdTemplate, ...templates];
-      setTemplates(next);
-      setSelectedTemplateId(createdTemplate.id);
-    }
-
-    setIsEditorOpen(false);
-    setEditingTemplate(null);
-  };
-
-  const handleDeleteTemplate = (id: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    const target = templates.find((t) => t.id === id);
-    if (!target) return;
-
-    if (
-      window.confirm(
-        `Are you sure you want to permanently delete template "${target.title}"?`,
-      )
-    ) {
-      const next = templates.filter((tmpl) => tmpl.id !== id);
-      setTemplates(next);
-      if (selectedTemplateId === id) {
-        setSelectedTemplateId(next.length > 0 ? next[0]?.id || "" : "");
-      }
-    }
-  };
-
-  const handleDuplicateTemplate = (
+interface TemplatesViewProps {
+  // Data
+  templates: MessageTemplate[];
+  filteredTemplates: MessageTemplate[];
+  selectedTemplate: MessageTemplate | null;
+  selectedTemplateId: string;
+  setSelectedTemplateId: (id: string) => void;
+  // Filters
+  searchQuery: string;
+  setSearchQuery: (v: string) => void;
+  selectedCategory: string;
+  setSelectedCategory: (v: string) => void;
+  // Copy
+  copiedId: string | null;
+  handleCopyText: (tmpl: MessageTemplate) => void;
+  // Editor modal
+  isEditorOpen: boolean;
+  setIsEditorOpen: (v: boolean) => void;
+  editingTemplate: Partial<MessageTemplate> | null;
+  setEditingTemplate: (v: Partial<MessageTemplate> | null) => void;
+  uploadError: string | null;
+  fileInputRef: RefObject<HTMLInputElement | null>;
+  // Actions
+  handleOpenCreateModal: () => void;
+  handleOpenEditModal: (tmpl: MessageTemplate) => void;
+  handleImageFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleRemoveImage: () => void;
+  handleInsertVariable: (tag: string) => void;
+  handleSaveTemplate: (e: React.FormEvent) => void;
+  handleDeleteTemplate: (id: string, e?: React.MouseEvent) => void;
+  handleDuplicateTemplate: (
     tmpl: MessageTemplate,
     e?: React.MouseEvent,
-  ) => {
-    if (e) e.stopPropagation();
-    const duplicate: MessageTemplate = {
-      ...tmpl,
-      id: `tmpl_${Date.now()}_copy`,
-      title: `${tmpl.title} (Copy)`,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-    const next = [duplicate, ...templates];
-    setTemplates(next);
-    setSelectedTemplateId(duplicate.id);
-  };
+  ) => void;
+  handleResetToDefaults: (defaults: MessageTemplate[]) => void;
+  // Navigation
+  onUseTemplateInCampaign: (template: MessageTemplate) => void;
+  // Default templates passed from route (for reset)
+  defaultTemplates: MessageTemplate[];
+}
 
-  const handleResetToDefaults = () => {
-    if (window.confirm("Restore standard default templates?")) {
-      setTemplates(DEFAULT_TEMPLATES);
-      setSelectedTemplateId(DEFAULT_TEMPLATES[0]?.id || "");
-    }
-  };
+// ─── Component ────────────────────────────────────────────────────────────────
 
-  // Categories list
-  const categoryTabs = [
-    { id: "all", label: "All Templates" },
-    { id: "Pharmacy", label: "Pharmacy" },
-    { id: "Refill Reminder", label: "Refills" },
-    { id: "Lab Results", label: "Lab Results" },
-    { id: "Vaccination", label: "Vaccination" },
-    { id: "VIP Care", label: "VIP Care" },
-  ];
-
+export function TemplatesView({
+  templates,
+  filteredTemplates,
+  selectedTemplate,
+  selectedTemplateId,
+  setSelectedTemplateId,
+  searchQuery,
+  setSearchQuery,
+  selectedCategory,
+  setSelectedCategory,
+  copiedId,
+  handleCopyText,
+  isEditorOpen,
+  setIsEditorOpen,
+  editingTemplate,
+  setEditingTemplate,
+  uploadError,
+  fileInputRef,
+  handleOpenCreateModal,
+  handleOpenEditModal,
+  handleImageFileUpload,
+  handleRemoveImage,
+  handleInsertVariable,
+  handleSaveTemplate,
+  handleDeleteTemplate,
+  handleDuplicateTemplate,
+  handleResetToDefaults,
+  onUseTemplateInCampaign,
+  defaultTemplates,
+}: TemplatesViewProps) {
   return (
     <div className="space-y-4 max-w-full">
       {/* Top Header Card */}
@@ -406,14 +178,13 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
         <div className="flex items-center gap-2 self-start md:self-auto">
           <button
             type="button"
-            onClick={handleResetToDefaults}
+            onClick={() => handleResetToDefaults(defaultTemplates)}
             className="px-2.5 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground text-xs border border-border transition-colors flex items-center gap-1"
             title="Restore Default Templates"
           >
             <Clock className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Reset Defaults</span>
           </button>
-
           <button
             type="button"
             id="btn-create-new-template"
@@ -428,7 +199,7 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
 
       {/* Main Split Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Left Column: Search, Category Filters, and Template Cards (5 cols) */}
+        {/* Left Column: Search, Category Filters, Template Cards */}
         <div className="lg:col-span-5 space-y-3">
           {/* Search Bar */}
           <div className="relative">
@@ -453,7 +224,7 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
 
           {/* Category Tabs */}
           <div className="flex items-center gap-1 overflow-x-auto pb-1 text-xs no-scrollbar">
-            {categoryTabs.map((cat) => (
+            {CATEGORY_TABS.map((cat) => (
               <button
                 key={cat.id}
                 type="button"
@@ -473,7 +244,7 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
           <div className="space-y-2 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
             {filteredTemplates.length === 0 ? (
               <div className="p-8 text-center bg-card border border-border rounded-xl text-muted-foreground space-y-2">
-                <FileText className="w-8 h-8 mx-auto text-muted-foreground opacity-50" />
+                <FileText className="w-8 h-8 mx-auto opacity-50" />
                 <p className="text-xs font-medium">No templates found</p>
                 <button
                   type="button"
@@ -493,7 +264,7 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                     className={`p-3.5 rounded-xl border cursor-pointer transition-all space-y-2 relative group ${
                       isSelected
                         ? "bg-primary/5 border-primary/60 shadow-md ring-1 ring-primary/30"
-                        : "bg-card border-border hover:bg-muted/30 hover:border-border"
+                        : "bg-card border-border hover:bg-muted/30"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -516,22 +287,20 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                     <h3 className="text-xs font-bold text-foreground line-clamp-1">
                       {tmpl.title}
                     </h3>
-
                     <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
                       {tmpl.text}
                     </p>
 
-                    {/* Quick Card Action Buttons */}
                     <div className="flex items-center justify-between pt-1 border-t border-border/50 text-[10px] text-muted-foreground">
-                      <div className="flex items-center gap-1 font-mono text-[9px] text-muted-foreground">
+                      <div className="flex items-center gap-1 font-mono text-[9px]">
                         <Tag className="w-2.5 h-2.5" />
                         <span>{tmpl.suggestedVariables.join(", ")}</span>
                       </div>
-                      <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100">
                         <button
                           type="button"
                           onClick={(e) => handleDuplicateTemplate(tmpl, e)}
-                          title="Duplicate Template"
+                          title="Duplicate"
                           className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                         >
                           <Layers className="w-3 h-3" />
@@ -542,7 +311,7 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                             e.stopPropagation();
                             handleOpenEditModal(tmpl);
                           }}
-                          title="Edit Template"
+                          title="Edit"
                           className="p-1 rounded hover:bg-muted text-primary transition-colors"
                         >
                           <Edit3 className="w-3 h-3" />
@@ -550,7 +319,7 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                         <button
                           type="button"
                           onClick={(e) => handleDeleteTemplate(tmpl.id, e)}
-                          title="Delete Template"
+                          title="Delete"
                           className="p-1 rounded hover:bg-destructive/10 text-destructive transition-colors"
                         >
                           <Trash2 className="w-3 h-3" />
@@ -564,11 +333,11 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
           </div>
         </div>
 
-        {/* Right Column: Template Inspector & WhatsApp Preview (7 cols) */}
+        {/* Right Column: Inspector & WhatsApp Preview */}
         <div className="lg:col-span-7 space-y-4">
           {selectedTemplate ? (
             <div className="bg-card border border-border rounded-xl p-5 shadow-md space-y-4">
-              {/* Header Info & Action Bar */}
+              {/* Header & Actions */}
               <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border">
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -584,7 +353,6 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                     {selectedTemplate.suggestedVariables.length} variables
                   </p>
                 </div>
-
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -613,7 +381,6 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
 
               {/* Template Details */}
               <div className="space-y-4">
-                {/* Template Message Body Section */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
@@ -630,7 +397,6 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                   </div>
                 </div>
 
-                {/* Available Merge Variables */}
                 <div className="space-y-2">
                   <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
                     Available Merge Variables:
@@ -640,7 +406,6 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                       <span
                         key={v}
                         className="px-2.5 py-1 rounded-md bg-primary/10 text-primary text-[11px] font-mono border border-primary/20 hover:bg-primary/20 transition-colors cursor-default"
-                        title={`Variable: ${v}`}
                       >
                         {`{{${v}}}`}
                       </span>
@@ -648,7 +413,6 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                   </div>
                 </div>
 
-                {/* Image Attachment Info */}
                 {selectedTemplate.imageUrl && (
                   <div className="space-y-2">
                     <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
@@ -666,8 +430,8 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                         <div className="flex items-center gap-2 mb-1">
                           <ImageIcon className="w-3.5 h-3.5 text-success" />
                           <span className="text-xs font-medium text-foreground truncate">
-                            {selectedTemplate.imageFileName ||
-                              "pharmacy_rx_ready.jpg"}
+                            {selectedTemplate.imageFileName ??
+                              "attached_image.jpg"}
                           </span>
                         </div>
                         <p className="text-[11px] text-muted-foreground">
@@ -679,7 +443,6 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                   </div>
                 )}
 
-                {/* Template Metadata */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold block">
@@ -695,7 +458,7 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                     </span>
                     <p className="text-xs text-foreground">
                       {new Date(
-                        selectedTemplate.createdAt || Date.now(),
+                        selectedTemplate.createdAt ?? Date.now(),
                       ).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
@@ -737,11 +500,13 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                 </div>
 
                 <div className="flex justify-center py-4">
-                  {/* WhatsApp Business Interface */}
                   <div className="w-full max-w-md bg-[#0b141a] rounded-2xl overflow-hidden shadow-2xl border border-border/50">
                     {/* WhatsApp Header */}
                     <div className="bg-[#202c33] px-4 py-3 flex items-center gap-3 border-b border-[#2a3942]">
-                      <button className="text-[#8696a0] hover:text-[#aebac1] transition-colors">
+                      <button
+                        type="button"
+                        className="text-[#8696a0] hover:text-[#aebac1] transition-colors"
+                      >
                         <svg
                           className="w-5 h-5"
                           fill="none"
@@ -767,7 +532,10 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                           Official WhatsApp Business
                         </p>
                       </div>
-                      <button className="text-[#8696a0] hover:text-[#aebac1] transition-colors">
+                      <button
+                        type="button"
+                        className="text-[#8696a0] hover:text-[#aebac1] transition-colors"
+                      >
                         <svg
                           className="w-5 h-5"
                           fill="none"
@@ -784,15 +552,14 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                       </button>
                     </div>
 
-                    {/* Chat Background Pattern */}
+                    {/* Chat Background */}
                     <div
-                      className="p-4 min-h-100 relative"
+                      className="p-4 min-h-48 relative"
                       style={{
                         background:
                           "linear-gradient(to bottom, #0b141a 0%, #0d1418 100%)",
                       }}
                     >
-                      {/* Subtle pattern overlay */}
                       <div
                         className="absolute inset-0 opacity-[0.02]"
                         style={{
@@ -800,10 +567,8 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                         }}
                       />
 
-                      {/* Message Bubble */}
                       <div className="relative flex justify-start animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="max-w-[85%] bg-[#005c4b] rounded-lg rounded-tl-sm p-2.5 shadow-lg">
-                          {/* Image if exists */}
                           {selectedTemplate.imageUrl && (
                             <div className="mb-2 rounded-lg overflow-hidden">
                               <img
@@ -813,8 +578,6 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                               />
                             </div>
                           )}
-
-                          {/* Message Text with rendered variables */}
                           <div className="space-y-1.5">
                             <p className="text-[13px] text-[#e9edef] leading-[1.4] whitespace-pre-wrap">
                               {selectedTemplate.text
@@ -838,8 +601,6 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                                   "https://rx.care/login",
                                 )}
                             </p>
-
-                            {/* Message metadata */}
                             <div className="flex items-center justify-end gap-1 pt-0.5">
                               <span className="text-[10px] text-[#8696a0]">
                                 {new Date().toLocaleTimeString([], {
@@ -862,7 +623,6 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                         </div>
                       </div>
 
-                      {/* Timestamp Badge */}
                       <div className="flex justify-center mt-4">
                         <span className="px-3 py-1 rounded-full bg-[#202c33]/80 backdrop-blur-sm text-[10px] text-[#8696a0] font-medium shadow-lg border border-[#2a3942]/50">
                           Today
@@ -870,9 +630,12 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                       </div>
                     </div>
 
-                    {/* Message Input Bar (disabled) */}
+                    {/* Input Bar (decorative) */}
                     <div className="bg-[#202c33] px-3 py-2 flex items-center gap-2 border-t border-[#2a3942]">
-                      <button className="text-[#8696a0] p-1.5 hover:bg-[#2a3942] rounded-full transition-colors">
+                      <button
+                        type="button"
+                        className="text-[#8696a0] p-1.5 hover:bg-[#2a3942] rounded-full transition-colors"
+                      >
                         <svg
                           className="w-5 h-5"
                           fill="none"
@@ -887,12 +650,15 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                           />
                         </svg>
                       </button>
-                      <div className="flex-1 bg-[#2a3942] rounded-lg px-3 py-1.5 flex items-center">
+                      <div className="flex-1 bg-[#2a3942] rounded-lg px-3 py-1.5">
                         <span className="text-[13px] text-[#8696a0] select-none">
                           Type a message
                         </span>
                       </div>
-                      <button className="text-[#8696a0] p-1.5 hover:bg-[#2a3942] rounded-full transition-colors">
+                      <button
+                        type="button"
+                        className="text-[#8696a0] p-1.5 hover:bg-[#2a3942] rounded-full transition-colors"
+                      >
                         <svg
                           className="w-5 h-5"
                           fill="none"
@@ -911,8 +677,6 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                   </div>
                 </div>
               </div>
-
-              {/* Template Details - Removed (moved above preview) */}
             </div>
           ) : (
             <div className="bg-card border border-border rounded-xl p-12 text-center shadow-md">
@@ -954,7 +718,7 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                 <input
                   type="text"
                   required
-                  value={editingTemplate.title || ""}
+                  value={editingTemplate.title ?? ""}
                   onChange={(e) =>
                     setEditingTemplate({
                       ...editingTemplate,
@@ -972,7 +736,7 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                   Category
                 </label>
                 <select
-                  value={editingTemplate.category || "Pharmacy"}
+                  value={editingTemplate.category ?? "Pharmacy"}
                   onChange={(e) =>
                     setEditingTemplate({
                       ...editingTemplate,
@@ -997,7 +761,7 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                 </label>
                 <textarea
                   required
-                  value={editingTemplate.text || ""}
+                  value={editingTemplate.text ?? ""}
                   onChange={(e) =>
                     setEditingTemplate({
                       ...editingTemplate,
@@ -1023,7 +787,7 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                       type="button"
                       onClick={() => handleInsertVariable(tag.tag)}
                       className="px-2 py-1 rounded text-[10px] font-mono bg-muted hover:bg-primary/20 hover:text-primary border border-border hover:border-primary/30 transition-all"
-                      title={`${tag.label} - Example: ${tag.example}`}
+                      title={`${tag.label} — Example: ${tag.example}`}
                     >
                       {`{{${tag.tag}}}`}
                     </button>
@@ -1036,7 +800,6 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                 <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
                   Attachment (Optional)
                 </label>
-
                 {editingTemplate.imageUrl ? (
                   <div className="relative">
                     <img
@@ -1076,7 +839,6 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                     />
                   </div>
                 )}
-
                 {uploadError && (
                   <p className="text-xs text-destructive mt-1">{uploadError}</p>
                 )}
@@ -1087,7 +849,7 @@ export function TemplatesView({ onUseTemplateInCampaign }: TemplatesViewProps) {
                     Or choose a preset:
                   </p>
                   <div className="grid grid-cols-3 gap-2">
-                    {SAMPLE_IMAGE_PRESETS.slice(0, 6).map((preset) => (
+                    {SAMPLE_IMAGE_PRESETS.map((preset) => (
                       <button
                         key={preset.url}
                         type="button"

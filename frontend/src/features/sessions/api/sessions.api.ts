@@ -1,9 +1,17 @@
-import type { WABridgeSession } from '@/types'
 import { config } from '@/lib/config'
+import {
+  sessionSchema,
+  sessionsSchema,
+  createSessionInputSchema,
+  sessionQrResponseSchema,
+  type Session,
+  type CreateSessionInput,
+  type SessionQrResponse,
+} from '../schemas/session.schema'
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
-export async function getSessions(): Promise<WABridgeSession[]> {
+export async function getSessions(): Promise<Session[]> {
   const response = await fetch(`${config.apiBaseUrl}/api/sessions`, {
     headers: {
       'Authorization': `Bearer ${config.authToken}`,
@@ -14,10 +22,13 @@ export async function getSessions(): Promise<WABridgeSession[]> {
     throw new Error(`Failed to fetch sessions: ${response.statusText}`)
   }
 
-  return response.json()
+  const data = await response.json()
+
+  // Runtime validation — throws ZodError if shape doesn't match
+  return sessionsSchema.parse(data)
 }
 
-export async function getSession(id: string): Promise<WABridgeSession> {
+export async function getSession(id: string): Promise<Session> {
   const response = await fetch(`${config.apiBaseUrl}/api/sessions/${id}`, {
     headers: {
       'Authorization': `Bearer ${config.authToken}`,
@@ -28,33 +39,35 @@ export async function getSession(id: string): Promise<WABridgeSession> {
     throw new Error(`Failed to fetch session ${id}: ${response.statusText}`)
   }
 
-  return response.json()
+  const data = await response.json()
+
+  // Runtime validation
+  return sessionSchema.parse(data)
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
-export type CreateSessionParams = {
-  name: string
-  apiKey: string
-  hourlyLimit?: number
-  dailyLimit?: number
-}
+export async function createSession(input: CreateSessionInput): Promise<Session> {
+  // Validate input before sending
+  const validatedInput = createSessionInputSchema.parse(input)
 
-export async function createSession(params: CreateSessionParams): Promise<WABridgeSession> {
   const response = await fetch(`${config.apiBaseUrl}/api/sessions`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${config.authToken}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(params),
+    body: JSON.stringify(validatedInput),
   })
 
   if (!response.ok) {
     throw new Error(`Failed to create session: ${response.statusText}`)
   }
 
-  return response.json()
+  const data = await response.json()
+
+  // Runtime validation
+  return sessionSchema.parse(data)
 }
 
 export async function deleteSession(id: string): Promise<void> {
@@ -70,7 +83,7 @@ export async function deleteSession(id: string): Promise<void> {
   }
 }
 
-export async function resetSessionLimits(id: string): Promise<WABridgeSession> {
+export async function resetSessionLimits(id: string): Promise<Session> {
   const response = await fetch(`${config.apiBaseUrl}/api/sessions/${id}/reset-limits`, {
     method: 'POST',
     headers: {
@@ -82,10 +95,13 @@ export async function resetSessionLimits(id: string): Promise<WABridgeSession> {
     throw new Error(`Failed to reset session limits: ${response.statusText}`)
   }
 
-  return response.json()
+  const data = await response.json()
+
+  // Runtime validation
+  return sessionSchema.parse(data)
 }
 
-export async function syncSession(id: string): Promise<WABridgeSession> {
+export async function syncSession(id: string): Promise<Session> {
   const response = await fetch(`${config.apiBaseUrl}/api/sessions/${id}/sync`, {
     method: 'POST',
     headers: {
@@ -97,10 +113,13 @@ export async function syncSession(id: string): Promise<WABridgeSession> {
     throw new Error(`Failed to sync session: ${response.statusText}`)
   }
 
-  return response.json()
+  const data = await response.json()
+
+  // Runtime validation
+  return sessionSchema.parse(data)
 }
 
-export async function getSessionQr(id: string): Promise<{ qrCodeData?: string }> {
+export async function getSessionQr(id: string): Promise<SessionQrResponse> {
   const response = await fetch(`${config.apiBaseUrl}/api/sessions/${id}/qr`, {
     headers: {
       'Authorization': `Bearer ${config.authToken}`,
@@ -111,7 +130,10 @@ export async function getSessionQr(id: string): Promise<{ qrCodeData?: string }>
     throw new Error(`Failed to get session QR: ${response.statusText}`)
   }
 
-  return response.json()
+  const data = await response.json()
+
+  // Runtime validation
+  return sessionQrResponseSchema.parse(data)
 }
 
 export type SendTestMessageParams = {

@@ -1,82 +1,17 @@
 import { useState, useCallback, useMemo } from 'react'
-import type { WABridgeSession, WABridgeConfig } from '@/types'
-
-/**
- * Helper to format duration in ms to human-readable string
- */
-function formatDuration(ms: number): string {
-  const seconds = Math.ceil(ms / 1000)
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${minutes}m ${secs}s`
-}
-
-/**
- * Helper to calculate session quota and rate limits
- */
-function getSessionQuota(session: WABridgeSession, now: number) {
-  const hourAgo = now - 60 * 60 * 1000
-  const dayAgo = now - 24 * 60 * 60 * 1000
-
-  const hourlyUsed = session.hourlySentTimestamps.filter((t) => t > hourAgo).length
-  const dailyUsed = session.dailySentTimestamps.filter((t) => t > dayAgo).length
-
-  const hourlyLimit = session.hourlyLimit || 5
-  const dailyLimit = session.dailyLimit || 30
-
-  const isHourlyCapped = hourlyUsed >= hourlyLimit
-  const isDailyCapped = dailyUsed >= dailyLimit
-
-  const hourlyRemaining = Math.max(0, hourlyLimit - hourlyUsed)
-  const dailyRemaining = Math.max(0, dailyLimit - dailyUsed)
-
-  let nextHourlySlotMs: number | null = null
-  if (isHourlyCapped && session.hourlySentTimestamps.length > 0) {
-    const oldest = session.hourlySentTimestamps.filter((t) => t > hourAgo).sort((a, b) => a - b)[0]
-    if (oldest) {
-      nextHourlySlotMs = oldest + 60 * 60 * 1000 - now
-    }
-  }
-
-  let nextDailySlotMs: number | null = null
-  if (isDailyCapped && session.dailySentTimestamps.length > 0) {
-    const oldest = session.dailySentTimestamps.filter((t) => t > dayAgo).sort((a, b) => a - b)[0]
-    if (oldest) {
-      nextDailySlotMs = oldest + 24 * 60 * 60 * 1000 - now
-    }
-  }
-
-  const canSend = !isHourlyCapped && !isDailyCapped
-  let reason = ''
-  if (isHourlyCapped) reason = 'Hourly limit reached'
-  else if (isDailyCapped) reason = 'Daily limit reached'
-
-  return {
-    hourlyUsed,
-    hourlyLimit,
-    hourlyRemaining,
-    isHourlyCapped,
-    dailyUsed,
-    dailyLimit,
-    dailyRemaining,
-    isDailyCapped,
-    canSend,
-    reason,
-    nextHourlySlotMs,
-    nextDailySlotMs,
-  }
-}
+import type { WABridgeConfig } from '@/types'
+import type { Session } from '../schemas/session.schema'
+import { getSessionQuota, formatDuration } from '../utils/quota'
 
 /**
  * Comprehensive hook for SessionsDashboard component
  * Manages session quotas, verification testing, live updates
  */
 export function useSessionDashboard(
-  sessions: WABridgeSession[],
+  sessions: Session[],
   _config: WABridgeConfig,
   onResetSessionLimits: (id: string) => void,
-  onUpdateSessions: (sessions: WABridgeSession[]) => void
+  onUpdateSessions: (sessions: Session[]) => void
 ) {
   const [testPhone, setTestPhone] = useState<string>('+966 50 123 4567')
   const [testSessionId, setTestSessionId] = useState<string | null>(null)
@@ -127,7 +62,7 @@ export function useSessionDashboard(
 
   // Update single session
   const updateSession = useCallback(
-    (updated: WABridgeSession) => {
+    (updated: Session) => {
       onUpdateSessions(sessions.map((s) => (s.id === updated.id ? updated : s)))
     },
     [sessions, onUpdateSessions]
@@ -162,10 +97,10 @@ export function useSessionDashboard(
  * @deprecated Use useSessionDashboard instead
  */
 export function useSessions(
-  sessions: WABridgeSession[],
+  sessions: Session[],
   _config: WABridgeConfig,
   onResetLimits: (id: string) => void,
-  onUpdateSessions: (sessions: WABridgeSession[]) => void
+  onUpdateSessions: (sessions: Session[]) => void
 ) {
   const [testPhone, setTestPhone] = useState('')
   const [testResults, setTestResults] = useState<Record<string, string>>({})
@@ -173,7 +108,7 @@ export function useSessions(
   const resetLimits = useCallback((id: string) => onResetLimits(id), [onResetLimits])
 
   const updateSession = useCallback(
-    (updated: WABridgeSession) => {
+    (updated: Session) => {
       onUpdateSessions(sessions.map((s) => (s.id === updated.id ? updated : s)))
     },
     [sessions, onUpdateSessions]

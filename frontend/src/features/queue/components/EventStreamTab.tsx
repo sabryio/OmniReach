@@ -2,6 +2,7 @@
  * EventStreamTab — Real-time event stream with category/severity filtering,
  * search, live toggle, export, and detail inspector.
  * Category list, badge helpers, and detail modal live in logShared.tsx.
+ * REFACTORED: Now purely presentational, receives all state as props
  */
 import { useState } from "react";
 import {
@@ -22,33 +23,34 @@ import {
 
 interface EventStreamTabProps {
   logs: LogEntry[];
-  /** Owned by LogsTab; EventStream exposes export + inspect only — no clear here */
+  categoryFilter: string;
+  setCategoryFilter: (filter: string) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  filteredLogs: LogEntry[];
+  selectedLogDetail: LogEntry | null;
+  setSelectedLogDetail: (log: LogEntry | null) => void;
 }
 
 const SEVERITIES = ["all", "info", "success", "warn", "error"] as const;
 
-export function EventStreamTab({ logs }: EventStreamTabProps) {
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+export function EventStreamTab({
+  categoryFilter,
+  setCategoryFilter,
+  searchQuery,
+  setSearchQuery,
+  filteredLogs,
+  selectedLogDetail,
+  setSelectedLogDetail,
+}: EventStreamTabProps) {
   const [severityFilter, setSeverityFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("");
   const [isLive, setIsLive] = useState(true);
-  const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const filtered = logs.filter((ev) => {
-    if (categoryFilter !== "all" && ev.category !== categoryFilter)
-      return false;
-    if (severityFilter !== "all" && ev.level !== severityFilter) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return (
-        ev.message.toLowerCase().includes(q) ||
-        ev.category.toLowerCase().includes(q) ||
-        (ev.details && JSON.stringify(ev.details).toLowerCase().includes(q))
-      );
-    }
-    return true;
-  });
+  // Additional local filtering for severity
+  const severityFiltered = filteredLogs.filter(
+    (ev) => severityFilter === "all" || ev.level === severityFilter,
+  );
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -57,7 +59,7 @@ export function EventStreamTab({ logs }: EventStreamTabProps) {
   };
 
   const handleExportJSON = () => {
-    const blob = new Blob([JSON.stringify(filtered, null, 2)], {
+    const blob = new Blob([JSON.stringify(severityFiltered, null, 2)], {
       type: "application/json",
     });
     const url = URL.createObjectURL(blob);
@@ -69,7 +71,7 @@ export function EventStreamTab({ logs }: EventStreamTabProps) {
   };
 
   const handleExportCSV = () => {
-    const rows = filtered.map((e) =>
+    const rows = severityFiltered.map((e) =>
       [
         new Date(e.timestamp).toISOString(),
         e.level,
@@ -177,13 +179,13 @@ export function EventStreamTab({ logs }: EventStreamTabProps) {
       </div>
 
       {/* Event List */}
-      {filtered.length === 0 ? (
+      {severityFiltered.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground text-xs">
           No events match current filters
         </div>
       ) : (
         <div className="space-y-1.5 max-h-137.5 overflow-y-auto font-mono text-[11px] bg-muted/20 p-3 rounded-xl border border-border">
-          {filtered.map((ev) => {
+          {severityFiltered.map((ev) => {
             const timeStr = new Date(ev.timestamp).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
@@ -193,7 +195,7 @@ export function EventStreamTab({ logs }: EventStreamTabProps) {
             return (
               <div
                 key={ev.id}
-                onClick={() => setSelectedLog(ev)}
+                onClick={() => setSelectedLogDetail(ev)}
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-card border border-border hover:border-primary/30 transition-all cursor-pointer group"
               >
                 <div className="flex items-center gap-2 overflow-hidden flex-1">
@@ -233,7 +235,7 @@ export function EventStreamTab({ logs }: EventStreamTabProps) {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedLog(ev);
+                      setSelectedLogDetail(ev);
                     }}
                     className="px-2 py-0.5 rounded text-[10px] bg-muted hover:bg-primary hover:text-primary-foreground text-muted-foreground border border-border transition-colors"
                   >
@@ -246,10 +248,10 @@ export function EventStreamTab({ logs }: EventStreamTabProps) {
         </div>
       )}
 
-      {selectedLog && (
+      {selectedLogDetail && (
         <LogDetailModal
-          log={selectedLog}
-          onClose={() => setSelectedLog(null)}
+          log={selectedLogDetail}
+          onClose={() => setSelectedLogDetail(null)}
         />
       )}
     </div>

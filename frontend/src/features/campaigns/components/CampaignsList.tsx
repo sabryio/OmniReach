@@ -1,8 +1,9 @@
 /**
  * CampaignsList — master-detail split pane matching mockup structure
  * Styled with shadcn CSS variables via Tailwind utilities
+ * REFACTORED: All state logic extracted to useCampaignsList hook.
+ * Component is now purely presentational, receiving data and callbacks.
  */
-import { useState } from "react";
 import {
   Layers,
   Search,
@@ -18,6 +19,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import type { Campaign, QueueItem, WABridgeSession } from "@/types";
+import { useCampaignsList } from "../hooks/useCampaigns";
 
 interface CampaignsListProps {
   campaigns: Campaign[];
@@ -43,82 +45,26 @@ export function CampaignsList({
   onUnarchiveCampaign,
   onNewCampaignClick,
 }: CampaignsListProps) {
-  // Tab: 'active' (non-archived) vs 'archived'
-  const [viewTab, setViewTab] = useState<"active" | "archived">("active");
-  const [campaignSearch, setCampaignSearch] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | "running" | "paused" | "completed" | "draft"
-  >("all");
-  const [contactSearchQuery, setContactSearchQuery] = useState<string>("");
-  const [recipientStatusFilter, setRecipientStatusFilter] =
-    useState<string>("all");
-
-  // Partition campaigns into active and archived
-  const activeCampaigns = campaigns.filter((c) => !c.isArchived);
-  const archivedCampaigns = campaigns.filter((c) => !!c.isArchived);
-
-  const currentTabList =
-    viewTab === "active" ? activeCampaigns : archivedCampaigns;
-
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string>(() => {
-    if (activeCampaigns.length > 0 && activeCampaigns[0]) {
-      return activeCampaigns[0].id;
-    }
-    if (campaigns.length > 0 && campaigns[0]) {
-      return campaigns[0].id;
-    }
-    return "";
-  });
-
-  // Filtered list based on search and status
-  const filteredCampaigns = currentTabList.filter((c) => {
-    const matchesSearch =
-      c.title.toLowerCase().includes(campaignSearch.toLowerCase()) ||
-      c.id.toLowerCase().includes(campaignSearch.toLowerCase());
-    const matchesStatus = statusFilter === "all" || c.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  // Keep selection valid
-  const selectedCampaign =
-    filteredCampaigns.find((c) => c.id === selectedCampaignId) ||
-    currentTabList.find((c) => c.id === selectedCampaignId) ||
-    filteredCampaigns[0] ||
-    currentTabList[0] ||
-    null;
-
-  const selectedCampaignQueue = selectedCampaign
-    ? queue.filter((q) => q.campaignId === selectedCampaign.id)
-    : [];
-
-  const filteredContacts = selectedCampaign
-    ? (selectedCampaign.contacts ?? []).filter((c) => {
-        const qItem = selectedCampaignQueue.find((q) => q.contactId === c.id);
-        const matchesSearch =
-          c.name.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
-          c.rawPhone.includes(contactSearchQuery);
-
-        if (recipientStatusFilter === "all") return matchesSearch;
-        if (recipientStatusFilter === "sent")
-          return matchesSearch && qItem?.status === "sent";
-        if (recipientStatusFilter === "skipped")
-          return (
-            matchesSearch &&
-            (c.verificationStatus === "unregistered" ||
-              qItem?.status === "skipped_unregistered")
-          );
-        if (recipientStatusFilter === "pending")
-          return (
-            matchesSearch &&
-            (!qItem ||
-              qItem.status === "pending" ||
-              qItem.status === "held_rate_limit")
-          );
-        if (recipientStatusFilter === "failed")
-          return matchesSearch && qItem?.status === "failed";
-        return matchesSearch;
-      })
-    : [];
+  const {
+    viewTab,
+    activeCampaigns,
+    archivedCampaigns,
+    switchToActiveTab,
+    switchToArchivedTab,
+    campaignSearch,
+    setCampaignSearch,
+    statusFilter,
+    setStatusFilter,
+    filteredCampaigns,
+    setSelectedCampaignId,
+    selectedCampaign,
+    selectedCampaignQueue,
+    contactSearchQuery,
+    setContactSearchQuery,
+    recipientStatusFilter,
+    setRecipientStatusFilter,
+    filteredContacts,
+  } = useCampaignsList(campaigns, queue);
 
   if (campaigns.length === 0) {
     return (
@@ -174,12 +120,7 @@ export function CampaignsList({
           <div className="flex items-center bg-muted/50 p-1 rounded-xl border border-border">
             <button
               type="button"
-              onClick={() => {
-                setViewTab("active");
-                if (activeCampaigns.length > 0 && activeCampaigns[0]) {
-                  setSelectedCampaignId(activeCampaigns[0].id);
-                }
-              }}
+              onClick={switchToActiveTab}
               className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 viewTab === "active"
                   ? "bg-primary text-primary-foreground shadow-sm"
@@ -192,12 +133,7 @@ export function CampaignsList({
 
             <button
               type="button"
-              onClick={() => {
-                setViewTab("archived");
-                if (archivedCampaigns.length > 0 && archivedCampaigns[0]) {
-                  setSelectedCampaignId(archivedCampaigns[0].id);
-                }
-              }}
+              onClick={switchToArchivedTab}
               className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 viewTab === "archived"
                   ? "bg-primary text-primary-foreground shadow-sm"

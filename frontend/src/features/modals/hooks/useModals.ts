@@ -1,6 +1,9 @@
 import { useState, useCallback } from 'react'
-import type { WABridgeSession, WABridgeConfig } from '@/types'
+import type { WABridgeSession, WABridgeConfig, ThemeMode, ThemeColor, SchedulerState } from '@/types'
 
+/**
+ * Modal visibility management hook
+ */
 export function useModals() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isVerifierOpen, setIsVerifierOpen] = useState(false)
@@ -19,6 +22,96 @@ export function useModals() {
   }
 }
 
+/**
+ * Comprehensive hook for SettingsModal component
+ * Manages tabs, form state, theme settings, scheduler debug
+ */
+export function useSettings(
+  config: WABridgeConfig,
+  schedulerState: SchedulerState,
+  themeMode: ThemeMode,
+  themeColor: ThemeColor,
+  onSaveConfig: (config: WABridgeConfig) => void,
+  onSetThemeColor: (color: ThemeColor) => void,
+  onToggleThemeMode: () => void,
+  onSetStrictTimeWindow: (strict: boolean) => void,
+  onSetSimulatedHourOffset: (offset: number) => void,
+  onClearAllData: () => void
+) {
+  const [activeTab, setActiveTab] = useState<'appearance' | 'wabridge' | 'schedule' | 'system'>('appearance')
+  const [localConfig, setLocalConfig] = useState<WABridgeConfig>(config)
+  const [hasChanges, setHasChanges] = useState(false)
+  const [showCopied, setShowCopied] = useState(false)
+
+  // Update local config field
+  const updateConfigField = useCallback(
+    <K extends keyof WABridgeConfig>(key: K, value: WABridgeConfig[K]) => {
+      setLocalConfig((prev) => ({ ...prev, [key]: value }))
+      setHasChanges(true)
+    },
+    []
+  )
+
+  // Save settings
+  const handleSave = useCallback(() => {
+    onSaveConfig(localConfig)
+    setHasChanges(false)
+  }, [localConfig, onSaveConfig])
+
+  // Cancel/reset
+  const handleCancel = useCallback(() => {
+    setLocalConfig(config)
+    setHasChanges(false)
+  }, [config])
+
+  // Copy to clipboard
+  const handleCopyToClipboard = useCallback((text: string) => {
+    navigator.clipboard.writeText(text)
+    setShowCopied(true)
+    setTimeout(() => setShowCopied(false), 2000)
+  }, [])
+
+  // Clear all data with confirmation
+  const handleClearAllDataConfirm = useCallback(() => {
+    if (window.confirm('Clear all campaigns, queue items, and logs? This cannot be undone.')) {
+      onClearAllData()
+    }
+  }, [onClearAllData])
+
+  return {
+    // Tab state
+    activeTab,
+    setActiveTab,
+
+    // Form state
+    localConfig,
+    setLocalConfig,
+    updateConfigField,
+    hasChanges,
+
+    // Theme
+    themeMode,
+    themeColor,
+    onSetThemeColor,
+    onToggleThemeMode,
+
+    // Scheduler debug
+    schedulerState,
+    onSetStrictTimeWindow,
+    onSetSimulatedHourOffset,
+
+    // Actions
+    handleSave,
+    handleCancel,
+    handleCopyToClipboard,
+    handleClearAllDataConfirm,
+    showCopied,
+  }
+}
+
+/**
+ * Quick verifier hook
+ */
 interface VerifyResult {
   isRegistered: boolean
   phone: string

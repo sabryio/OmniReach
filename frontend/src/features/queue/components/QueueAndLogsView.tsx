@@ -2,18 +2,12 @@
  * QueueAndLogsView — container with 4 sub-tabs:
  *   Queue · Event Stream · Analytics · Logs
  *
- * Changes from original:
- * - Removed duplicate scheduler stats bar that overlapped with
- *   Analytics tab's Queue Health tiles. One set of stats lives here,
- *   derived directly from the queue prop so Held is a single source
- *   of truth (not split between schedulerState and queue filter).
- * - Event Stream tab count now shows log entries for that tab, not the
- *   same number as Exec Logs.
- * - onClearLogs is passed only to LogsTab (the correct owner).
+ * REFACTORED: All state logic extracted to useQueueAndLogs hook.
+ * Component is now purely presentational, receiving data and callbacks.
  */
-import { useState } from "react";
 import { Activity, Radio, BarChart2, Terminal } from "lucide-react";
 import type { QueueItem, LogEntry, SchedulerState } from "@/types";
+import { useQueueAndLogs } from "../hooks/useQueue";
 import { QueueTab } from "./QueueTab";
 import { EventStreamTab } from "./EventStreamTab";
 import { AnalyticsTab } from "./AnalyticsTab";
@@ -26,38 +20,44 @@ interface QueueAndLogsViewProps {
   onClearLogs: () => void;
 }
 
-type SubTab = "queue" | "events" | "analytics" | "logs";
-
 export function QueueAndLogsView({
   queue,
   logs,
   schedulerState,
   onClearLogs,
 }: QueueAndLogsViewProps) {
-  const [activeTab, setActiveTab] = useState<SubTab>("queue");
-
-  // ── Single-source queue counts ─────────────────────────────────────────────
-  const pendingCount = queue.filter(
-    (q) =>
-      q.status === "pending" ||
-      q.status === "sending" ||
-      q.status === "verifying",
-  ).length;
-  const heldCount = queue.filter(
-    (q) => q.status === "held_rate_limit" || q.status === "held_time_window",
-  ).length;
-  const sentCount = queue.filter((q) => q.status === "sent").length;
+  const {
+    activeTab,
+    setActiveTab,
+    queueCounts,
+    queueFilter,
+    setQueueFilter,
+    queueSearch,
+    setQueueSearch,
+    filteredQueue,
+    selectedPayload,
+    setSelectedPayload,
+    getQueueCountFor,
+    categoryFilter,
+    setCategoryFilter,
+    logSearch,
+    setLogSearch,
+    filteredLogs,
+    eventStreamLogs,
+    selectedLogDetail,
+    setSelectedLogDetail,
+  } = useQueueAndLogs(queue, logs);
 
   // ── Tab definitions ────────────────────────────────────────────────────────
-  const TABS: { id: SubTab; label: string; icon: React.ReactNode }[] = [
+  const TABS = [
     {
-      id: "queue",
+      id: "queue" as const,
       label: `Live Queue (${queue.length})`,
       icon: <Activity className="w-3.5 h-3.5" />,
     },
     {
-      id: "events",
-      label: `Event Stream (${logs.filter((l) => l.category !== "system").length})`,
+      id: "events" as const,
+      label: `Event Stream (${eventStreamLogs.length})`,
       icon: (
         <Radio
           className={`w-3.5 h-3.5 ${activeTab === "events" ? "text-destructive animate-pulse" : "text-destructive/60"}`}
@@ -65,12 +65,12 @@ export function QueueAndLogsView({
       ),
     },
     {
-      id: "analytics",
+      id: "analytics" as const,
       label: "Telemetry",
       icon: <BarChart2 className="w-3.5 h-3.5" />,
     },
     {
-      id: "logs",
+      id: "logs" as const,
       label: `Exec Logs (${logs.length})`,
       icon: <Terminal className="w-3.5 h-3.5" />,
     },
@@ -131,9 +131,13 @@ export function QueueAndLogsView({
       {/* Single queue stats bar — the only place these numbers appear */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Pending", value: pendingCount, cls: "text-foreground" },
-          { label: "Held", value: heldCount, cls: "text-warning" },
-          { label: "Sent", value: sentCount, cls: "text-success" },
+          {
+            label: "Pending",
+            value: queueCounts.pendingCount,
+            cls: "text-foreground",
+          },
+          { label: "Held", value: queueCounts.heldCount, cls: "text-warning" },
+          { label: "Sent", value: queueCounts.sentCount, cls: "text-success" },
           {
             label: "Time Window",
             value: schedulerState.isWithinTimeWindow ? "Open" : "Closed",
@@ -153,11 +157,44 @@ export function QueueAndLogsView({
       </div>
 
       {/* Sub-tab content */}
-      {activeTab === "queue" && <QueueTab queue={queue} />}
-      {activeTab === "events" && <EventStreamTab logs={logs} />}
+      {activeTab === "queue" && (
+        <QueueTab
+          queue={queue}
+          queueFilter={queueFilter}
+          setQueueFilter={setQueueFilter}
+          searchQuery={queueSearch}
+          setSearchQuery={setQueueSearch}
+          filteredQueue={filteredQueue}
+          selectedPayload={selectedPayload}
+          setSelectedPayload={setSelectedPayload}
+          getQueueCountFor={getQueueCountFor}
+        />
+      )}
+      {activeTab === "events" && (
+        <EventStreamTab
+          logs={eventStreamLogs}
+          categoryFilter={categoryFilter}
+          setCategoryFilter={setCategoryFilter}
+          searchQuery={logSearch}
+          setSearchQuery={setLogSearch}
+          filteredLogs={filteredLogs.filter((l) => l.category !== "system")}
+          selectedLogDetail={selectedLogDetail}
+          setSelectedLogDetail={setSelectedLogDetail}
+        />
+      )}
       {activeTab === "analytics" && <AnalyticsTab queue={queue} logs={logs} />}
       {activeTab === "logs" && (
-        <LogsTab logs={logs} onClearLogs={onClearLogs} />
+        <LogsTab
+          logs={logs}
+          categoryFilter={categoryFilter}
+          setCategoryFilter={setCategoryFilter}
+          searchQuery={logSearch}
+          setSearchQuery={setLogSearch}
+          filteredLogs={filteredLogs}
+          selectedLogDetail={selectedLogDetail}
+          setSelectedLogDetail={setSelectedLogDetail}
+          onClearLogs={onClearLogs}
+        />
       )}
     </div>
   );

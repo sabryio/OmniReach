@@ -1,6 +1,146 @@
-import { useState, useCallback } from 'react'
-import type { Campaign, MessageTemplate, Contact } from '@/types'
+import { useState, useCallback, useMemo } from 'react'
+import type { Campaign, MessageTemplate, Contact, QueueItem } from '@/types'
 
+/**
+ * Comprehensive hook for CampaignsList component
+ * Manages all state: view tabs, filters, selection, contact filtering, queue integration
+ */
+export function useCampaignsList(campaigns: Campaign[], queue: QueueItem[]) {
+  // Tab: 'active' (non-archived) vs 'archived'
+  const [viewTab, setViewTab] = useState<'active' | 'archived'>('active')
+
+  // Campaign list filters
+  const [campaignSearch, setCampaignSearch] = useState<string>('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'paused' | 'completed' | 'draft'>('all')
+
+  // Contact/recipient filters
+  const [contactSearchQuery, setContactSearchQuery] = useState<string>('')
+  const [recipientStatusFilter, setRecipientStatusFilter] = useState<string>('all')
+
+  // Partition campaigns
+  const activeCampaigns = useMemo(() => campaigns.filter((c) => !c.isArchived), [campaigns])
+  const archivedCampaigns = useMemo(() => campaigns.filter((c) => !!c.isArchived), [campaigns])
+
+  const currentTabList = viewTab === 'active' ? activeCampaigns : archivedCampaigns
+
+  // Selection state
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>(() => {
+    if (activeCampaigns.length > 0 && activeCampaigns[0]) {
+      return activeCampaigns[0].id
+    }
+    if (campaigns.length > 0 && campaigns[0]) {
+      return campaigns[0].id
+    }
+    return ''
+  })
+
+  // Filtered campaigns list
+  const filteredCampaigns = useMemo(() => {
+    return currentTabList.filter((c) => {
+      const matchesSearch =
+        c.title.toLowerCase().includes(campaignSearch.toLowerCase()) ||
+        c.id.toLowerCase().includes(campaignSearch.toLowerCase())
+      const matchesStatus = statusFilter === 'all' || c.status === statusFilter
+      return matchesSearch && matchesStatus
+    })
+  }, [currentTabList, campaignSearch, statusFilter])
+
+  // Keep selection valid
+  const selectedCampaign = useMemo(() => {
+    return (
+      filteredCampaigns.find((c) => c.id === selectedCampaignId) ||
+      currentTabList.find((c) => c.id === selectedCampaignId) ||
+      filteredCampaigns[0] ||
+      currentTabList[0] ||
+      null
+    )
+  }, [filteredCampaigns, currentTabList, selectedCampaignId])
+
+  // Queue items for selected campaign
+  const selectedCampaignQueue = useMemo(() => {
+    return selectedCampaign ? queue.filter((q) => q.campaignId === selectedCampaign.id) : []
+  }, [selectedCampaign, queue])
+
+  // Filtered contacts for detail pane
+  const filteredContacts = useMemo(() => {
+    if (!selectedCampaign) return []
+
+    return (selectedCampaign.contacts ?? []).filter((c) => {
+      const qItem = selectedCampaignQueue.find((q) => q.contactId === c.id)
+      const matchesSearch =
+        c.name.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
+        c.rawPhone.includes(contactSearchQuery)
+
+      if (recipientStatusFilter === 'all') return matchesSearch
+      if (recipientStatusFilter === 'sent')
+        return matchesSearch && qItem?.status === 'sent'
+      if (recipientStatusFilter === 'skipped')
+        return (
+          matchesSearch &&
+          (c.verificationStatus === 'unregistered' || qItem?.status === 'skipped_unregistered')
+        )
+      if (recipientStatusFilter === 'pending')
+        return (
+          matchesSearch &&
+          (!qItem || qItem.status === 'pending' || qItem.status === 'held_rate_limit')
+        )
+      if (recipientStatusFilter === 'failed')
+        return matchesSearch && qItem?.status === 'failed'
+      return matchesSearch
+    })
+  }, [selectedCampaign, selectedCampaignQueue, contactSearchQuery, recipientStatusFilter])
+
+  // Switch tabs and update selection
+  const switchToActiveTab = useCallback(() => {
+    setViewTab('active')
+    if (activeCampaigns.length > 0 && activeCampaigns[0]) {
+      setSelectedCampaignId(activeCampaigns[0].id)
+    }
+  }, [activeCampaigns])
+
+  const switchToArchivedTab = useCallback(() => {
+    setViewTab('archived')
+    if (archivedCampaigns.length > 0 && archivedCampaigns[0]) {
+      setSelectedCampaignId(archivedCampaigns[0].id)
+    }
+  }, [archivedCampaigns])
+
+  return {
+    // View state
+    viewTab,
+    setViewTab,
+    activeCampaigns,
+    archivedCampaigns,
+    currentTabList,
+    switchToActiveTab,
+    switchToArchivedTab,
+
+    // Campaign list filters
+    campaignSearch,
+    setCampaignSearch,
+    statusFilter,
+    setStatusFilter,
+    filteredCampaigns,
+
+    // Selection
+    selectedCampaignId,
+    setSelectedCampaignId,
+    selectedCampaign,
+    selectedCampaignQueue,
+
+    // Contact/recipient filters
+    contactSearchQuery,
+    setContactSearchQuery,
+    recipientStatusFilter,
+    setRecipientStatusFilter,
+    filteredContacts,
+  }
+}
+
+/**
+ * Legacy hook for backward compatibility
+ * @deprecated Use useCampaignsList instead
+ */
 export function useCampaigns(campaigns: Campaign[]) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'paused' | 'completed' | 'draft'>('all')

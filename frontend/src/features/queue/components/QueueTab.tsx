@@ -1,7 +1,7 @@
 /**
  * QueueTab — Live send queue with status filtering, search, and payload inspector
+ * REFACTORED: Now purely presentational, receives all state as props
  */
-import { useState } from "react";
 import {
   Filter,
   Search,
@@ -17,6 +17,14 @@ import type { QueueItem } from "@/types";
 
 interface QueueTabProps {
   queue: QueueItem[];
+  queueFilter: string;
+  setQueueFilter: (filter: string) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  filteredQueue: QueueItem[];
+  selectedPayload: { title: string; json: string } | null;
+  setSelectedPayload: (payload: { title: string; json: string } | null) => void;
+  getQueueCountFor: (filterId: string) => number;
 }
 
 const QUEUE_FILTERS = [
@@ -30,7 +38,13 @@ const QUEUE_FILTERS = [
   { id: "failed", label: "Failed" },
 ] as const;
 
-function StatusBadge({ status, error }: { status: QueueItem["status"]; error?: string }) {
+function StatusBadge({
+  status,
+  error,
+}: {
+  status: QueueItem["status"];
+  error?: string;
+}) {
   switch (status) {
     case "sent":
       return (
@@ -52,13 +66,19 @@ function StatusBadge({ status, error }: { status: QueueItem["status"]; error?: s
       );
     case "skipped_unregistered":
       return (
-        <span className="inline-flex items-center gap-1 text-warning font-semibold" title={error}>
+        <span
+          className="inline-flex items-center gap-1 text-warning font-semibold"
+          title={error}
+        >
           🔴 Skipped (Unregistered)
         </span>
       );
     case "held_rate_limit":
       return (
-        <span className="inline-flex items-center gap-1 text-warning font-semibold" title={error}>
+        <span
+          className="inline-flex items-center gap-1 text-warning font-semibold"
+          title={error}
+        >
           <Clock className="w-3.5 h-3.5" /> Rate Hold
         </span>
       );
@@ -70,44 +90,28 @@ function StatusBadge({ status, error }: { status: QueueItem["status"]; error?: s
       );
     case "failed":
       return (
-        <span className="inline-flex items-center gap-1 text-destructive font-semibold" title={error}>
+        <span
+          className="inline-flex items-center gap-1 text-destructive font-semibold"
+          title={error}
+        >
           <AlertCircle className="w-3.5 h-3.5" /> Failed
         </span>
       );
     default:
-      return (
-        <span className="text-muted-foreground font-medium">Pending</span>
-      );
+      return <span className="text-muted-foreground font-medium">Pending</span>;
   }
 }
 
-export function QueueTab({ queue }: QueueTabProps) {
-  const [queueFilter, setQueueFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedPayload, setSelectedPayload] = useState<{
-    title: string;
-    json: string;
-  } | null>(null);
-
-  const filteredQueue = queue.filter((item) => {
-    if (queueFilter !== "all" && item.status !== queueFilter) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return (
-        item.phone.includes(q) ||
-        (item.recipientName && item.recipientName.toLowerCase().includes(q)) ||
-        item.campaignTitle.toLowerCase().includes(q) ||
-        item.renderedText.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
-
-  const countFor = (id: string) =>
-    id === "all"
-      ? queue.length
-      : queue.filter((q) => q.status === id).length;
-
+export function QueueTab({
+  queueFilter,
+  setQueueFilter,
+  searchQuery,
+  setSearchQuery,
+  filteredQueue,
+  selectedPayload,
+  setSelectedPayload,
+  getQueueCountFor,
+}: QueueTabProps) {
   return (
     <div className="bg-card border border-border rounded-2xl shadow-md overflow-hidden space-y-4 p-4 sm:p-5">
       {/* Filter Bar */}
@@ -127,7 +131,7 @@ export function QueueTab({ queue }: QueueTabProps) {
                   : "bg-muted/50 text-muted-foreground hover:text-foreground border border-border"
               }`}
             >
-              {f.label} ({countFor(f.id)})
+              {f.label} ({getQueueCountFor(f.id)})
             </button>
           ))}
         </div>
@@ -154,14 +158,30 @@ export function QueueTab({ queue }: QueueTabProps) {
           <table className="w-full text-xs">
             <thead className="bg-muted/50 text-muted-foreground font-semibold sticky top-0 border-b border-border">
               <tr>
-                <th className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider w-8">#</th>
-                <th className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider">Campaign</th>
-                <th className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider">Recipient</th>
-                <th className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider">Phone</th>
-                <th className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider">Status</th>
-                <th className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider">Session</th>
-                <th className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider">Message</th>
-                <th className="px-3 py-2.5 text-right text-[10px] uppercase tracking-wider">Inspect</th>
+                <th className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider w-8">
+                  #
+                </th>
+                <th className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider">
+                  Campaign
+                </th>
+                <th className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider">
+                  Recipient
+                </th>
+                <th className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider">
+                  Phone
+                </th>
+                <th className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider">
+                  Session
+                </th>
+                <th className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider">
+                  Message
+                </th>
+                <th className="px-3 py-2.5 text-right text-[10px] uppercase tracking-wider">
+                  Inspect
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -188,7 +208,10 @@ export function QueueTab({ queue }: QueueTabProps) {
                   <td className="px-3 py-2.5 font-mono text-[10px] text-muted-foreground">
                     {item.assignedSessionId || "Auto-balance"}
                   </td>
-                  <td className="px-3 py-2.5 text-muted-foreground truncate max-w-45" title={item.renderedText}>
+                  <td
+                    className="px-3 py-2.5 text-muted-foreground truncate max-w-45"
+                    title={item.renderedText}
+                  >
                     {item.renderedText}
                   </td>
                   <td className="px-3 py-2.5 text-right">
@@ -235,7 +258,11 @@ export function QueueTab({ queue }: QueueTabProps) {
             <pre className="text-[11px] font-mono text-success bg-muted/30 rounded-xl p-4 overflow-auto max-h-96 border border-border">
               {(() => {
                 try {
-                  return JSON.stringify(JSON.parse(selectedPayload.json), null, 2);
+                  return JSON.stringify(
+                    JSON.parse(selectedPayload.json),
+                    null,
+                    2,
+                  );
                 } catch {
                   return selectedPayload.json;
                 }

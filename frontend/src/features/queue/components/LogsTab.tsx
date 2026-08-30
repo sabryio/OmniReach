@@ -2,8 +2,8 @@
  * LogsTab — Raw system log viewer with category filter, level coloring,
  * clear action, and detail payload inspector.
  * Category list, badge helpers, and detail modal live in logShared.tsx.
+ * REFACTORED: Now purely presentational, receives all state as props
  */
-import { useState } from "react";
 import { Filter, Trash2 } from "lucide-react";
 import type { LogEntry } from "@/types";
 import {
@@ -15,17 +15,24 @@ import {
 
 interface LogsTabProps {
   logs: LogEntry[];
+  categoryFilter: string;
+  setCategoryFilter: (filter: string) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  filteredLogs: LogEntry[];
+  selectedLogDetail: LogEntry | null;
+  setSelectedLogDetail: (log: LogEntry | null) => void;
   onClearLogs: () => void;
 }
 
-export function LogsTab({ logs, onClearLogs }: LogsTabProps) {
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
-
-  const filtered = logs.filter(
-    (l) => categoryFilter === "all" || l.category === categoryFilter,
-  );
-
+export function LogsTab({
+  categoryFilter,
+  setCategoryFilter,
+  filteredLogs,
+  selectedLogDetail,
+  setSelectedLogDetail,
+  onClearLogs,
+}: LogsTabProps) {
   return (
     <div className="bg-card border border-border rounded-2xl shadow-md space-y-4 p-4 sm:p-5">
       {/* Filter Bar */}
@@ -53,13 +60,13 @@ export function LogsTab({ logs, onClearLogs }: LogsTabProps) {
       </div>
 
       {/* Log Entries */}
-      {filtered.length === 0 ? (
+      {filteredLogs.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground text-xs">
           No log entries match the current filter
         </div>
       ) : (
         <div className="space-y-1.5 max-h-[500px] overflow-y-auto bg-muted/20 p-3 rounded-xl border border-border font-mono text-[11px]">
-          {filtered.map((log) => {
+          {filteredLogs.map((log) => {
             const timeStr = new Date(log.timestamp).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
@@ -69,7 +76,7 @@ export function LogsTab({ logs, onClearLogs }: LogsTabProps) {
             return (
               <div
                 key={log.id}
-                onClick={() => log.details && setSelectedLog(log)}
+                onClick={() => log.details && setSelectedLogDetail(log)}
                 className="flex items-start gap-2.5 py-2 px-2.5 rounded-lg border border-transparent hover:border-border hover:bg-card transition-all cursor-pointer group"
               >
                 <span
@@ -96,7 +103,7 @@ export function LogsTab({ logs, onClearLogs }: LogsTabProps) {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedLog(log);
+                      setSelectedLogDetail(log);
                     }}
                     className="text-[10px] text-primary hover:underline shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
@@ -109,10 +116,10 @@ export function LogsTab({ logs, onClearLogs }: LogsTabProps) {
         </div>
       )}
 
-      {selectedLog && (
+      {selectedLogDetail && (
         <LogDetailModal
-          log={selectedLog}
-          onClose={() => setSelectedLog(null)}
+          log={selectedLogDetail}
+          onClose={() => setSelectedLogDetail(null)}
         />
       )}
     </div>

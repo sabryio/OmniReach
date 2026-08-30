@@ -183,3 +183,154 @@ in the shared types file.
 
 Components never call fetch/axios/WABridgeService directly. All side effects
 go through hooks. Hooks call services in `src/services/`.
+
+
+---
+
+## Architecture
+
+### Rule: Separation of Presentation and Data Logic
+
+All features follow a strict **presentational component + data hook** pattern:
+
+#### Components (`.tsx` files)
+- **Purely presentational** — receive all state and callbacks as props
+- **No `useState`, `useEffect`, or data fetching** inside component files
+- Focus only on rendering UI and handling user interactions
+- All event handlers call callbacks passed as props
+
+#### Hooks (`.ts` files)
+- **All state management** — `useState`, `useMemo`, `useCallback`
+- **All business logic** — filtering, searching, sorting, calculations
+- **All side effects** — API calls, localStorage, timers
+- Return computed values and handler functions
+- Hooks are composable and testable in isolation
+
+#### Example Pattern
+
+```tsx
+// ❌ BAD — Component manages its own state
+export function CampaignsList({ campaigns }: Props) {
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('all')
+  
+  const filtered = campaigns.filter(c => 
+    c.title.includes(search) && (filter === 'all' || c.status === filter)
+  )
+  
+  return <div>...</div>
+}
+
+// ✅ GOOD — Component is purely presentational
+export function CampaignsList({
+  campaigns,
+  search,
+  setSearch,
+  filter,
+  setFilter,
+  filteredCampaigns,
+}: Props) {
+  return <div>...</div>
+}
+
+// Hook manages all state
+export function useCampaignsList(campaigns: Campaign[]) {
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('all')
+  
+  const filteredCampaigns = useMemo(() => 
+    campaigns.filter(c => 
+      c.title.includes(search) && (filter === 'all' || c.status === filter)
+    ), [campaigns, search, filter]
+  )
+  
+  return { search, setSearch, filter, setFilter, filteredCampaigns }
+}
+```
+
+### Rule: Data flows from route level downward
+
+**All application data originates in `frontend/src/routes/$locale/index.tsx`:**
+
+1. **Route owns all mock data** — imports from `@/mock-data`
+2. **Route owns global state** — campaigns, queue, sessions, logs, config, scheduler
+3. **Route passes data down** to feature components via props
+4. **Components call hooks** with the data they receive
+5. **Hooks return derived state** and handlers back to components
+
+This pattern makes it trivial to replace mock data with real API calls later:
+- Change only the route file to fetch from backend
+- All components and hooks remain unchanged
+- No refactoring of feature code needed
+
+#### Data Flow Diagram
+
+```
+routes/$locale/index.tsx
+  ├─ useState(MOCK_CAMPAIGNS)  ← Mock data here
+  ├─ useState(MOCK_QUEUE)
+  ├─ useState(MOCK_SESSIONS)
+  └─ Passes props down ↓
+  
+<CampaignsList campaigns={campaigns} queue={queue} ... />
+  ├─ const { filtered, ... } = useCampaignsList(campaigns, queue)  ← Hook here
+  └─ Renders with hook results
+
+// Later: Real backend
+routes/$locale/index.tsx
+  ├─ const { data: campaigns } = useQuery('/api/campaigns')  ← Just change this
+  ├─ const { data: queue } = useQuery('/api/queue')
+  └─ Passes props down (components unchanged!)
+```
+
+### Rule: No DEFAULT data in hooks or components
+
+**Never initialize data inside hooks or components.**
+
+```tsx
+// ❌ BAD — Hook owns default data
+export function useTemplates() {
+  const [templates, setTemplates] = useState(DEFAULT_TEMPLATES)  // ❌ Wrong
+  return { templates, setTemplates }
+}
+
+// ✅ GOOD — Hook receives data as parameter
+export function useTemplateManager(initialTemplates: MessageTemplate[]) {
+  const [templates, setTemplates] = useState(initialTemplates)  // ✅ Correct
+  return { templates, setTemplates }
+}
+
+// Route decides the data source
+function App() {
+  const templates = MOCK_TEMPLATES  // or fetch from API
+  const hook = useTemplateManager(templates)
+  return <TemplatesView {...hook} />
+}
+```
+
+**Exception:** Constants that are truly configuration (not data) may live in hooks:
+- UI constants: `TABS = ['queue', 'logs']`
+- Filter options: `STATUS_FILTERS = ['all', 'sent', 'failed']`
+- Default form values: `DEFAULT_PHONE_PREFIX = '+966'`
+
+### Available Hooks
+
+Each feature exports these comprehensive hooks:
+
+| Feature    | Hook Name               | Purpose                                    |
+|------------|-------------------------|--------------------------------------------|
+| Queue      | `useQueueAndLogs`       | Tabs, filters, search, modal state         |
+| Campaigns  | `useCampaignsList`      | View tabs, selection, contact filtering    |
+| Campaigns  | `useCampaignWizard`     | Wizard steps, form state                   |
+| Templates  | `useTemplateManager`    | CRUD, filters, editor modal, image upload  |
+| Customers  | `useCustomerManager`    | Filters, selection, verification, export   |
+| Sessions   | `useSessionDashboard`   | Quota calculation, verification testing    |
+| Reports    | `useReportsManager`     | Date range, metrics, export formats        |
+| Modals     | `useModals`             | Modal visibility (settings/verifier/about) |
+| Modals     | `useSettings`           | Settings form, theme, scheduler debug      |
+| Modals     | `useQuickVerifier`      | Phone verification state                   |
+| Layout     | `useLayout`             | Tab navigation, sidebar, theme, compact    |
+
+All hooks are exported from their feature's `index.ts` barrel file.
+
+---

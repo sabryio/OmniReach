@@ -1,0 +1,72 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "apps/omnireach",
+    "crates/core",
+    "crates/store",
+    "crates/glue",
+    "crates/server",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["OmniReach"]
+license = "MIT"
+publish = false
+
+# ── Shared dependency versions ────────────────────────────────────────────────
+[workspace.dependencies]
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# HTTP framework
+axum = { version = "0.8.9", features = ["multipart", "macros"] }
+tower = { version = "0.5.3" }
+tower-http = { version = "0.7.0", features = ["cors", "trace"] }
+
+# HTTP client (for WABridge proxy)
+reqwest = { version = "0.13.4", default-features = false, features = [
+    "json",
+    "multipart",
+] }
+
+# Database
+sqlx = { version = "0.9.0", features = [
+    "runtime-tokio",
+    "sqlite",
+    "uuid",
+    "chrono",
+    "json",
+] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
+
+# IDs & time
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Error handling
+thiserror = "2.0.20"
+anyhow = "1"
+
+# Tracing / logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Configuration
+dotenvy = "0.15"
+
+# Async utilities
+futures = "0.3"
+async-trait = "0.1"
+
+# Internal crates
+omnireach-core = { path = "crates/core" }
+omnireach-store = { path = "crates/store" }
+omnireach-glue = { path = "crates/glue" }
+omnireach-server = { path = "crates/server" }

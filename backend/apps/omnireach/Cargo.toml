@@ -1,0 +1,21 @@
+[package]
+name = "omnireach"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "omnireach"
+path = "src/main.rs"
+
+[dependencies]
+omnireach-core = { workspace = true }
+omnireach-store = { workspace = true }
+omnireach-glue = { workspace = true }
+omnireach-server = { workspace = true }
+
+tokio = { workspace = true }
+axum = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+dotenvy = { workspace = true }

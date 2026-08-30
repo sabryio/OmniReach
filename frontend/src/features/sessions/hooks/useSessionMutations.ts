@@ -5,6 +5,8 @@ import {
   deleteSession,
   sendTestMessage,
   checkContact,
+  syncSession,
+  resetSessionLimits,
 } from '../api/sessions.api'
 
 export function useCreateSession() {
@@ -36,6 +38,39 @@ export function useDeleteSession() {
     deleteSession: mutation.mutate,
     deleteSessionAsync: mutation.mutateAsync,
     isDeleting: mutation.isPending,
+    error: mutation.error,
+  }
+}
+
+export function useSyncSession() {
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: syncSession,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SessionQueryKeys.all })
+    },
+  })
+  return {
+    syncSession: mutation.mutate,
+    syncSessionAsync: mutation.mutateAsync,
+    isSyncing: mutation.isPending,
+    error: mutation.error,
+    reset: mutation.reset,
+  }
+}
+
+export function useResetSessionLimits() {
+  const queryClient = useQueryClient()
+  const mutation = useMutation({
+    mutationFn: resetSessionLimits,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SessionQueryKeys.all })
+    },
+  })
+  return {
+    resetLimits: mutation.mutate,
+    resetLimitsAsync: mutation.mutateAsync,
+    isResetting: mutation.isPending,
     error: mutation.error,
   }
 }

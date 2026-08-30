@@ -39,7 +39,7 @@ async fn main() -> anyhow::Result<()> {
         .expect("OMNIREACH_TOKEN must be set (e.g. OMNIREACH_TOKEN=dev-token)");
 
     let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "sqlite://omnireach.db".to_string());
+        .unwrap_or_else(|_| "sqlite:omnireach.db?mode=rwc".to_string());
 
     let wabridge_base_url = std::env::var("WABRIDGE_BASE_URL")
         .unwrap_or_else(|_| "http://localhost:7171".to_string());

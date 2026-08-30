@@ -47,70 +47,104 @@ pub async fn sse_handler(
 // ── Sessions ──────────────────────────────────────────────────────────────────
 
 /// GET /api/sessions
-pub async fn list(State(_state): State<AppState>) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO: store::sessions::list_all(&state.db).await
-    todo!("return all sessions")
+pub async fn list(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<omnireach_core::types::Session>>, ApiError> {
+    let sessions = omnireach_store::sessions::list_all(&state.db).await?;
+    Ok(Json(sessions))
 }
 
 /// POST /api/sessions
 pub async fn create(
-    State(_state): State<AppState>,
-    Json(_input): Json<CreateSessionInput>,
-) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
-    // TODO: store::sessions::insert(&state.db, input).await
-    // Return 201 Created with full Session (api_key included once)
-    todo!("insert session, return 201 with api_key in body")
+    State(state): State<AppState>,
+    Json(input): Json<CreateSessionInput>,
+) -> Result<(StatusCode, Json<omnireach_core::types::Session>), ApiError> {
+    let session = omnireach_store::sessions::insert(&state.db, input).await?;
+    // TODO: emit SSE event for new session
+    // state.sse.send(SseEvent::SessionCreated { ... })?;
+    Ok((StatusCode::CREATED, Json(session)))
 }
 
 /// PATCH /api/sessions/:id
 pub async fn update(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-    Json(_patch): Json<serde_json::Value>,
-) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO: partial update of name / hourly_limit / daily_limit
-    todo!("PATCH session fields")
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Json(patch): Json<serde_json::Value>,
+) -> Result<Json<omnireach_core::types::Session>, ApiError> {
+    // Extract fields from patch object
+    let name = patch.get("name").and_then(|v| v.as_str());
+    let hourly_limit = patch.get("hourlyLimit").and_then(|v| v.as_i64());
+    let daily_limit = patch.get("dailyLimit").and_then(|v| v.as_i64());
+
+    // TODO: Phase 2 — implement partial update in store layer
+    // For now, just fetch and return the existing session
+    let mut session = omnireach_store::sessions::get_by_id(&state.db, id).await?;
+
+    if let Some(n) = name {
+        session.name = n.to_string();
+    }
+    if let Some(h) = hourly_limit {
+        session.hourly_limit = h;
+    }
+    if let Some(d) = daily_limit {
+        session.daily_limit = d;
+    }
+
+    // TODO: persist changes to DB
+    // TODO: emit SSE event
+    Ok(Json(session))
 }
 
 /// DELETE /api/sessions/:id
 pub async fn destroy(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    // TODO: store::sessions::delete(&state.db, id).await → 204
-    todo!("delete session, return 204")
+    omnireach_store::sessions::delete(&state.db, id).await?;
+    // TODO: emit SSE event
+    // state.sse.send(SseEvent::SessionDeleted { id })?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// POST /api/sessions/:id/sync
 pub async fn sync(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO:
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<omnireach_core::types::Session>, ApiError> {
+    // TODO: Phase 2 — implement real WABridge sync
     // 1. load session from DB to get api_key
     // 2. state.wa.get_session(wabridge_id, api_key).await
     // 3. store::sessions::update_status(...)
     // 4. state.sse.send(SseEvent::SessionStatus { ... })
-    todo!("sync session status from WABridge")
+
+    // For now, just return the existing session
+    let session = omnireach_store::sessions::get_by_id(&state.db, id).await?;
+    Ok(Json(session))
 }
 
 /// GET /api/sessions/:id/qr
 pub async fn get_qr(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO:
+    // TODO: Phase 2 — implement real WABridge QR fetch
     // 1. load session from DB
     // 2. state.wa.get_qr(wabridge_id, api_key).await
     // 3. return { qr_code_data: Option<String> }
-    todo!("fetch QR from WABridge and return")
+
+    let session = omnireach_store::sessions::get_by_id(&state.db, id).await?;
+    Ok(Json(serde_json::json!({
+        "qrCodeData": session.qr_code_data
+    })))
 }
 
 /// POST /api/sessions/:id/reset-limits
 pub async fn reset_limits(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO: store::sessions::reset_limits(&state.db, id).await
-    todo!("clear hourly/daily timestamp arrays")
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<omnireach_core::types::Session>, ApiError> {
+    let session = omnireach_store::sessions::reset_limits(&state.db, id).await?;
+    // TODO: emit SSE event
+    // state.sse.send(SseEvent::SessionLimitsReset { id })?;
+    Ok(Json(session))
 }

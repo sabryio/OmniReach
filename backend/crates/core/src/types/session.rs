@@ -21,6 +21,7 @@ pub enum SessionStatus {
 /// `api_key` is write-only at the API layer — it is stored but never echoed
 /// back in GET responses after the initial creation response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Session {
     pub id: Uuid,
     pub name: String,
@@ -42,6 +43,7 @@ pub struct Session {
 
 /// Input shape for `POST /api/sessions`.
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateSessionInput {
     pub name: String,
     pub api_key: String,

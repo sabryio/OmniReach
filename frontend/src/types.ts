@@ -108,7 +108,7 @@ export interface WABridgeSession {
   hourlySentTimestamps: number[]
   dailySentTimestamps: number[]
   qrCodeData?: string
-  lastActivityAt?: number
+  lastActivityAt?: string  // ISO 8601 date string from Rust DateTime<Utc>
 }
 
 export interface SessionRateQuota {

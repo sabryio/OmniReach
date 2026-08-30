@@ -12,18 +12,8 @@
 
 pub mod error;
 pub mod extractors;
+pub mod handlers;
 pub mod middleware;
 pub mod router;
 pub mod sse;
 pub mod state;
-
-pub mod handlers {
-    pub mod campaigns;
-    pub mod contacts;
-    pub mod logs;
-    pub mod media;
-    pub mod queue;
-    pub mod scheduler;
-    pub mod sessions;
-    pub mod settings;
-}

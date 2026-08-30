@@ -167,23 +167,6 @@ export interface LogEntry {
   details?: Record<string, unknown>
 }
 
-// ─── Template ────────────────────────────────────────────────────────────────
-
-export interface MessageTemplate {
-  id: string
-  title: string
-  titleAr?: string
-  category: string
-  categoryAr?: string
-  text: string
-  textAr?: string
-  imageUrl?: string
-  imageFileName?: string
-  suggestedVariables: string[]
-  createdAt?: number
-  updatedAt?: number
-}
-
 // ─── CSV ─────────────────────────────────────────────────────────────────────
 
 export interface CSVParseResult {

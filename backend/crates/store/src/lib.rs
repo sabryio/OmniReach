@@ -17,6 +17,7 @@ pub mod logs;
 pub mod queue;
 pub mod sessions;
 pub mod settings;
+pub mod templates;
 
 pub use db::Db;
 pub use error::StoreError;

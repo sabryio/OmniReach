@@ -10,6 +10,7 @@ pub mod log_entry;
 pub mod queue_item;
 pub mod session;
 pub mod settings;
+pub mod template;
 
 // Re-export everything at the types:: level for ergonomic imports.
 pub use campaign::{Campaign, CampaignStatus, CreateCampaignInput};
@@ -18,3 +19,4 @@ pub use log_entry::{LogCategory, LogEntry, LogLevel};
 pub use queue_item::{QueueItem, QueueItemStatus};
 pub use session::{CreateSessionInput, Session, SessionStatus};
 pub use settings::AppSettings;
+pub use template::{CreateTemplateInput, Template, UpdateTemplateInput};

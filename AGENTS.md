@@ -169,11 +169,80 @@ URL strategy reads from `window.location` automatically — no manual
 
 ## Types
 
-### Rule: Import from `@/types`
+### Rule: Use Zod schemas as single source of truth
 
-All shared types (`Campaign`, `QueueItem`, `WABridgeSession`, etc.) are
-imported from `@/types`. Never redefine types locally if they already exist
-in the shared types file.
+**Never define TypeScript types manually.** All domain types must be defined as **Zod schemas** and TypeScript types inferred from them.
+
+#### Structure
+
+Every feature must have a `schemas/` folder:
+
+```
+features/<feature>/
+  schemas/
+    <feature>.schema.ts   ← Zod schemas + inferred types
+```
+
+#### Pattern
+
+```typescript
+// ✅ CORRECT — Zod schema with inferred type
+import { z } from "zod";
+
+export const sessionSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1),
+  status: z.enum(["connected", "disconnected", "qr_required", "connecting"]),
+  hourlyLimit: z.number().int().nonnegative(),
+  hourlySentTimestamps: z.array(z.number().int()),
+});
+
+// Infer TypeScript type from schema
+export type Session = z.infer<typeof sessionSchema>;
+
+// ❌ WRONG — Manual TypeScript interface
+export interface Session {
+  id: string;
+  name: string;
+  status: "connected" | "disconnected" | "qr_required" | "connecting";
+  hourlyLimit: number;
+  hourlySentTimestamps: number[];
+}
+```
+
+#### Runtime Validation in API Calls
+
+**Always parse API responses with Zod schemas:**
+
+```typescript
+// ✅ CORRECT — Runtime validation
+export async function getSessions(): Promise<Session[]> {
+  const response = await fetch(`${config.apiBaseUrl}/api/sessions`);
+  if (!response.ok) throw new Error(response.statusText);
+
+  const data = await response.json();
+
+  // Throws ZodError if response shape doesn't match schema
+  return sessionsSchema.parse(data);
+}
+
+// ❌ WRONG — No validation, assumes correct shape
+export async function getSessions(): Promise<Session[]> {
+  const response = await fetch(`${config.apiBaseUrl}/api/sessions`);
+  return response.json();
+}
+```
+
+#### Benefits
+
+- **Runtime type safety** — Catches backend/frontend type mismatches immediately
+- **Single source of truth** — No manual sync between Rust types and TypeScript types
+- **Better error messages** — Zod provides detailed validation errors
+- **Input validation** — Validate request bodies before sending to backend
+
+#### Shared Types
+
+For types used across multiple features (e.g., `ThemeMode`, `Language`), keep them in `@/types.ts` but consider migrating to shared Zod schemas over time.
 
 ---
 

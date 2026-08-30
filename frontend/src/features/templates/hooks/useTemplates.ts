@@ -1,13 +1,13 @@
 import { useState, useCallback, useMemo, useRef } from 'react'
-import type { MessageTemplate } from '@/types'
+import type { Template } from '../schemas/template.schema'
 
 /**
  * Comprehensive hook for TemplatesView component.
  * Receives templates as a parameter — NO default data inside this hook.
  * All default/initial data must come from the route via useTemplatesQuery.
  */
-export function useTemplateManager(initialTemplates: MessageTemplate[]) {
-  const [templates, setTemplates] = useState<MessageTemplate[]>(initialTemplates)
+export function useTemplateManager(initialTemplates: Template[]) {
+  const [templates, setTemplates] = useState<Template[]>(initialTemplates)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
     initialTemplates[0]?.id ?? '',
   )
@@ -17,7 +17,7 @@ export function useTemplateManager(initialTemplates: MessageTemplate[]) {
 
   // Editor modal state
   const [isEditorOpen, setIsEditorOpen] = useState(false)
-  const [editingTemplate, setEditingTemplate] = useState<Partial<MessageTemplate> | null>(null)
+  const [editingTemplate, setEditingTemplate] = useState<Partial<Template> | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -46,7 +46,7 @@ export function useTemplateManager(initialTemplates: MessageTemplate[]) {
     [templates, selectedCategory, searchQuery],
   )
 
-  const handleCopyText = useCallback((tmpl: MessageTemplate) => {
+  const handleCopyText = useCallback((tmpl: Template) => {
     navigator.clipboard.writeText(tmpl.text)
     setCopiedId(tmpl.id)
     setTimeout(() => setCopiedId(null), 2000)
@@ -65,7 +65,7 @@ export function useTemplateManager(initialTemplates: MessageTemplate[]) {
     setIsEditorOpen(true)
   }, [])
 
-  const handleOpenEditModal = useCallback((tmpl: MessageTemplate) => {
+  const handleOpenEditModal = useCallback((tmpl: Template) => {
     setUploadError(null)
     setEditingTemplate({ ...tmpl })
     setIsEditorOpen(true)
@@ -131,7 +131,7 @@ export function useTemplateManager(initialTemplates: MessageTemplate[]) {
       }
 
       if (editingTemplate.id) {
-        const updated: MessageTemplate = {
+        const updated: Template = {
           id: editingTemplate.id,
           title,
           category,
@@ -140,13 +140,13 @@ export function useTemplateManager(initialTemplates: MessageTemplate[]) {
           imageFileName,
           suggestedVariables:
             detectedVars.length > 0 ? detectedVars : editingTemplate.suggestedVariables ?? ['name'],
-          updatedAt: Date.now(),
-          createdAt: editingTemplate.createdAt ?? Date.now(),
+          updatedAt: new Date().toISOString(),
+          createdAt: editingTemplate.createdAt ?? new Date().toISOString(),
         }
         setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
         setSelectedTemplateId(updated.id)
       } else {
-        const created: MessageTemplate = {
+        const created: Template = {
           id: `tmpl_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
           title,
           category,
@@ -154,8 +154,8 @@ export function useTemplateManager(initialTemplates: MessageTemplate[]) {
           imageUrl,
           imageFileName,
           suggestedVariables: detectedVars.length > 0 ? detectedVars : ['name', 'prescription'],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         }
         setTemplates((prev) => [created, ...prev])
         setSelectedTemplateId(created.id)
@@ -183,21 +183,21 @@ export function useTemplateManager(initialTemplates: MessageTemplate[]) {
     [templates, selectedTemplateId],
   )
 
-  const handleDuplicateTemplate = useCallback((tmpl: MessageTemplate, e?: React.MouseEvent) => {
+  const handleDuplicateTemplate = useCallback((tmpl: Template, e?: React.MouseEvent) => {
     e?.stopPropagation()
-    const duplicate: MessageTemplate = {
+    const duplicate: Template = {
       ...tmpl,
       id: `tmpl_${Date.now()}_copy`,
       title: `${tmpl.title} (Copy)`,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }
     setTemplates((prev) => [duplicate, ...prev])
     setSelectedTemplateId(duplicate.id)
   }, [])
 
   const handleResetToDefaults = useCallback(
-    (defaults: MessageTemplate[]) => {
+    (defaults: Template[]) => {
       if (window.confirm('Restore standard default templates?')) {
         setTemplates(defaults)
         setSelectedTemplateId(defaults[0]?.id ?? '')
@@ -240,13 +240,4 @@ export function useTemplateManager(initialTemplates: MessageTemplate[]) {
     handleDuplicateTemplate,
     handleResetToDefaults,
   }
-}
-
-/**
- * Legacy read-only hook — kept for backward compatibility.
- * @deprecated Use useTemplateManager instead.
- */
-export function useTemplates() {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  return { selectedId, setSelectedId }
 }

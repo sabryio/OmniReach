@@ -1,3 +1,5 @@
+// Schemas (Single Source of Truth)
+export * from './schemas/template.schema'
 // API
 export * from './api/queryKeys'
 // Query hooks

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { TemplatesView } from "@/features/templates";
-import { useTemplatesQuery } from "@/features/templates/hooks/useTemplatesQuery";
-import { useTemplateManager } from "@/features/templates/hooks/useTemplates";
+import { TemplatesView, useTemplateManager } from "@/features/templates";
+import { useTemplates } from "@/features/templates";
+import type { Template } from "@/features/templates";
 
 export const Route = createFileRoute("/$locale/templates")({
   component: TemplatesRoute,
@@ -10,26 +10,30 @@ export const Route = createFileRoute("/$locale/templates")({
 function TemplatesRoute() {
   const navigate = useNavigate();
   const { locale } = Route.useParams();
-  const { templates: queryTemplates, isLoading } = useTemplatesQuery();
 
-  // UI state hook receives initial data from TanStack Query
-  const manager = useTemplateManager(queryTemplates);
+  // Data layer — TanStack Query
+  const { templates, isLoading } = useTemplates();
+
+  // UI state layer
+  const templateManager = useTemplateManager(templates);
+
+  const handleUseTemplateInCampaign = (template: Template) => {
+    navigate({
+      to: "/$locale/campaigns/new",
+      params: { locale },
+      search: { templateId: template.id },
+    });
+  };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-        Loading templates...
-      </div>
-    );
+    return <div className="p-5">Loading templates...</div>;
   }
 
   return (
     <TemplatesView
-      {...manager}
-      defaultTemplates={queryTemplates}
-      onUseTemplateInCampaign={() => {
-        navigate({ to: "/$locale/campaigns/new", params: { locale } });
-      }}
+      {...templateManager}
+      defaultTemplates={templates}
+      onUseTemplateInCampaign={handleUseTemplateInCampaign}
     />
   );
 }

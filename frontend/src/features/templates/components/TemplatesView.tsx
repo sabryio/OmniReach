@@ -21,7 +21,7 @@ import {
   Clock,
   Layers,
 } from "lucide-react";
-import type { MessageTemplate } from "@/types";
+import type { Template } from "../schemas/template.schema";
 
 // ─── Constants (UI-only, not data) ───────────────────────────────────────────
 
@@ -81,9 +81,9 @@ const CATEGORY_TABS = [
 
 interface TemplatesViewProps {
   // Data
-  templates: MessageTemplate[];
-  filteredTemplates: MessageTemplate[];
-  selectedTemplate: MessageTemplate | null;
+  templates: Template[];
+  filteredTemplates: Template[];
+  selectedTemplate: Template | null;
   selectedTemplateId: string;
   setSelectedTemplateId: (id: string) => void;
   // Filters
@@ -93,31 +93,31 @@ interface TemplatesViewProps {
   setSelectedCategory: (v: string) => void;
   // Copy
   copiedId: string | null;
-  handleCopyText: (tmpl: MessageTemplate) => void;
+  handleCopyText: (tmpl: Template) => void;
   // Editor modal
   isEditorOpen: boolean;
   setIsEditorOpen: (v: boolean) => void;
-  editingTemplate: Partial<MessageTemplate> | null;
-  setEditingTemplate: (v: Partial<MessageTemplate> | null) => void;
+  editingTemplate: Partial<Template> | null;
+  setEditingTemplate: (v: Partial<Template> | null) => void;
   uploadError: string | null;
   fileInputRef: RefObject<HTMLInputElement | null>;
   // Actions
   handleOpenCreateModal: () => void;
-  handleOpenEditModal: (tmpl: MessageTemplate) => void;
+  handleOpenEditModal: (tmpl: Template) => void;
   handleImageFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleRemoveImage: () => void;
   handleInsertVariable: (tag: string) => void;
   handleSaveTemplate: (e: React.FormEvent) => void;
   handleDeleteTemplate: (id: string, e?: React.MouseEvent) => void;
   handleDuplicateTemplate: (
-    tmpl: MessageTemplate,
+    tmpl: Template,
     e?: React.MouseEvent,
   ) => void;
-  handleResetToDefaults: (defaults: MessageTemplate[]) => void;
+  handleResetToDefaults: (defaults: Template[]) => void;
   // Navigation
-  onUseTemplateInCampaign: (template: MessageTemplate) => void;
+  onUseTemplateInCampaign: (template: Template) => void;
   // Default templates passed from route (for reset)
-  defaultTemplates: MessageTemplate[];
+  defaultTemplates: Template[];
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────

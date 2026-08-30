@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
-import type { Campaign, MessageTemplate, Contact, QueueItem } from '@/types'
+import type { Campaign, Contact, QueueItem } from '@/types'
+import type { Template } from '@/features/templates'
 
 /**
  * Comprehensive hook for CampaignsList component
@@ -196,7 +197,7 @@ export function useCampaignWizard() {
     if (idx > 0) setStep(order[idx - 1]!)
   }, [step])
 
-  const initFromTemplate = useCallback((t: MessageTemplate) => {
+  const initFromTemplate = useCallback((t: Template) => {
     setTemplateText(t.text)
     setImageUrl(t.imageUrl)
     setCampaignTitle(t.title)

@@ -1,5 +1,6 @@
-import type { Campaign, Contact, MessageTemplate } from '@/types'
+import type { Campaign, Contact } from '@/types'
 import { MOCK_CAMPAIGNS } from '@/mock-data'
+import type { Template } from '@/features/templates'
 
 export async function getCampaigns(): Promise<Campaign[]> {
   // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/campaigns`)
@@ -16,7 +17,7 @@ export async function getCampaign(id: string): Promise<Campaign> {
 
 export type CreateCampaignParams = {
   title: string
-  template: MessageTemplate
+  template: Template
   contacts: Contact[]
   sessionIds: string[]
 }

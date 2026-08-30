@@ -5,7 +5,7 @@ import {
   updateTemplate,
   deleteTemplate,
 } from '../api/templates.api'
-import type { MessageTemplate } from '@/types'
+import type { UpdateTemplateInput } from '../schemas/template.schema'
 
 export function useCreateTemplate() {
   const queryClient = useQueryClient()
@@ -27,17 +27,18 @@ export function useCreateTemplate() {
 export function useUpdateTemplate() {
   const queryClient = useQueryClient()
   const mutation = useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: Partial<MessageTemplate> }) =>
-      updateTemplate(id, updates),
-    onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: TemplateQueryKeys.detail(vars.id) })
-      queryClient.invalidateQueries({ queryKey: TemplateQueryKeys.lists() })
+    mutationFn: ({ id, input }: { id: string; input: UpdateTemplateInput }) =>
+      updateTemplate(id, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TemplateQueryKeys.all })
     },
   })
   return {
     updateTemplate: mutation.mutate,
+    updateTemplateAsync: mutation.mutateAsync,
     isUpdating: mutation.isPending,
     error: mutation.error,
+    reset: mutation.reset,
   }
 }
 
@@ -51,6 +52,7 @@ export function useDeleteTemplate() {
   })
   return {
     deleteTemplate: mutation.mutate,
+    deleteTemplateAsync: mutation.mutateAsync,
     isDeleting: mutation.isPending,
     error: mutation.error,
   }

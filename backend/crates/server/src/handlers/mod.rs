@@ -11,3 +11,4 @@ pub mod queue;
 pub mod scheduler;
 pub mod sessions;
 pub mod settings;
+pub mod templates;

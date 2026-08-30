@@ -12,6 +12,12 @@
 //!   GET    /api/sessions/{id}/qr
 //!   POST   /api/sessions/{id}/reset-limits
 //!
+//!   GET    /api/templates
+//!   POST   /api/templates
+//!   GET    /api/templates/{id}
+//!   PATCH  /api/templates/{id}
+//!   DELETE /api/templates/{id}
+//!
 //!   POST   /api/contacts/verify
 //!
 //!   GET    /api/campaigns
@@ -39,7 +45,7 @@
 //!   POST   /api/media/upload
 
 use crate::{
-    handlers::{campaigns, contacts, logs, media, queue, scheduler, sessions, settings},
+    handlers::{campaigns, contacts, logs, media, queue, scheduler, sessions, settings, templates},
     middleware::auth_middleware,
     state::AppState,
 };
@@ -74,6 +80,14 @@ pub fn build(state: AppState) -> Router {
         .route("/sessions/{id}/reset-limits", post(sessions::reset_limits))
         // ── Contacts ────────────────────────────────────────────────────────
         .route("/contacts/verify", post(contacts::verify))
+        // ── Templates ───────────────────────────────────────────────────────
+        .route("/templates", get(templates::list).post(templates::create))
+        .route(
+            "/templates/{id}",
+            get(templates::get)
+                .patch(templates::update)
+                .delete(templates::destroy),
+        )
         // ── Campaigns ───────────────────────────────────────────────────────
         .route("/campaigns", get(campaigns::list).post(campaigns::create))
         .route(

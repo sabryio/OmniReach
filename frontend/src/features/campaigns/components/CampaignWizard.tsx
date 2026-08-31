@@ -61,10 +61,7 @@ export function CampaignWizard({
   const [isPreVerifying, setIsPreVerifying] = useState<boolean>(false);
   const [unregisteredCount, setUnregisteredCount] = useState<number>(0);
 
-  const handleContactsParsed = (
-    parsedContacts: Contact[],
-    _result: CSVParseResult,
-  ) => {
+  const handleContactsParsed = (parsedContacts: Contact[]) => {
     setContacts(parsedContacts);
   };
 

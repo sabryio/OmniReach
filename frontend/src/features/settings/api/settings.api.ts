@@ -1,26 +1,37 @@
-import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
-
-// Default config — frontend-only until GET/PUT /api/settings is implemented
-const DEFAULT_CONFIG: WABridgeConfig = {
-  baseUrl: "http://127.0.0.1:8080",
-  timeoutMs: 5000,
-  useSimulationMode: true,
-  simulatedNetworkLatencyMs: 400,
-  simulatedUnregisteredRate: 0.15,
-};
+import { config } from "@/lib/config";
+import {
+  appSettingsSchema,
+  updateSettingsInputSchema,
+  type AppSettings,
+  type UpdateSettingsInput,
+} from "../schemas/settings.schema";
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
-export async function getSettings(): Promise<WABridgeConfig> {
-  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/settings`)
-  return DEFAULT_CONFIG;
+export async function getSettings(): Promise<AppSettings> {
+  const response = await fetch(`${config.apiBaseUrl}/api/settings`, {
+    headers: { Authorization: `Bearer ${config.authToken}` },
+  });
+  if (!response.ok)
+    throw new Error(`Failed to fetch settings: ${response.statusText}`);
+  return appSettingsSchema.parse(await response.json());
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
 export async function updateSettings(
-  settings: WABridgeConfig,
-): Promise<WABridgeConfig> {
-  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/settings`, { method: 'PUT', ... })
-  return settings;
+  patch: UpdateSettingsInput,
+): Promise<AppSettings> {
+  const validatedPatch = updateSettingsInputSchema.parse(patch);
+  const response = await fetch(`${config.apiBaseUrl}/api/settings`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${config.authToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(validatedPatch),
+  });
+  if (!response.ok)
+    throw new Error(`Failed to update settings: ${response.statusText}`);
+  return appSettingsSchema.parse(await response.json());
 }

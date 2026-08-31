@@ -21,10 +21,12 @@ import {
 } from "@/features/modals";
 import { useSessions } from "@/features/sessions";
 import { useLogsQuery } from "@/features/queue";
+import { useSettingsQuery, useUpdateSettings } from "@/features/settings";
 import type {
   SchedulerState,
   WABridgeConfig,
 } from "@/features/layout/schemas/layout.schema";
+import type { AppSettings } from "@/features/settings";
 
 export const Route = createFileRoute("/$locale")({
   beforeLoad: ({ params }) => {
@@ -60,6 +62,28 @@ const DEFAULT_CONFIG: WABridgeConfig = {
   simulatedUnregisteredRate: 0.15,
 };
 
+// ─── Helpers — bridge AppSettings ↔ UI state ─────────────────────────────────
+
+/** Map backend AppSettings → frontend WABridgeConfig */
+function toConfig(s: AppSettings): WABridgeConfig {
+  return {
+    baseUrl: s.wabridgeBaseUrl,
+    timeoutMs: s.wabridgeTimeoutMs,
+    useSimulationMode: false,
+    simulatedNetworkLatencyMs: 0,
+    simulatedUnregisteredRate: 0,
+  };
+}
+
+/** Map backend AppSettings → partial SchedulerState */
+function toSchedulerPatch(s: AppSettings): Partial<SchedulerState> {
+  return {
+    customWindowStartHour: s.schedulerStartHour,
+    customWindowEndHour: s.schedulerEndHour,
+    strictTimeWindow: s.schedulerStrictTimeWindow,
+  };
+}
+
 // ─── Shared Layout ────────────────────────────────────────────────────────────
 
 function SharedLayout() {
@@ -71,11 +95,22 @@ function SharedLayout() {
   // Data from TanStack Query
   const { sessions } = useSessions();
   const { logs } = useLogsQuery();
+  const { settings } = useSettingsQuery();
+  const { updateSettingsAsync } = useUpdateSettings();
 
   // Scheduler state (frontend-only for now — no backend endpoint yet)
   const [schedulerState, setSchedulerState] =
     useState<SchedulerState>(DEFAULT_SCHEDULER);
-  const [config, setConfig] = useState<WABridgeConfig>(DEFAULT_CONFIG);
+
+  // Derive WABridgeConfig from backend settings; fall back to DEFAULT_CONFIG
+  const config: WABridgeConfig = settings ? toConfig(settings) : DEFAULT_CONFIG;
+
+  // Sync scheduler window from backend settings when they load
+  useEffect(() => {
+    if (settings) {
+      setSchedulerState((prev) => ({ ...prev, ...toSchedulerPatch(settings) }));
+    }
+  }, [settings]);
 
   // Keep clock in sync
   useEffect(() => {
@@ -201,12 +236,21 @@ function SharedLayout() {
         schedulerState={schedulerState}
         themeMode={layout.themeMode}
         themeColor={layout.themeColor}
-        onSaveConfig={setConfig}
+        onSaveConfig={async (newConfig) => {
+          await updateSettingsAsync({
+            wabridgeBaseUrl: newConfig.baseUrl,
+            wabridgeTimeoutMs: newConfig.timeoutMs,
+            schedulerStartHour: schedulerState.customWindowStartHour,
+            schedulerEndHour: schedulerState.customWindowEndHour,
+            schedulerStrictTimeWindow: schedulerState.strictTimeWindow,
+          });
+        }}
         onSetThemeColor={layout.setThemeColor}
         onToggleThemeMode={layout.toggleThemeMode}
-        onSetStrictTimeWindow={(strict) =>
-          setSchedulerState((p) => ({ ...p, strictTimeWindow: strict }))
-        }
+        onSetStrictTimeWindow={(strict) => {
+          setSchedulerState((p) => ({ ...p, strictTimeWindow: strict }));
+          updateSettingsAsync({ schedulerStrictTimeWindow: strict });
+        }}
         onSetSimulatedHourOffset={(offset) =>
           setSchedulerState((p) => ({ ...p, simulatedHourOffset: offset }))
         }

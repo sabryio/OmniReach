@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 /// All configurable runtime settings for the OmniReach backend.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AppSettings {
     /// Hour of day (0-23) when the send window opens. Default: 9.
     pub scheduler_start_hour: u8,
@@ -30,4 +31,15 @@ impl Default for AppSettings {
             wabridge_timeout_ms: 5_000,
         }
     }
+}
+
+/// Input shape for `PATCH /api/settings` — all fields optional.
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateSettingsInput {
+    pub scheduler_start_hour: Option<u8>,
+    pub scheduler_end_hour: Option<u8>,
+    pub scheduler_strict_time_window: Option<bool>,
+    pub wabridge_base_url: Option<String>,
+    pub wabridge_timeout_ms: Option<u64>,
 }

@@ -10,7 +10,7 @@ import type { Campaign } from "@/features/campaigns/schemas/campaign.schema";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
 
 const DEFAULT_CONFIG: WABridgeConfig = {
-  baseUrl: "http://127.0.0.1:8080",
+  baseUrl: "http://127.0.0.1:7171",
   timeoutMs: 5000,
   useSimulationMode: true,
   simulatedNetworkLatencyMs: 400,

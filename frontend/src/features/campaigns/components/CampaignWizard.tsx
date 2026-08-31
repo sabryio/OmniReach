@@ -16,10 +16,7 @@ import { MessageComposer } from "./MessageComposer";
 import type { Session } from "@/features/sessions/schemas/session.schema";
 import type { Contact } from "@/features/customers/schemas/customer.schema";
 import type { Campaign } from "../schemas/campaign.schema";
-import type {
-  CSVParseResult,
-  WABridgeConfig,
-} from "@/features/layout/schemas/layout.schema";
+import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
 
 interface CampaignWizardProps {
   sessions: Session[];

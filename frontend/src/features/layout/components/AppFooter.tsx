@@ -3,16 +3,16 @@
  * Placeholder: log tail on left + queue count + version on right
  */
 
-import type { LogEntry } from "@/features/queue/schemas/queue.schema"
-import type { SchedulerState } from "../schemas/layout.schema"
+import type { LogEntry } from "@/features/queue/schemas/queue.schema";
+import type { SchedulerState } from "../schemas/layout.schema";
 
 interface AppFooterProps {
-  logs: LogEntry[]
-  schedulerState: SchedulerState
+  logs: LogEntry[];
+  schedulerState: SchedulerState;
 }
 
 export function AppFooter({ logs, schedulerState }: AppFooterProps) {
-  const latest = logs[0]
+  const latest = logs[0];
 
   return (
     <footer className="h-6 bg-card border-t border-border px-3 flex items-center justify-between shrink-0 text-[10px] select-none z-30 font-mono text-muted-foreground">
@@ -24,7 +24,7 @@ export function AppFooter({ logs, schedulerState }: AppFooterProps) {
         <span className="truncate">
           {latest
             ? `[${new Date(latest.timestamp).toLocaleTimeString()}] ${latest.category}: ${latest.message}`
-            : 'Daemon active on 127.0.0.1:8080 • Rate quota ready'}
+            : "Daemon active on 127.0.0.1:7171 • Rate quota ready"}
         </span>
       </div>
 
@@ -38,5 +38,5 @@ export function AppFooter({ logs, schedulerState }: AppFooterProps) {
         </div>
       </div>
     </footer>
-  )
+  );
 }

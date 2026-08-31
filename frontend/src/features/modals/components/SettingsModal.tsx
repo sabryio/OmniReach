@@ -29,6 +29,9 @@ import {
   Moon,
   Laptop,
   X,
+  Plus,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import type {
   WABridgeConfig,
@@ -36,6 +39,8 @@ import type {
   ThemeColor,
   ThemeMode,
 } from "@/features/layout/schemas/layout.schema";
+import type { Session } from "@/features/sessions/schemas/session.schema";
+import { useCreateSession, useDeleteSession } from "@/features/sessions";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -44,6 +49,7 @@ interface SettingsModalProps {
   schedulerState: SchedulerState;
   themeMode: ThemeMode;
   themeColor: ThemeColor;
+  sessions: Session[];
   onSaveConfig: (config: WABridgeConfig) => void;
   onSetThemeColor: (color: ThemeColor) => void;
   onToggleThemeMode: () => void;
@@ -162,6 +168,7 @@ export function SettingsModal({
   schedulerState,
   themeMode,
   themeColor,
+  sessions,
   onSaveConfig,
   onSetThemeColor,
   onToggleThemeMode,
@@ -171,9 +178,20 @@ export function SettingsModal({
 }: SettingsModalProps) {
   const [tab, setTab] = useState<Tab>("appearance");
 
+  // Session management mutations
+  const { createSession, isCreating } = useCreateSession();
+  const { deleteSession, isDeleting } = useDeleteSession();
+
+  // Session form state
+  const [newSessionName, setNewSessionName] = useState("");
+  const [newSessionApiKey, setNewSessionApiKey] = useState("");
+  const [sessionFeedback, setSessionFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
   // WABridge local state
   const [baseUrl, setBaseUrl] = useState(config.baseUrl);
-  const [apiKey, setApiKey] = useState(config.apiKey ?? "");
   const [useSimulation, setUseSimulation] = useState(config.useSimulationMode);
   const [latencyMs, setLatencyMs] = useState(config.simulatedNetworkLatencyMs);
   const [unregisteredRate, setUnregisteredRate] = useState(
@@ -198,8 +216,7 @@ export function SettingsModal({
 
   const handleSave = () => {
     onSaveConfig({
-      baseUrl: baseUrl.trim() || "http://127.0.0.1:8080",
-      apiKey: apiKey.trim() || undefined,
+      baseUrl: baseUrl.trim() || "http://127.0.0.1:7171",
       timeoutMs: config.timeoutMs,
       useSimulationMode: useSimulation,
       simulatedNetworkLatencyMs: latencyMs,
@@ -425,19 +442,7 @@ export function SettingsModal({
                       type="text"
                       value={baseUrl}
                       onChange={(e) => setBaseUrl(e.target.value)}
-                      placeholder="http://127.0.0.1:8080"
-                      className="w-full px-3 py-2 rounded-xl border border-border bg-muted/30 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
-                      API Key
-                    </label>
-                    <input
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="Optional WABridge token..."
+                      placeholder="http://127.0.0.1:7171"
                       className="w-full px-3 py-2 rounded-xl border border-border bg-muted/30 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
                     />
                   </div>
@@ -501,6 +506,166 @@ export function SettingsModal({
                     </div>
                   </div>
                 )}
+              </SectionCard>
+
+              {/* Session Management */}
+              <SectionCard
+                icon={<Server className="w-4 h-4" />}
+                title="WhatsApp Sessions"
+                desc="Each session represents a WhatsApp Business account connection"
+              >
+                {/* Session feedback banner */}
+                {sessionFeedback && (
+                  <div
+                    className={`p-3 rounded-lg border text-xs flex items-center justify-between ${
+                      sessionFeedback.type === "success"
+                        ? "bg-success/10 border-success/30 text-success"
+                        : "bg-destructive/10 border-destructive/30 text-destructive"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {sessionFeedback.type === "success" ? (
+                        <CheckCircle className="w-4 h-4" />
+                      ) : (
+                        <XCircle className="w-4 h-4" />
+                      )}
+                      <span>{sessionFeedback.message}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSessionFeedback(null)}
+                      className="text-[10px] font-bold uppercase hover:underline"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+
+                {/* Existing sessions list */}
+                {sessions.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Configured Sessions ({sessions.length})
+                    </p>
+                    {sessions.map((session) => (
+                      <div
+                        key={session.id}
+                        className="flex items-center justify-between p-3 bg-muted/20 rounded-lg border border-border"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px] border border-primary/20">
+                            WA
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold text-foreground">
+                              {session.name}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground font-mono">
+                              {session.phoneNumber || session.id.slice(0, 8)}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (
+                              confirm(
+                                `Delete session "${session.name}"? This cannot be undone.`,
+                              )
+                            ) {
+                              try {
+                                await deleteSession(session.id);
+                                setSessionFeedback({
+                                  type: "success",
+                                  message: `Session "${session.name}" deleted successfully`,
+                                });
+                              } catch (error) {
+                                setSessionFeedback({
+                                  type: "error",
+                                  message: `Failed to delete session: ${error instanceof Error ? error.message : "Unknown error"}`,
+                                });
+                              }
+                            }
+                          }}
+                          disabled={isDeleting}
+                          className="px-2.5 py-1 rounded-md text-[10px] font-semibold text-destructive hover:bg-destructive/10 border border-transparent hover:border-destructive/30 transition-colors disabled:opacity-50"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add new session form */}
+                <div className="space-y-3 pt-3 border-t border-border">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Add New Session
+                  </p>
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Session name (e.g., Main Account)"
+                      value={newSessionName}
+                      onChange={(e) => setNewSessionName(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                    />
+                    <input
+                      type="password"
+                      placeholder="WABridge API key for this session"
+                      value={newSessionApiKey}
+                      onChange={(e) => setNewSessionApiKey(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-border bg-card text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (
+                          !newSessionName.trim() ||
+                          !newSessionApiKey.trim()
+                        ) {
+                          setSessionFeedback({
+                            type: "error",
+                            message:
+                              "Please provide both session name and API key",
+                          });
+                          return;
+                        }
+
+                        try {
+                          await createSession({
+                            name: newSessionName.trim(),
+                            apiKey: newSessionApiKey.trim(),
+                            hourlyLimit: 1000,
+                            dailyLimit: 10000,
+                          });
+
+                          setNewSessionName("");
+                          setNewSessionApiKey("");
+
+                          setSessionFeedback({
+                            type: "success",
+                            message: `Session "${newSessionName.trim()}" created successfully!`,
+                          });
+                        } catch (error) {
+                          setSessionFeedback({
+                            type: "error",
+                            message: `Failed to create session: ${error instanceof Error ? error.message : "Unknown error"}`,
+                          });
+                        }
+                      }}
+                      disabled={
+                        isCreating ||
+                        !newSessionName.trim() ||
+                        !newSessionApiKey.trim()
+                      }
+                      className="w-full px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      {isCreating ? "Adding Session..." : "Add Session"}
+                    </button>
+                  </div>
+                </div>
               </SectionCard>
             </div>
           )}

@@ -57,3 +57,30 @@ pub struct CreateCampaignInput {
     pub session_ids: Vec<Uuid>,
     pub contacts: Vec<CreateContactInput>,
 }
+
+impl CampaignStatus {
+    /// Parse from database string representation
+    pub fn from_str(s: &str) -> Result<Self, String> {
+        match s {
+            "draft" => Ok(Self::Draft),
+            "scheduled" => Ok(Self::Scheduled),
+            "running" => Ok(Self::Running),
+            "paused" => Ok(Self::Paused),
+            "completed" => Ok(Self::Completed),
+            "cancelled" => Ok(Self::Cancelled),
+            _ => Err(format!("Unknown campaign status: {}", s)),
+        }
+    }
+
+    /// Convert to database string representation
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Draft => "draft",
+            Self::Scheduled => "scheduled",
+            Self::Running => "running",
+            Self::Paused => "paused",
+            Self::Completed => "completed",
+            Self::Cancelled => "cancelled",
+        }
+    }
+}

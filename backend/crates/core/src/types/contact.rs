@@ -48,3 +48,28 @@ pub struct CreateContactInput {
     #[serde(default)]
     pub custom_fields: HashMap<String, String>,
 }
+
+impl ContactVerificationStatus {
+    /// Parse from database string representation
+    pub fn from_str(s: &str) -> Result<Self, String> {
+        match s {
+            "unverified" => Ok(Self::Unverified),
+            "checking" => Ok(Self::Checking),
+            "registered" => Ok(Self::Registered),
+            "unregistered" => Ok(Self::Unregistered),
+            "error" => Ok(Self::Error),
+            _ => Err(format!("Unknown contact verification status: {}", s)),
+        }
+    }
+
+    /// Convert to database string representation
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Unverified => "unverified",
+            Self::Checking => "checking",
+            Self::Registered => "registered",
+            Self::Unregistered => "unregistered",
+            Self::Error => "error",
+        }
+    }
+}

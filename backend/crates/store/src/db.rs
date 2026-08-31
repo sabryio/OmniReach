@@ -4,7 +4,7 @@
 //! It is the only type passed through `AppState` to handlers.
 //! All SQL lives in the repository modules, never in handlers.
 
-use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
+use sqlx::{SqlitePool, sqlite::SqlitePoolOptions};
 
 /// Shared database handle — cheaply cloneable (Arc inside).
 #[derive(Clone, Debug)]
@@ -29,5 +29,11 @@ impl Db {
     /// Borrow the inner pool for use in repository functions.
     pub fn pool(&self) -> &SqlitePool {
         &self.0
+    }
+}
+
+impl From<SqlitePool> for Db {
+    fn from(pool: SqlitePool) -> Self {
+        Self(pool)
     }
 }

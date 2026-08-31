@@ -1,16 +1,20 @@
 [package]
-name    = "omnireach-store"
+name = "omnireach-store"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
 omnireach-core = { workspace = true }
 
-tokio      = { workspace = true }
-sqlx       = { workspace = true }
-serde      = { workspace = true }
+futures = { workspace = true }
+tokio = { workspace = true }
+sqlx = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }
-uuid       = { workspace = true }
-chrono     = { workspace = true }
-thiserror  = { workspace = true }
-tracing    = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

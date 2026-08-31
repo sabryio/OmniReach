@@ -15,6 +15,27 @@ pub enum SessionStatus {
     Connecting,
 }
 
+impl SessionStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Connected => "connected",
+            Self::Disconnected => "disconnected",
+            Self::QrRequired => "qr_required",
+            Self::Connecting => "connecting",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Result<Self, String> {
+        match s {
+            "connected" => Ok(Self::Connected),
+            "disconnected" => Ok(Self::Disconnected),
+            "qr_required" => Ok(Self::QrRequired),
+            "connecting" => Ok(Self::Connecting),
+            _ => Err(format!("Invalid session status: {}", s)),
+        }
+    }
+}
+
 /// A linked WhatsApp device session managed by the WABridge daemon.
 ///
 /// Each session carries its own WABridge API key and rate-limit counters.
@@ -30,8 +51,8 @@ pub struct Session {
     /// WABridge API key scoped to this session. Never returned after creation.
     #[serde(skip_serializing)]
     pub api_key: String,
-    pub hourly_limit: i64,
-    pub daily_limit: i64,
+    pub hourly_limit: u32,
+    pub daily_limit: u32,
     /// Rolling window timestamps (Unix ms) of sent messages in the last hour.
     pub hourly_sent_timestamps: Vec<i64>,
     /// Rolling window timestamps (Unix ms) of sent messages in the last 24 h.
@@ -47,6 +68,6 @@ pub struct Session {
 pub struct CreateSessionInput {
     pub name: String,
     pub api_key: String,
-    pub hourly_limit: Option<i64>,
-    pub daily_limit: Option<i64>,
+    pub hourly_limit: Option<u32>,
+    pub daily_limit: Option<u32>,
 }

@@ -21,3 +21,6 @@ pub mod templates;
 
 pub use db::Db;
 pub use error::StoreError;
+
+#[cfg(test)]
+mod sessions_rate_limit_tests;

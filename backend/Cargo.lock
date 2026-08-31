@@ -1076,6 +1076,7 @@ name = "omnireach-store"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "futures",
  "omnireach-core",
  "serde",
  "serde_json",

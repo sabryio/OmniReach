@@ -73,8 +73,14 @@ pub async fn update(
 ) -> Result<Json<omnireach_core::types::Session>, ApiError> {
     // Extract fields from patch object
     let name = patch.get("name").and_then(|v| v.as_str());
-    let hourly_limit = patch.get("hourlyLimit").and_then(|v| v.as_i64());
-    let daily_limit = patch.get("dailyLimit").and_then(|v| v.as_i64());
+    let hourly_limit = patch
+        .get("hourlyLimit")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32);
+    let daily_limit = patch
+        .get("dailyLimit")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32);
 
     // TODO: Phase 2 — implement partial update in store layer
     // For now, just fetch and return the existing session

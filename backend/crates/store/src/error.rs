@@ -12,4 +12,16 @@ pub enum StoreError {
 
     #[error("serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
+
+    #[error("invalid UUID: {0}")]
+    InvalidUuid(#[from] uuid::Error),
+
+    #[error("invalid data: {0}")]
+    InvalidData(String),
+}
+
+impl From<String> for StoreError {
+    fn from(s: String) -> Self {
+        StoreError::InvalidData(s)
+    }
 }

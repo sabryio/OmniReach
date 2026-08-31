@@ -15,6 +15,19 @@
 
 use crate::types::Session;
 
+/// Result of attempting to acquire a send slot (atomic check-and-increment).
+#[derive(Debug, Clone)]
+pub struct RateLimitResult {
+    pub can_send: bool,
+    pub reason: Option<String>,
+    pub hourly_used: usize,
+    pub daily_used: usize,
+    pub hourly_remaining: i64,
+    pub daily_remaining: i64,
+    pub next_hourly_slot_ms: Option<i64>,
+    pub next_daily_slot_ms: Option<i64>,
+}
+
 /// Result of a quota check for one session at a given instant.
 #[derive(Debug, Clone)]
 pub struct QuotaCheck {
@@ -139,7 +152,7 @@ mod tests {
     use crate::types::{Session, SessionStatus};
     use uuid::Uuid;
 
-    fn make_session(hourly_limit: i64, daily_limit: i64, timestamps: Vec<i64>) -> Session {
+    fn make_session(hourly_limit: u32, daily_limit: u32, timestamps: Vec<i64>) -> Session {
         Session {
             id: Uuid::new_v4(),
             name: "test".into(),

@@ -26,7 +26,19 @@ pub use error::StoreError;
 mod sessions_rate_limit_tests;
 
 #[cfg(test)]
+mod sessions_crud_tests;
+
+#[cfg(test)]
 mod queue_tests;
 
 #[cfg(test)]
 mod logs_tests;
+
+#[cfg(test)]
+mod campaigns_tests;
+
+#[cfg(test)]
+mod contacts_tests;
+
+#[cfg(test)]
+mod settings_tests;

@@ -21,7 +21,6 @@ use std::time::Duration;
 
 /// Thin async wrapper around the WABridge HTTP API.
 #[derive(Clone, Debug)]
-#[allow(dead_code)] // fields used once todo!() stubs are implemented
 pub struct WaBridgeClient {
     http: Client,
     base_url: String,
@@ -46,18 +45,97 @@ impl WaBridgeClient {
     /// Poll WABridge for the current status of a session.
     pub async fn get_session(
         &self,
-        _session_id: &str,
-        _api_key: &str,
+        session_id: &str,
+        api_key: &str,
     ) -> Result<WaBridgeSession, GlueError> {
-        // TODO: GET {base_url}/v1/sessions/{session_id}
-        // Map 401 → GlueError::Unauthorized
-        todo!("GET /v1/sessions/:id")
+        let url = self._url(&format!("/v1/sessions/{}", session_id));
+
+        let response = self
+            .http
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", api_key))
+            .send()
+            .await
+            .map_err(|e| {
+                if e.is_timeout() {
+                    GlueError::Timeout(e.to_string())
+                } else {
+                    GlueError::Network(e)
+                }
+            })?;
+
+        let status = response.status();
+
+        if status == StatusCode::UNAUTHORIZED {
+            let body = response.text().await.unwrap_or_default();
+            return Err(GlueError::Unauthorized(body));
+        }
+
+        if status.is_server_error() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(GlueError::ServerError {
+                status: status.as_u16(),
+                body,
+            });
+        }
+
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(Self::_map_error(status, body).await);
+        }
+
+        let session: WaBridgeSession = response
+            .json()
+            .await
+            .map_err(|e| GlueError::Parse(e.to_string()))?;
+
+        Ok(session)
     }
 
     /// Fetch the current QR code for a session in `qr_required` state.
-    pub async fn get_qr(&self, _session_id: &str, _api_key: &str) -> Result<WaBridgeQr, GlueError> {
-        // TODO: GET {base_url}/v1/sessions/{session_id}/qr
-        todo!("GET /v1/sessions/:id/qr")
+    pub async fn get_qr(&self, session_id: &str, api_key: &str) -> Result<WaBridgeQr, GlueError> {
+        let url = self._url(&format!("/v1/sessions/{}/qr", session_id));
+
+        let response = self
+            .http
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", api_key))
+            .send()
+            .await
+            .map_err(|e| {
+                if e.is_timeout() {
+                    GlueError::Timeout(e.to_string())
+                } else {
+                    GlueError::Network(e)
+                }
+            })?;
+
+        let status = response.status();
+
+        if status == StatusCode::UNAUTHORIZED {
+            let body = response.text().await.unwrap_or_default();
+            return Err(GlueError::Unauthorized(body));
+        }
+
+        if status.is_server_error() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(GlueError::ServerError {
+                status: status.as_u16(),
+                body,
+            });
+        }
+
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(Self::_map_error(status, body).await);
+        }
+
+        let qr: WaBridgeQr = response
+            .json()
+            .await
+            .map_err(|e| GlueError::Parse(e.to_string()))?;
+
+        Ok(qr)
     }
 
     // ── Contact verification ──────────────────────────────────────────────────
@@ -67,14 +145,42 @@ impl WaBridgeClient {
     /// `jid` format: `"15551234567@s.whatsapp.net"`
     pub async fn check_contact(
         &self,
-        _jid: &str,
-        _api_key: &str,
+        jid: &str,
+        api_key: &str,
     ) -> Result<CheckContactResponse, GlueError> {
-        // TODO: POST {base_url}/v1/contacts/check
-        // Body: { jid }
-        // Map unregistered response → GlueError::Unregistered
-        // Map 401 → GlueError::Unauthorized
-        todo!("POST /v1/contacts/check")
+        let url = self._url("/v1/contacts/check");
+        let request_body = crate::models::CheckContactRequest {
+            jid: jid.to_string(),
+        };
+
+        let response = self
+            .http
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", api_key))
+            .json(&request_body)
+            .send()
+            .await?;
+
+        let status = response.status();
+
+        if status == StatusCode::UNAUTHORIZED {
+            let body = response.text().await.unwrap_or_default();
+            return Err(GlueError::Unauthorized(body));
+        }
+
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(Self::_map_error(status, body).await);
+        }
+
+        let contact_response: CheckContactResponse = response
+            .json()
+            .await
+            .map_err(|e| GlueError::Parse(e.to_string()))?;
+
+        // If the contact is not registered, return the response
+        // (caller can check contact_response.registered)
+        Ok(contact_response)
     }
 
     // ── Message sending ───────────────────────────────────────────────────────
@@ -82,30 +188,127 @@ impl WaBridgeClient {
     /// Send a plain-text message to a JID.
     pub async fn send_text(
         &self,
-        _to_jid: &str,
-        _body: &str,
-        _api_key: &str,
+        to_jid: &str,
+        body: &str,
+        api_key: &str,
     ) -> Result<MessageReceipt, GlueError> {
-        // TODO: POST {base_url}/v1/messages
-        // Body: { type: "text", to_jid, body }
-        // Map 429 → GlueError::RateLimit
-        // Map 401 → GlueError::Unauthorized
-        // Map timeout → GlueError::Timeout
-        // Map 5xx → GlueError::ServerError
-        todo!("POST /v1/messages (text)")
+        let url = self._url("/v1/messages");
+        let request_body = crate::models::SendTextRequest {
+            kind: "text".to_string(),
+            to_jid: to_jid.to_string(),
+            body: body.to_string(),
+        };
+
+        let response = self
+            .http
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", api_key))
+            .json(&request_body)
+            .send()
+            .await
+            .map_err(|e| {
+                if e.is_timeout() {
+                    GlueError::Timeout(e.to_string())
+                } else {
+                    GlueError::Network(e)
+                }
+            })?;
+
+        let status = response.status();
+
+        if status == StatusCode::UNAUTHORIZED {
+            let body = response.text().await.unwrap_or_default();
+            return Err(GlueError::Unauthorized(body));
+        }
+
+        if status == StatusCode::TOO_MANY_REQUESTS {
+            let body = response.text().await.unwrap_or_default();
+            return Err(GlueError::RateLimit(body));
+        }
+
+        if status.is_server_error() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(GlueError::ServerError {
+                status: status.as_u16(),
+                body,
+            });
+        }
+
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(Self::_map_error(status, body).await);
+        }
+
+        let receipt: MessageReceipt = response
+            .json()
+            .await
+            .map_err(|e| GlueError::Parse(e.to_string()))?;
+
+        Ok(receipt)
     }
 
     /// Send an image message using a previously uploaded `media_ref`.
     pub async fn send_image(
         &self,
-        _to_jid: &str,
-        _media_ref: &str,
-        _caption: Option<&str>,
-        _api_key: &str,
+        to_jid: &str,
+        media_ref: &str,
+        caption: Option<&str>,
+        api_key: &str,
     ) -> Result<MessageReceipt, GlueError> {
-        // TODO: POST {base_url}/v1/messages
-        // Body: { type: "image", to_jid, media_ref, caption }
-        todo!("POST /v1/messages (image)")
+        let url = self._url("/v1/messages");
+        let request_body = crate::models::SendImageRequest {
+            kind: "image".to_string(),
+            to_jid: to_jid.to_string(),
+            media_ref: media_ref.to_string(),
+            caption: caption.map(|s| s.to_string()),
+        };
+
+        let response = self
+            .http
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", api_key))
+            .json(&request_body)
+            .send()
+            .await
+            .map_err(|e| {
+                if e.is_timeout() {
+                    GlueError::Timeout(e.to_string())
+                } else {
+                    GlueError::Network(e)
+                }
+            })?;
+
+        let status = response.status();
+
+        if status == StatusCode::UNAUTHORIZED {
+            let body = response.text().await.unwrap_or_default();
+            return Err(GlueError::Unauthorized(body));
+        }
+
+        if status == StatusCode::TOO_MANY_REQUESTS {
+            let body = response.text().await.unwrap_or_default();
+            return Err(GlueError::RateLimit(body));
+        }
+
+        if status.is_server_error() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(GlueError::ServerError {
+                status: status.as_u16(),
+                body,
+            });
+        }
+
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(Self::_map_error(status, body).await);
+        }
+
+        let receipt: MessageReceipt = response
+            .json()
+            .await
+            .map_err(|e| GlueError::Parse(e.to_string()))?;
+
+        Ok(receipt)
     }
 
     // ── Media upload ──────────────────────────────────────────────────────────
@@ -115,13 +318,61 @@ impl WaBridgeClient {
     /// The returned `media_ref` is valid for ~2 hours.
     pub async fn upload_media(
         &self,
-        _file_bytes: Vec<u8>,
-        _file_name: &str,
-        _media_type: &str,
-        _api_key: &str,
+        file_bytes: Vec<u8>,
+        file_name: &str,
+        media_type: &str,
+        api_key: &str,
     ) -> Result<MediaUploadResponse, GlueError> {
-        // TODO: POST {base_url}/v1/media/upload (multipart)
-        todo!("POST /v1/media/upload")
+        let url = self._url("/v1/media/upload");
+
+        let part = reqwest::multipart::Part::bytes(file_bytes)
+            .file_name(file_name.to_string())
+            .mime_str(media_type)
+            .map_err(|e| GlueError::Parse(format!("Invalid MIME type: {}", e)))?;
+
+        let form = reqwest::multipart::Form::new().part("file", part);
+
+        let response = self
+            .http
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", api_key))
+            .multipart(form)
+            .send()
+            .await
+            .map_err(|e| {
+                if e.is_timeout() {
+                    GlueError::Timeout(e.to_string())
+                } else {
+                    GlueError::Network(e)
+                }
+            })?;
+
+        let status = response.status();
+
+        if status == StatusCode::UNAUTHORIZED {
+            let body = response.text().await.unwrap_or_default();
+            return Err(GlueError::Unauthorized(body));
+        }
+
+        if status.is_server_error() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(GlueError::ServerError {
+                status: status.as_u16(),
+                body,
+            });
+        }
+
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(Self::_map_error(status, body).await);
+        }
+
+        let upload_response: MediaUploadResponse = response
+            .json()
+            .await
+            .map_err(|e| GlueError::Parse(e.to_string()))?;
+
+        Ok(upload_response)
     }
 
     // ── Internal helpers ──────────────────────────────────────────────────────

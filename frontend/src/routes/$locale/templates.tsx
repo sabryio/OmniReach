@@ -1,6 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { TemplatesView, useTemplateManager } from "@/features/templates";
-import { useTemplates } from "@/features/templates";
+import {
+  useTemplates,
+  useCreateTemplate,
+  useUpdateTemplate,
+  useDeleteTemplate,
+} from "@/features/templates";
 import type { Template } from "@/features/templates";
 
 export const Route = createFileRoute("/$locale/templates")({
@@ -14,8 +19,17 @@ function TemplatesRoute() {
   // Data layer — TanStack Query
   const { templates, isLoading } = useTemplates();
 
-  // UI state layer
-  const templateManager = useTemplateManager(templates);
+  // Mutation hooks
+  const { createTemplateAsync } = useCreateTemplate();
+  const { updateTemplateAsync } = useUpdateTemplate();
+  const { deleteTemplateAsync } = useDeleteTemplate();
+
+  // UI state layer — pass mutations explicitly
+  const templateManager = useTemplateManager(templates, {
+    createTemplateAsync,
+    updateTemplateAsync,
+    deleteTemplateAsync,
+  });
 
   const handleUseTemplateInCampaign = (template: Template) => {
     navigate({

@@ -24,3 +24,9 @@ pub use error::StoreError;
 
 #[cfg(test)]
 mod sessions_rate_limit_tests;
+
+#[cfg(test)]
+mod queue_tests;
+
+#[cfg(test)]
+mod logs_tests;

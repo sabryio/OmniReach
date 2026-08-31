@@ -13,7 +13,7 @@ import {
   Code,
   X,
 } from "lucide-react";
-import type { QueueItem } from "@/types";
+import type { QueueItem } from "@/features/queue/schemas/queue.schema";
 
 interface QueueTabProps {
   queue: QueueItem[];

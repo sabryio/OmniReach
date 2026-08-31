@@ -2,7 +2,9 @@
  * AppFooter — 24px bottom status strip
  * Placeholder: log tail on left + queue count + version on right
  */
-import type { LogEntry, SchedulerState } from '@/types'
+
+import type { LogEntry } from "@/features/queue/schemas/queue.schema"
+import type { SchedulerState } from "../schemas/layout.schema"
 
 interface AppFooterProps {
   logs: LogEntry[]

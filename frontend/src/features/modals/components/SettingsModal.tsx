@@ -35,7 +35,7 @@ import type {
   SchedulerState,
   ThemeColor,
   ThemeMode,
-} from "@/types";
+} from "@/features/layout/schemas/layout.schema";
 
 interface SettingsModalProps {
   isOpen: boolean;

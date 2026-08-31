@@ -14,7 +14,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import type { LogEntry } from "@/types";
+import type { LogEntry } from "@/features/queue/schemas/queue.schema";
 import {
   CategoryFilterBar,
   LogDetailModal,

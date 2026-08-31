@@ -16,16 +16,15 @@ import {
 } from "lucide-react";
 import type {
   Campaign,
-  QueueItem,
-  WABridgeSession,
-  LogEntry,
-  SchedulerState,
-} from "@/types";
+} from "@/features/campaigns/schemas/campaign.schema";
+import type { Session } from "@/features/sessions/schemas/session.schema";
+import type { LogEntry, QueueItem } from "@/features/queue/schemas/queue.schema";
+import type { SchedulerState } from "@/features/layout/schemas/layout.schema";
 
 interface ReportsViewProps {
   campaigns: Campaign[];
   queue: QueueItem[];
-  sessions: WABridgeSession[];
+  sessions: Session[];
   logs?: LogEntry[];
   schedulerState?: SchedulerState;
 }
@@ -417,7 +416,7 @@ export function ReportsView({
                       key={c.id}
                       className="hover:bg-muted/30 transition-colors"
                     >
-                      <td className="px-3 py-2.5 font-medium text-foreground max-w-[180px] truncate">
+                      <td className="px-3 py-2.5 font-medium text-foreground max-w-45 truncate">
                         {c.title}
                       </td>
                       <td className="px-3 py-2.5 text-muted-foreground font-mono text-[11px]">

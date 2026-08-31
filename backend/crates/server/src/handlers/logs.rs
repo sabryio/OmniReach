@@ -6,17 +6,18 @@
 
 use crate::{error::ApiError, state::AppState};
 use axum::{Json, extract::State, http::StatusCode};
+use omnireach_core::types::LogEntry;
 
 /// GET /api/logs
 /// Returns the most recent 500 log entries, newest first.
-pub async fn list(State(_state): State<AppState>) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO: store::logs::list_recent(&state.db, 500).await
-    todo!("return recent logs")
+pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<LogEntry>>, ApiError> {
+    let logs = omnireach_store::logs::list_recent(&state.db, 500).await?;
+    Ok(Json(logs))
 }
 
 /// DELETE /api/logs
 /// Clears all log entries. Returns 204 No Content.
-pub async fn clear(State(_state): State<AppState>) -> Result<StatusCode, ApiError> {
-    // TODO: store::logs::clear_all(&state.db).await
-    todo!("delete all logs, return 204")
+pub async fn clear(State(state): State<AppState>) -> Result<StatusCode, ApiError> {
+    omnireach_store::logs::clear_all(&state.db).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

@@ -11,18 +11,18 @@ import {
   Check,
   ArrowRight,
 } from "lucide-react";
-import type {
-  Campaign,
-  WABridgeSession,
-  WABridgeConfig,
-  Contact,
-  CSVParseResult,
-} from "@/types";
 import { CsvImporter } from "./CsvImporter";
 import { MessageComposer } from "./MessageComposer";
+import type { Session } from "@/features/sessions/schemas/session.schema";
+import type { Contact } from "@/features/customers/schemas/customer.schema";
+import type { Campaign } from "../schemas/campaign.schema";
+import type {
+  CSVParseResult,
+  WABridgeConfig,
+} from "@/features/layout/schemas/layout.schema";
 
 interface CampaignWizardProps {
-  sessions: WABridgeSession[];
+  sessions: Session[];
   config: WABridgeConfig;
   initialTemplate?: unknown;
   initialContacts?: Contact[] | null;
@@ -128,10 +128,12 @@ export function CampaignWizard({
       imageUrl,
       sessionIds: selectedSessionIds,
       status: "running",
-      createdAt: Date.now(),
-      startedAt: Date.now(),
+      createdAt: new Date().toISOString(),
+      startedAt: new Date().toISOString(),
       totalContacts: contacts.length,
+      verifiedContacts: 0,
       sentCount: 0,
+      skippedCount: 0,
       unregisteredCount: unregisteredCount,
       failedCount: 0,
       contacts: [...contacts],
@@ -364,7 +366,7 @@ export function CampaignWizard({
                           }`}
                         >
                           {isSelected && (
-                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            <Check className="w-3.5 h-3.5 stroke-3" />
                           )}
                         </div>
                       </div>

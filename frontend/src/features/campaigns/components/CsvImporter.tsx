@@ -2,7 +2,9 @@
  * CsvImporter — drag-and-drop CSV upload, column mapping, contact preview
  * Placeholder
  */
-import type { Contact, CSVParseResult } from '@/types'
+
+import type { Contact } from "@/features/customers/schemas/customer.schema"
+import type { CSVParseResult } from "@/features/layout/schemas/layout.schema"
 
 interface CsvImporterProps {
   onContactsParsed: (contacts: Contact[], result: CSVParseResult) => void

@@ -10,6 +10,8 @@ use axum::{
     Json,
     extract::{Path, Query, State},
 };
+use omnireach_core::types::QueueItem;
+use omnireach_store::queue::QueueStats;
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -20,25 +22,25 @@ pub struct ListQueueQuery {
 
 /// GET /api/queue?campaign_id=<uuid>
 pub async fn list(
-    State(_state): State<AppState>,
-    Query(_q): Query<ListQueueQuery>,
-) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO: store::queue::list_all(&state.db, q.campaign_id).await
-    todo!("return queue items filtered by optional campaign_id")
+    State(state): State<AppState>,
+    Query(q): Query<ListQueueQuery>,
+) -> Result<Json<Vec<QueueItem>>, ApiError> {
+    let items = omnireach_store::queue::list_all(&state.db, q.campaign_id).await?;
+    Ok(Json(items))
 }
 
 /// GET /api/queue/stats
-pub async fn stats(State(_state): State<AppState>) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO: store::queue::stats(&state.db).await
-    // Returns: { pending, sending, sent, failed, held }
-    todo!("return queue stats")
+pub async fn stats(State(state): State<AppState>) -> Result<Json<QueueStats>, ApiError> {
+    let s = omnireach_store::queue::stats(&state.db).await?;
+    Ok(Json(s))
 }
 
 /// POST /api/queue/:id/cancel
 pub async fn cancel(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO: store::queue::cancel(&state.db, id).await
-    todo!("set queue item status = cancelled")
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<QueueItem>, ApiError> {
+    let item = omnireach_store::queue::cancel(&state.db, id).await?;
+    // TODO: emit SSE event
+    Ok(Json(item))
 }

@@ -9,13 +9,14 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
-import type { WABridgeSession, WABridgeConfig } from "@/types";
+import type { Session } from "@/features/sessions/schemas/session.schema";
+import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
 import { useQuickVerifier } from "../hooks/useModals";
 
 interface QuickVerifierModalProps {
   isOpen: boolean;
   onClose: () => void;
-  sessions: WABridgeSession[];
+  sessions: Session[];
   config: WABridgeConfig;
 }
 

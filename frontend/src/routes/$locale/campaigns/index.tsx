@@ -13,7 +13,7 @@ import {
   useDeleteCampaign,
   useArchiveCampaign,
   useUnarchiveCampaign,
-  useUpdateCampaign,
+  useRetryFailedCampaign,
 } from "@/features/campaigns/hooks/useCampaignMutations";
 
 export const Route = createFileRoute("/$locale/campaigns/")({
@@ -32,7 +32,7 @@ function CampaignsRoute() {
   const { deleteCampaign } = useDeleteCampaign();
   const { archiveCampaign } = useArchiveCampaign();
   const { unarchiveCampaign } = useUnarchiveCampaign();
-  const { updateCampaign } = useUpdateCampaign();
+  const { retryFailedCampaign } = useRetryFailedCampaign();
 
   if (isLoading) {
     return (
@@ -49,9 +49,7 @@ function CampaignsRoute() {
       sessions={sessions}
       onPauseCampaign={(id) => pauseCampaign(id)}
       onResumeCampaign={(id) => resumeCampaign(id)}
-      onRetryFailed={(id) =>
-        updateCampaign({ id, updates: { status: "running", failedCount: 0 } })
-      }
+      onRetryFailed={(id) => retryFailedCampaign(id)}
       onDeleteCampaign={(id) => deleteCampaign(id)}
       onArchiveCampaign={(id) => archiveCampaign(id)}
       onUnarchiveCampaign={(id) => unarchiveCampaign(id)}

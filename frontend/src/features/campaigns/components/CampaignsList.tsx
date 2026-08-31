@@ -18,13 +18,17 @@ import {
   Inbox,
   RotateCcw,
 } from "lucide-react";
-import type { Campaign, QueueItem, WABridgeSession } from "@/types";
+import type {
+  Campaign,
+} from "@/features/campaigns/schemas/campaign.schema";
+import type { Session } from "@/features/sessions/schemas/session.schema";
 import { useCampaignsList } from "../hooks/useCampaigns";
+import type { QueueItem } from "@/features/queue/schemas/queue.schema";
 
 interface CampaignsListProps {
   campaigns: Campaign[];
   queue: QueueItem[];
-  sessions: WABridgeSession[];
+  sessions: Session[];
   onPauseCampaign: (id: string) => void;
   onResumeCampaign: (id: string) => void;
   onRetryFailed: (id: string) => void;

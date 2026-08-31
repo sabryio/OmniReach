@@ -28,6 +28,7 @@ pub enum LogCategory {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LogEntry {
     pub id: Uuid,
     pub timestamp: DateTime<Utc>,

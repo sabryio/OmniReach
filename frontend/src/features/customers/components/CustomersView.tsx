@@ -2,6 +2,9 @@
  * CustomersView — purely presentational
  * All state and handlers come from useCustomerManager via the route component.
  */
+import type { Contact } from "@/features/campaigns/schemas/campaign.schema";
+import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
+import type { Session } from "@/features/sessions/schemas/session.schema";
 import {
   Users,
   Search,
@@ -16,7 +19,6 @@ import {
   CheckSquare,
   Square,
 } from "lucide-react";
-import type { Contact, WABridgeSession, WABridgeConfig } from "@/types";
 
 interface CustomersViewProps {
   // Data
@@ -57,7 +59,7 @@ interface CustomersViewProps {
   onLaunchCampaignWithContacts: (contacts: Contact[]) => void;
   onOpenVerifier: () => void;
   // Unused but kept for API compatibility
-  sessions?: WABridgeSession[];
+  sessions?: Session[];
   config?: WABridgeConfig;
   campaignContacts?: Contact[];
 }

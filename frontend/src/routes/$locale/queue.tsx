@@ -1,13 +1,16 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { QueueAndLogsView } from '@/features/queue'
-import { useQueueQuery, useLogsQuery } from '@/features/queue/hooks/useQueueQuery'
-import type { SchedulerState } from '@/types'
-import { useState } from 'react'
+import { createFileRoute } from "@tanstack/react-router";
+import { QueueAndLogsView } from "@/features/queue";
+import {
+  useQueueQuery,
+  useLogsQuery,
+} from "@/features/queue/hooks/useQueueQuery";
+import type { SchedulerState } from "@/features/layout/schemas/layout.schema";
+import { useState } from "react";
 
 const DEFAULT_SCHEDULER: SchedulerState = {
   isRunning: false,
   isWithinTimeWindow: true,
-  timeWindowText: '9AM–9PM Active',
+  timeWindowText: "9AM–9PM Active",
   currentLocalTimeStr: new Date().toLocaleTimeString(),
   activeSendingCount: 0,
   totalQueuePending: 0,
@@ -16,23 +19,23 @@ const DEFAULT_SCHEDULER: SchedulerState = {
   customWindowStartHour: 9,
   customWindowEndHour: 21,
   simulatedHourOffset: 0,
-}
+};
 
-export const Route = createFileRoute('/$locale/queue')({
+export const Route = createFileRoute("/$locale/queue")({
   component: QueueRoute,
-})
+});
 
 function QueueRoute() {
-  const { queue, isLoading: queueLoading } = useQueueQuery()
-  const { logs, isLoading: logsLoading } = useLogsQuery()
-  const [schedulerState] = useState<SchedulerState>(DEFAULT_SCHEDULER)
+  const { queue, isLoading: queueLoading } = useQueueQuery();
+  const { logs, isLoading: logsLoading } = useLogsQuery();
+  const [schedulerState] = useState<SchedulerState>(DEFAULT_SCHEDULER);
 
   if (queueLoading || logsLoading) {
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
         Loading queue...
       </div>
-    )
+    );
   }
 
   return (
@@ -42,5 +45,5 @@ function QueueRoute() {
       schedulerState={schedulerState}
       onClearLogs={() => {}}
     />
-  )
+  );
 }

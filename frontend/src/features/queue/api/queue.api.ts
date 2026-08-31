@@ -1,35 +1,67 @@
-import type { QueueItem, LogEntry } from '@/types'
-import { MOCK_QUEUE, MOCK_LOGS } from '@/mock-data'
+import { config } from "@/lib/config";
+import {
+  queueSchema,
+  queueStatsSchema,
+  queueItemSchema,
+  logsSchema,
+  type QueueItem,
+  type QueueStats,
+  type LogEntry,
+} from "../schemas/queue.schema";
 
 // ─── Queue Queries ────────────────────────────────────────────────────────────
 
-export async function getQueue(): Promise<QueueItem[]> {
-  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/queue`)
-  return MOCK_QUEUE
+export async function getQueue(campaignId?: string): Promise<QueueItem[]> {
+  const url = campaignId
+    ? `${config.apiBaseUrl}/api/queue?campaign_id=${campaignId}`
+    : `${config.apiBaseUrl}/api/queue`;
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${config.authToken}` },
+  });
+  if (!response.ok)
+    throw new Error(`Failed to fetch queue: ${response.statusText}`);
+  return queueSchema.parse(await response.json());
+}
+
+export async function getQueueStats(): Promise<QueueStats> {
+  const response = await fetch(`${config.apiBaseUrl}/api/queue/stats`, {
+    headers: { Authorization: `Bearer ${config.authToken}` },
+  });
+  if (!response.ok)
+    throw new Error(`Failed to fetch queue stats: ${response.statusText}`);
+  return queueStatsSchema.parse(await response.json());
 }
 
 // ─── Queue Mutations ──────────────────────────────────────────────────────────
 
-export async function deleteQueueItem(_id: string): Promise<void> {
-  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/queue/${id}`, { method: 'DELETE' })
-  return
-}
-
-export async function retryQueueItem(_id: string): Promise<void> {
-  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/queue/retry`, { method: 'POST', body: { id } })
-  return
+export async function cancelQueueItem(id: string): Promise<QueueItem> {
+  const response = await fetch(`${config.apiBaseUrl}/api/queue/${id}/cancel`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${config.authToken}` },
+  });
+  if (!response.ok)
+    throw new Error(`Failed to cancel queue item: ${response.statusText}`);
+  return queueItemSchema.parse(await response.json());
 }
 
 // ─── Log Queries ──────────────────────────────────────────────────────────────
 
 export async function getLogs(): Promise<LogEntry[]> {
-  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/logs`)
-  return MOCK_LOGS
+  const response = await fetch(`${config.apiBaseUrl}/api/logs`, {
+    headers: { Authorization: `Bearer ${config.authToken}` },
+  });
+  if (!response.ok)
+    throw new Error(`Failed to fetch logs: ${response.statusText}`);
+  return logsSchema.parse(await response.json());
 }
 
 // ─── Log Mutations ────────────────────────────────────────────────────────────
 
 export async function clearLogs(): Promise<void> {
-  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/logs`, { method: 'DELETE' })
-  return
+  const response = await fetch(`${config.apiBaseUrl}/api/logs`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${config.authToken}` },
+  });
+  if (!response.ok)
+    throw new Error(`Failed to clear logs: ${response.statusText}`);
 }

@@ -21,7 +21,10 @@ import {
 } from "@/features/modals";
 import { useSessions } from "@/features/sessions";
 import { useLogsQuery } from "@/features/queue";
-import type { SchedulerState, WABridgeConfig } from "@/types";
+import type {
+  SchedulerState,
+  WABridgeConfig,
+} from "@/features/layout/schemas/layout.schema";
 
 export const Route = createFileRoute("/$locale")({
   beforeLoad: ({ params }) => {

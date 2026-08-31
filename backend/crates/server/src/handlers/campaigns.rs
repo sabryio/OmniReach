@@ -17,92 +17,109 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
 };
-use omnireach_core::types::CreateCampaignInput;
+use omnireach_core::types::{Campaign, CampaignStatus, CreateCampaignInput};
 use uuid::Uuid;
 
 /// GET /api/campaigns
-pub async fn list(State(_state): State<AppState>) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO: store::campaigns::list_all(&state.db).await
-    todo!("return all campaigns with contacts embedded")
+pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Campaign>>, ApiError> {
+    let campaigns = omnireach_store::campaigns::list_all(&state.db).await?;
+    Ok(Json(campaigns))
 }
 
 /// POST /api/campaigns
 pub async fn create(
-    State(_state): State<AppState>,
-    Json(_input): Json<CreateCampaignInput>,
-) -> Result<(StatusCode, Json<serde_json::Value>), ApiError> {
-    // TODO:
-    // 1. Validate: title non-empty, at least one contact, at least one session_id
-    // 2. Render each contact's message via core::renderer::render()
-    // 3. store::campaigns::insert(&state.db, input).await (transaction)
-    // 4. state.sse.send(SseEvent::CampaignCreated { ... })
-    // 5. Return 201 with full Campaign
-    todo!("create campaign, render templates, queue items, emit SSE")
+    State(state): State<AppState>,
+    Json(input): Json<CreateCampaignInput>,
+) -> Result<(StatusCode, Json<Campaign>), ApiError> {
+    let campaign = omnireach_store::campaigns::insert(&state.db, input).await?;
+    // TODO: emit SSE event
+    Ok((StatusCode::CREATED, Json(campaign)))
 }
 
 /// PATCH /api/campaigns/:id
 pub async fn update(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-    Json(_patch): Json<serde_json::Value>,
-) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO: parse patch fields, store::campaigns::update(...)
-    todo!("partial update campaign")
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Json(patch): Json<serde_json::Value>,
+) -> Result<Json<Campaign>, ApiError> {
+    // Extract optional status change from patch
+    let status = patch
+        .get("status")
+        .and_then(|v| v.as_str())
+        .and_then(|s| match s {
+            "running" => Some(CampaignStatus::Running),
+            "paused" => Some(CampaignStatus::Paused),
+            "cancelled" => Some(CampaignStatus::Cancelled),
+            _ => None,
+        });
+
+    let campaign = if let Some(status) = status {
+        omnireach_store::campaigns::update_status(&state.db, id, status).await?
+    } else {
+        omnireach_store::campaigns::get_by_id(&state.db, id).await?
+    };
+
+    // TODO: emit SSE event
+    Ok(Json(campaign))
 }
 
 /// DELETE /api/campaigns/:id
 pub async fn destroy(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    // TODO: store::campaigns::delete(&state.db, id).await → 204
-    todo!("delete campaign (cascade)")
+    omnireach_store::campaigns::delete(&state.db, id).await?;
+    // TODO: emit SSE event
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// POST /api/campaigns/:id/pause
 pub async fn pause(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO: store::campaigns::update_status(&state.db, id, CampaignStatus::Paused).await
-    todo!("set campaign status = paused")
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<Campaign>, ApiError> {
+    let campaign =
+        omnireach_store::campaigns::update_status(&state.db, id, CampaignStatus::Paused).await?;
+    // TODO: emit SSE event
+    Ok(Json(campaign))
 }
 
 /// POST /api/campaigns/:id/resume
 pub async fn resume(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO: store::campaigns::update_status(&state.db, id, CampaignStatus::Running).await
-    todo!("set campaign status = running")
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<Campaign>, ApiError> {
+    let campaign =
+        omnireach_store::campaigns::update_status(&state.db, id, CampaignStatus::Running).await?;
+    // TODO: emit SSE event
+    Ok(Json(campaign))
 }
 
 /// POST /api/campaigns/:id/archive
 pub async fn archive(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO: store::campaigns::set_archived(&state.db, id, true).await
-    todo!("set is_archived = true, archived_at = now")
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<Campaign>, ApiError> {
+    let campaign = omnireach_store::campaigns::set_archived(&state.db, id, true).await?;
+    Ok(Json(campaign))
 }
 
 /// POST /api/campaigns/:id/unarchive
 pub async fn unarchive(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
-) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO: store::campaigns::set_archived(&state.db, id, false).await
-    todo!("set is_archived = false, archived_at = null")
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<Campaign>, ApiError> {
+    let campaign = omnireach_store::campaigns::set_archived(&state.db, id, false).await?;
+    Ok(Json(campaign))
 }
 
 /// POST /api/campaigns/:id/retry-failed
 pub async fn retry_failed(
-    State(_state): State<AppState>,
-    Path(_id): Path<Uuid>,
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO:
-    // 1. store::queue::requeue_failed(&state.db, id).await → count
-    // 2. store::campaigns::update_status(&state.db, id, CampaignStatus::Running).await
-    // 3. return Json(json!({ "queued_count": count }))
-    todo!("reset failed queue items to pending")
+    let queued_count = omnireach_store::queue::requeue_failed(&state.db, id).await?;
+    omnireach_store::campaigns::update_status(&state.db, id, CampaignStatus::Running).await?;
+    // TODO: emit SSE event
+    Ok(Json(serde_json::json!({ "queuedCount": queued_count })))
 }

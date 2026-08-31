@@ -2,12 +2,14 @@
  * WindowsTitleBar — top 36px chrome bar
  * Placeholder: app icon + name + status pills + theme/lang controls + window buttons
  */
-import type { SchedulerState, WABridgeConfig, WABridgeSession, ThemeColor, ThemeMode } from '@/types'
+
+import type { Session } from "@/features/sessions/schemas/session.schema"
+import type { SchedulerState, ThemeColor, ThemeMode, WABridgeConfig } from "../schemas/layout.schema"
 
 interface WindowsTitleBarProps {
   schedulerState: SchedulerState
   config: WABridgeConfig
-  sessions: WABridgeSession[]
+  sessions: Session[]
   themeMode: ThemeMode
   themeColor: ThemeColor
   onToggleScheduler: () => void

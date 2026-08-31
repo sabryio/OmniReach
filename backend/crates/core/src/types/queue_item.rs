@@ -22,6 +22,7 @@ pub enum QueueItemStatus {
 
 /// A single message dispatch unit — one per contact per campaign.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct QueueItem {
     pub id: Uuid,
     pub campaign_id: Uuid,

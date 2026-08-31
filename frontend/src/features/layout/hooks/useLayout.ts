@@ -1,18 +1,18 @@
-import { useState, useCallback } from 'react'
-import type { ThemeColor, ThemeMode } from '@/types'
+import { useState, useCallback } from "react";
+import type { ThemeColor, ThemeMode } from "../schemas/layout.schema";
 
 export function useLayout() {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-  const [compactMode, setCompactMode] = useState(true)
-  const [themeMode, setThemeMode] = useState<ThemeMode>('dark')
-  const [themeColor, setThemeColor] = useState<ThemeColor>('blue')
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [compactMode, setCompactMode] = useState(true);
+  const [themeMode, setThemeMode] = useState<ThemeMode>("dark");
+  const [themeColor, setThemeColor] = useState<ThemeColor>("blue");
 
-  const toggleSidebar = useCallback(() => setIsSidebarCollapsed((p) => !p), [])
-  const toggleCompactMode = useCallback(() => setCompactMode((p) => !p), [])
+  const toggleSidebar = useCallback(() => setIsSidebarCollapsed((p) => !p), []);
+  const toggleCompactMode = useCallback(() => setCompactMode((p) => !p), []);
   const toggleThemeMode = useCallback(
-    () => setThemeMode((p) => (p === 'dark' ? 'light' : 'dark')),
+    () => setThemeMode((p) => (p === "dark" ? "light" : "dark")),
     [],
-  )
+  );
 
   return {
     isSidebarCollapsed,
@@ -23,5 +23,5 @@ export function useLayout() {
     themeColor,
     setThemeColor,
     toggleThemeMode,
-  }
+  };
 }

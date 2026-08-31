@@ -4,40 +4,42 @@
  * that were previously copy-pasted across EventStreamTab and LogsTab.
  */
 import { X } from "lucide-react";
-import type { LogEntry } from "@/types";
+import type { LogEntry } from "@/features/queue/schemas/queue.schema";
 
 // ─── Shared category list ─────────────────────────────────────────────────────
 
 export const LOG_CATEGORIES = [
-  { id: "all",          label: "All"          },
+  { id: "all", label: "All" },
   { id: "verification", label: "Verification" },
-  { id: "send",         label: "Send"         },
-  { id: "rate_limit",   label: "Rate Limit"   },
-  { id: "scheduler",    label: "Scheduler"    },
-  { id: "session",      label: "Session"      },
-  { id: "system",       label: "System"       },
+  { id: "send", label: "Send" },
+  { id: "rate_limit", label: "Rate Limit" },
+  { id: "scheduler", label: "Scheduler" },
+  { id: "session", label: "Session" },
+  { id: "system", label: "System" },
 ] as const;
 
 // ─── Shared severity badge ────────────────────────────────────────────────────
 
 export function severityBadgeClass(level: string) {
-  if (level === "success") return "bg-success/15 text-success border-success/30";
-  if (level === "warn")    return "bg-warning/15 text-warning border-warning/30";
-  if (level === "error")   return "bg-destructive/15 text-destructive border-destructive/30";
+  if (level === "success")
+    return "bg-success/15 text-success border-success/30";
+  if (level === "warn") return "bg-warning/15 text-warning border-warning/30";
+  if (level === "error")
+    return "bg-destructive/15 text-destructive border-destructive/30";
   return "bg-muted text-muted-foreground border-border";
 }
 
 export function levelColor(level: string) {
   if (level === "success") return "text-success";
-  if (level === "warn")    return "text-warning";
-  if (level === "error")   return "text-destructive";
+  if (level === "warn") return "text-warning";
+  if (level === "error") return "text-destructive";
   return "text-muted-foreground";
 }
 
 export function levelDot(level: string) {
   if (level === "success") return "bg-success";
-  if (level === "warn")    return "bg-warning";
-  if (level === "error")   return "bg-destructive";
+  if (level === "warn") return "bg-warning";
+  if (level === "error") return "bg-destructive";
   return "bg-muted-foreground";
 }
 
@@ -48,7 +50,10 @@ interface CategoryFilterBarProps {
   onChange: (id: string) => void;
 }
 
-export function CategoryFilterBar({ active, onChange }: CategoryFilterBarProps) {
+export function CategoryFilterBar({
+  active,
+  onChange,
+}: CategoryFilterBarProps) {
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-xs">
       {LOG_CATEGORIES.map((cat) => (

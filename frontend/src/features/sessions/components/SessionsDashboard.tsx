@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
-import type { WABridgeConfig } from "@/types";
+import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
 import type { Session } from "../schemas/session.schema";
 import { getSessionQuota, formatDuration } from "../utils/quota";
 

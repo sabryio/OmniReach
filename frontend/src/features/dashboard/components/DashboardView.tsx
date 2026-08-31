@@ -17,20 +17,17 @@ import {
   TrendingUp,
   FileText,
 } from "lucide-react";
-import type {
-  Campaign,
-  QueueItem,
-  WABridgeSession,
-  SchedulerState,
-  LogEntry,
-  SessionRateQuota,
-} from "@/types";
 import { useDashboard } from "../hooks/useDashboard";
+import type { Campaign } from "@/features/campaigns/schemas/campaign.schema";
+import type { LogEntry, QueueItem } from "@/features/queue/schemas/queue.schema";
+import type { SchedulerState } from "@/features/layout/schemas/layout.schema";
+import type { Session } from "@/features/sessions/schemas/session.schema";
+import type { SessionRateQuota } from "../schemas/dashboard.schema";
 
 interface DashboardViewProps {
   campaigns: Campaign[];
   queue: QueueItem[];
-  sessions: WABridgeSession[];
+  sessions: Session[];
   schedulerState: SchedulerState;
   logs: LogEntry[];
   onNavigate: (tab: string) => void;

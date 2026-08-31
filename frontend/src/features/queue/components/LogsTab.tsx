@@ -5,7 +5,7 @@
  * REFACTORED: Now purely presentational, receives all state as props
  */
 import { Filter, Trash2 } from "lucide-react";
-import type { LogEntry } from "@/types";
+import type { LogEntry } from "@/features/queue/schemas/queue.schema";
 import {
   CategoryFilterBar,
   LogDetailModal,

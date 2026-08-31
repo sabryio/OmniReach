@@ -14,7 +14,10 @@ import {
   Layers,
   Database,
 } from "lucide-react";
-import type { QueueItem, LogEntry } from "@/types";
+import type {
+  QueueItem,
+  LogEntry,
+} from "@/features/queue/schemas/queue.schema";
 
 interface AnalyticsTabProps {
   queue: QueueItem[];

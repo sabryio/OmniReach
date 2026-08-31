@@ -6,7 +6,8 @@ import {
 import { CampaignWizard } from "@/features/campaigns";
 import { useSessions } from "@/features/sessions/hooks/useSessionsQuery";
 import { useCreateCampaign } from "@/features/campaigns/hooks/useCampaignMutations";
-import type { Campaign, WABridgeConfig } from "@/types";
+import type { Campaign } from "@/features/campaigns/schemas/campaign.schema";
+import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
 
 const DEFAULT_CONFIG: WABridgeConfig = {
   baseUrl: "http://127.0.0.1:8080",
@@ -27,20 +28,7 @@ function NewCampaignRoute() {
   const { createCampaignAsync } = useCreateCampaign();
 
   const handleLaunchCampaign = async (campaign: Campaign) => {
-    await createCampaignAsync({
-      title: campaign.title,
-      template: {
-        id: "",
-        title: "",
-        category: "",
-        text: campaign.templateText ?? "",
-        suggestedVariables: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      contacts: campaign.contacts ?? [],
-      sessionIds: [],
-    });
+    await createCampaignAsync(campaign);
     navigate({ to: "/$locale/campaigns", params: { locale } });
   };
 

@@ -2,7 +2,8 @@
  * MessageComposer — template editor + live WhatsApp phone preview
  * Placeholder
  */
-import type { Contact } from "@/types";
+
+import type { Contact } from "@/features/customers/schemas/customer.schema";
 
 interface MessageComposerProps {
   templateText: string;

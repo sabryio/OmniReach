@@ -6,7 +6,7 @@ import {
 import { DashboardView } from "@/features/dashboard";
 import { useDashboardData } from "@/features/dashboard/hooks/useDashboardData";
 import { useState, useCallback } from "react";
-import type { SchedulerState } from "@/types";
+import type { SchedulerState } from "@/features/layout/schemas/layout.schema";
 
 export const Route = createFileRoute("/$locale/")({
   component: DashboardRoute,

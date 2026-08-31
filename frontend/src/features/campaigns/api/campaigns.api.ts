@@ -1,75 +1,124 @@
-import type { Campaign, Contact } from '@/types'
-import { MOCK_CAMPAIGNS } from '@/mock-data'
-import type { Template } from '@/features/templates'
+import { config } from "@/lib/config";
+import {
+  campaignSchema,
+  campaignsSchema,
+  createCampaignInputSchema,
+  retryFailedResponseSchema,
+  type Campaign,
+  type CreateCampaignInput,
+} from "../schemas/campaign.schema";
+
+// ─── Queries ──────────────────────────────────────────────────────────────────
 
 export async function getCampaigns(): Promise<Campaign[]> {
-  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/campaigns`)
-  return MOCK_CAMPAIGNS
+  const response = await fetch(`${config.apiBaseUrl}/api/campaigns`, {
+    headers: { Authorization: `Bearer ${config.authToken}` },
+  });
+  if (!response.ok)
+    throw new Error(`Failed to fetch campaigns: ${response.statusText}`);
+  return campaignsSchema.parse(await response.json());
 }
 
 export async function getCampaign(id: string): Promise<Campaign> {
-  const campaign = MOCK_CAMPAIGNS.find((c) => c.id === id)
-  if (!campaign) throw new Error(`Campaign ${id} not found`)
-  return campaign
+  const response = await fetch(`${config.apiBaseUrl}/api/campaigns/${id}`, {
+    headers: { Authorization: `Bearer ${config.authToken}` },
+  });
+  if (!response.ok)
+    throw new Error(`Failed to fetch campaign ${id}: ${response.statusText}`);
+  return campaignSchema.parse(await response.json());
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
-export type CreateCampaignParams = {
-  title: string
-  template: Template
-  contacts: Contact[]
-  sessionIds: string[]
-}
-
-export async function createCampaign(params: CreateCampaignParams): Promise<Campaign> {
-  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/campaigns`, { method: 'POST', ... })
-  const newCampaign: Campaign = {
-    id: `camp-${Date.now()}`,
-    title: params.title,
-    status: 'running',
-    totalContacts: params.contacts.length,
-    sentCount: 0,
-    unregisteredCount: 0,
-    failedCount: 0,
-    createdAt: Date.now(),
-    startedAt: Date.now(),
-    templateText: params.template.text,
-    imageUrl: params.template.imageUrl,
-    isArchived: false,
-    contacts: params.contacts,
-  }
-  return newCampaign
-}
-
-export async function updateCampaign(
-  id: string,
-  updates: Partial<Campaign>,
+export async function createCampaign(
+  input: CreateCampaignInput,
 ): Promise<Campaign> {
-  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/campaigns/${id}`, { method: 'PATCH', ... })
-  const campaign = await getCampaign(id)
-  return { ...campaign, ...updates }
+  const validatedInput = createCampaignInputSchema.parse(input);
+  const response = await fetch(`${config.apiBaseUrl}/api/campaigns`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.authToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(validatedInput),
+  });
+  if (!response.ok)
+    throw new Error(`Failed to create campaign: ${response.statusText}`);
+  return campaignSchema.parse(await response.json());
 }
 
-export async function deleteCampaign(_id: string): Promise<void> {
-  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/campaigns/${id}`, { method: 'DELETE' })
-  return
+export async function deleteCampaign(id: string): Promise<void> {
+  const response = await fetch(`${config.apiBaseUrl}/api/campaigns/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${config.authToken}` },
+  });
+  if (!response.ok)
+    throw new Error(`Failed to delete campaign: ${response.statusText}`);
 }
 
 export async function pauseCampaign(id: string): Promise<Campaign> {
-  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/campaigns/${id}/pause`, { method: 'POST' })
-  return updateCampaign(id, { status: 'paused' })
+  const response = await fetch(
+    `${config.apiBaseUrl}/api/campaigns/${id}/pause`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${config.authToken}` },
+    },
+  );
+  if (!response.ok)
+    throw new Error(`Failed to pause campaign: ${response.statusText}`);
+  return campaignSchema.parse(await response.json());
 }
 
 export async function resumeCampaign(id: string): Promise<Campaign> {
-  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/campaigns/${id}/resume`, { method: 'POST' })
-  return updateCampaign(id, { status: 'running' })
+  const response = await fetch(
+    `${config.apiBaseUrl}/api/campaigns/${id}/resume`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${config.authToken}` },
+    },
+  );
+  if (!response.ok)
+    throw new Error(`Failed to resume campaign: ${response.statusText}`);
+  return campaignSchema.parse(await response.json());
 }
 
 export async function archiveCampaign(id: string): Promise<Campaign> {
-  return updateCampaign(id, { isArchived: true })
+  const response = await fetch(
+    `${config.apiBaseUrl}/api/campaigns/${id}/archive`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${config.authToken}` },
+    },
+  );
+  if (!response.ok)
+    throw new Error(`Failed to archive campaign: ${response.statusText}`);
+  return campaignSchema.parse(await response.json());
 }
 
 export async function unarchiveCampaign(id: string): Promise<Campaign> {
-  return updateCampaign(id, { isArchived: false })
+  const response = await fetch(
+    `${config.apiBaseUrl}/api/campaigns/${id}/unarchive`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${config.authToken}` },
+    },
+  );
+  if (!response.ok)
+    throw new Error(`Failed to unarchive campaign: ${response.statusText}`);
+  return campaignSchema.parse(await response.json());
+}
+
+export async function retryFailedCampaign(
+  id: string,
+): Promise<{ queuedCount: number }> {
+  const response = await fetch(
+    `${config.apiBaseUrl}/api/campaigns/${id}/retry-failed`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${config.authToken}` },
+    },
+  );
+  if (!response.ok)
+    throw new Error(`Failed to retry campaign: ${response.statusText}`);
+  return retryFailedResponseSchema.parse(await response.json());
 }

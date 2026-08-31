@@ -1,79 +1,182 @@
 //! Log entry repository — all SQL for the `logs` table.
 
 use crate::{Db, StoreError};
-use chrono::Utc;
 use omnireach_core::types::{LogCategory, LogEntry, LogLevel};
 use uuid::Uuid;
 
 /// GET /api/logs — return most recent `limit` log entries, newest first
-///
-/// TODO: Phase 2 — implement real SQL query
-pub async fn list_recent(_db: &Db, _limit: i64) -> Result<Vec<LogEntry>, StoreError> {
-    let now = Utc::now();
+pub async fn list_recent(db: &Db, limit: i64) -> Result<Vec<LogEntry>, StoreError> {
+    let rows = sqlx::query!(
+        r#"
+        SELECT id, timestamp, level, category, message, details
+        FROM logs
+        ORDER BY timestamp DESC
+        LIMIT ?
+        "#,
+        limit
+    )
+    .fetch_all(db.pool())
+    .await?;
 
-    let mock = vec![
-        LogEntry {
-            id: Uuid::parse_str("10000000-0000-0000-0000-000000000001").unwrap(),
-            timestamp: now - chrono::Duration::minutes(1),
-            level: LogLevel::Info,
-            category: LogCategory::Send,
-            message: "Message sent successfully to +201012345678".to_string(),
-            details: None,
-        },
-        LogEntry {
-            id: Uuid::parse_str("10000000-0000-0000-0000-000000000002").unwrap(),
-            timestamp: now - chrono::Duration::minutes(2),
-            level: LogLevel::Warn,
-            category: LogCategory::RateLimit,
-            message: "Rate limit reached for session-001, message held".to_string(),
-            details: None,
-        },
-        LogEntry {
-            id: Uuid::parse_str("10000000-0000-0000-0000-000000000003").unwrap(),
-            timestamp: now - chrono::Duration::minutes(3),
-            level: LogLevel::Info,
-            category: LogCategory::Send,
-            message: "Campaign 'Monthly Prescription Refill Reminder' started".to_string(),
-            details: None,
-        },
-        LogEntry {
-            id: Uuid::parse_str("10000000-0000-0000-0000-000000000004").unwrap(),
-            timestamp: now - chrono::Duration::minutes(4),
-            level: LogLevel::Error,
-            category: LogCategory::Send,
-            message: "Failed to send message to +201023456789: Network timeout".to_string(),
-            details: None,
-        },
-        LogEntry {
-            id: Uuid::parse_str("10000000-0000-0000-0000-000000000005").unwrap(),
-            timestamp: now - chrono::Duration::minutes(5),
-            level: LogLevel::Info,
-            category: LogCategory::Session,
-            message: "Session 'Pharmacy Main Line' connected successfully".to_string(),
-            details: None,
-        },
-    ];
+    rows.into_iter()
+        .map(|row| {
+            let id_str = row.id.as_deref().unwrap_or("");
+            let id = Uuid::parse_str(id_str).map_err(|_| {
+                StoreError::InvalidData(format!("Invalid log entry ID: {}", id_str))
+            })?;
 
-    Ok(mock)
+            let level_str = row.level.as_str();
+            let level = match level_str {
+                "info" => LogLevel::Info,
+                "warn" => LogLevel::Warn,
+                "error" => LogLevel::Error,
+                "success" => LogLevel::Success,
+                _ => {
+                    return Err(StoreError::InvalidData(format!(
+                        "Unknown log level: {}",
+                        level_str
+                    )));
+                }
+            };
+
+            let category_str = row.category.as_str();
+            let category = match category_str {
+                "verification" => LogCategory::Verification,
+                "send" => LogCategory::Send,
+                "rate_limit" => LogCategory::RateLimit,
+                "scheduler" => LogCategory::Scheduler,
+                "session" => LogCategory::Session,
+                "system" => LogCategory::System,
+                _ => {
+                    return Err(StoreError::InvalidData(format!(
+                        "Unknown log category: {}",
+                        category_str
+                    )));
+                }
+            };
+
+            let details =
+                if let Some(details_str) = row.details {
+                    Some(serde_json::from_str(&details_str).map_err(|e| {
+                        StoreError::InvalidData(format!("Invalid details JSON: {}", e))
+                    })?)
+                } else {
+                    None
+                };
+
+            let timestamp =
+                chrono::DateTime::from_timestamp_millis(row.timestamp).ok_or_else(|| {
+                    StoreError::InvalidData(format!("Invalid timestamp: {}", row.timestamp))
+                })?;
+
+            Ok(LogEntry {
+                id,
+                timestamp,
+                level,
+                category,
+                message: row.message,
+                details,
+            })
+        })
+        .collect()
 }
 
 /// INSERT a single log entry
-///
-/// TODO: Phase 2 — implement real SQL INSERT
-pub async fn insert(_db: &Db, _entry: LogEntry) -> Result<(), StoreError> {
+pub async fn insert(db: &Db, entry: LogEntry) -> Result<(), StoreError> {
+    let level_str = match entry.level {
+        LogLevel::Info => "info",
+        LogLevel::Warn => "warn",
+        LogLevel::Error => "error",
+        LogLevel::Success => "success",
+    };
+
+    let category_str = match entry.category {
+        LogCategory::Verification => "verification",
+        LogCategory::Send => "send",
+        LogCategory::RateLimit => "rate_limit",
+        LogCategory::Scheduler => "scheduler",
+        LogCategory::Session => "session",
+        LogCategory::System => "system",
+    };
+
+    let details_str = if let Some(details) = entry.details {
+        Some(serde_json::to_string(&details)?)
+    } else {
+        None
+    };
+
+    sqlx::query!(
+        r#"
+        INSERT INTO logs (id, timestamp, level, category, message, details)
+        VALUES (?, ?, ?, ?, ?, ?)
+        "#,
+        entry.id.to_string(),
+        entry.timestamp.timestamp_millis(),
+        level_str,
+        category_str,
+        entry.message,
+        details_str
+    )
+    .execute(db.pool())
+    .await?;
+
     Ok(())
 }
 
 /// Batch insert log entries
-///
-/// TODO: Phase 2 — implement real SQL batch INSERT
-pub async fn insert_many(_db: &Db, _entries: Vec<LogEntry>) -> Result<(), StoreError> {
+pub async fn insert_many(db: &Db, entries: Vec<LogEntry>) -> Result<(), StoreError> {
+    if entries.is_empty() {
+        return Ok(());
+    }
+
+    let mut tx = db.pool().begin().await?;
+
+    for entry in entries {
+        let level_str = match entry.level {
+            LogLevel::Info => "info",
+            LogLevel::Warn => "warn",
+            LogLevel::Error => "error",
+            LogLevel::Success => "success",
+        };
+
+        let category_str = match entry.category {
+            LogCategory::Verification => "verification",
+            LogCategory::Send => "send",
+            LogCategory::RateLimit => "rate_limit",
+            LogCategory::Scheduler => "scheduler",
+            LogCategory::Session => "session",
+            LogCategory::System => "system",
+        };
+
+        let details_str = if let Some(details) = entry.details {
+            Some(serde_json::to_string(&details)?)
+        } else {
+            None
+        };
+
+        sqlx::query!(
+            r#"
+            INSERT INTO logs (id, timestamp, level, category, message, details)
+            VALUES (?, ?, ?, ?, ?, ?)
+            "#,
+            entry.id.to_string(),
+            entry.timestamp.timestamp_millis(),
+            level_str,
+            category_str,
+            entry.message,
+            details_str
+        )
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
     Ok(())
 }
 
 /// DELETE /api/logs — clear all logs
-///
-/// TODO: Phase 2 — implement real SQL DELETE
-pub async fn clear_all(_db: &Db) -> Result<(), StoreError> {
+pub async fn clear_all(db: &Db) -> Result<(), StoreError> {
+    sqlx::query!("DELETE FROM logs").execute(db.pool()).await?;
+
     Ok(())
 }

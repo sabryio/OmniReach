@@ -3,185 +3,475 @@
 use crate::{Db, StoreError};
 use chrono::Utc;
 use omnireach_core::types::{QueueItem, QueueItemStatus};
+use sqlx::{AssertSqlSafe, Row};
 use uuid::Uuid;
 
 /// GET /api/queue — return all queue items
-///
-/// TODO: Phase 2 — implement real SQL query
-pub async fn list_all(_db: &Db, _campaign_id: Option<Uuid>) -> Result<Vec<QueueItem>, StoreError> {
-    let now = Utc::now();
+pub async fn list_all(db: &Db, campaign_id: Option<Uuid>) -> Result<Vec<QueueItem>, StoreError> {
+    let (query_str, param) = if let Some(cid) = campaign_id {
+        (
+            "SELECT id, campaign_id, campaign_title, contact_id, phone, recipient_name,
+                    rendered_text, image_url, status, assigned_session_id, attempts,
+                    last_error, sent_at, scheduled_for, rate_limit_hold_until,
+                    time_window_hold_until, response_payload
+             FROM queue_items
+             WHERE campaign_id = ?
+             ORDER BY scheduled_for ASC, id ASC",
+            Some(cid.to_string()),
+        )
+    } else {
+        (
+            "SELECT id, campaign_id, campaign_title, contact_id, phone, recipient_name,
+                    rendered_text, image_url, status, assigned_session_id, attempts,
+                    last_error, sent_at, scheduled_for, rate_limit_hold_until,
+                    time_window_hold_until, response_payload
+             FROM queue_items
+             ORDER BY scheduled_for ASC, id ASC",
+            None,
+        )
+    };
 
-    let mock = vec![
-        QueueItem {
-            id: Uuid::parse_str("11111111-0000-0000-0000-000000000001").unwrap(),
-            campaign_id: Uuid::parse_str("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa").unwrap(),
-            campaign_title: "Monthly Prescription Refill Reminder".to_string(),
-            contact_id: Uuid::new_v4(),
-            phone: "+201012345678".to_string(),
-            recipient_name: Some("أحمد محمد".to_string()),
-            rendered_text: "السلام عليكم، نذكرك بأن وصفتك الطبية جاهزة".to_string(),
-            image_url: None,
-            status: QueueItemStatus::Pending,
-            assigned_session_id: None,
-            attempts: 0,
-            last_error: None,
-            sent_at: None,
-            scheduled_for: None,
-            rate_limit_hold_until: None,
-            time_window_hold_until: None,
-            response_payload: None,
-        },
-        QueueItem {
-            id: Uuid::parse_str("11111111-0000-0000-0000-000000000002").unwrap(),
-            campaign_id: Uuid::parse_str("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb").unwrap(),
-            campaign_title: "COVID-19 Booster Dose Available".to_string(),
-            contact_id: Uuid::new_v4(),
-            phone: "+201087654321".to_string(),
-            recipient_name: Some("Mohamed Hassan".to_string()),
-            rendered_text: "Your COVID-19 booster dose is now available".to_string(),
-            image_url: None,
-            status: QueueItemStatus::HeldRateLimit,
-            assigned_session_id: None,
-            attempts: 1,
-            last_error: None,
-            sent_at: None,
-            scheduled_for: None,
-            rate_limit_hold_until: Some(now + chrono::Duration::minutes(5)),
-            time_window_hold_until: None,
-            response_payload: None,
-        },
-        QueueItem {
-            id: Uuid::parse_str("11111111-0000-0000-0000-000000000003").unwrap(),
-            campaign_id: Uuid::parse_str("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee").unwrap(),
-            campaign_title: "Diabetes Care Program Enrollment".to_string(),
-            contact_id: Uuid::new_v4(),
-            phone: "+201134567890".to_string(),
-            recipient_name: Some("حسن محمود".to_string()),
-            rendered_text: "ندعوك للانضمام إلى برنامج رعاية مرضى السكري".to_string(),
-            image_url: None,
-            status: QueueItemStatus::Pending,
-            assigned_session_id: None,
-            attempts: 0,
-            last_error: None,
-            sent_at: None,
-            scheduled_for: None,
-            rate_limit_hold_until: None,
-            time_window_hold_until: None,
-            response_payload: None,
-        },
-        QueueItem {
-            id: Uuid::parse_str("11111111-0000-0000-0000-000000000004").unwrap(),
-            campaign_id: Uuid::parse_str("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa").unwrap(),
-            campaign_title: "Monthly Prescription Refill Reminder".to_string(),
-            contact_id: Uuid::new_v4(),
-            phone: "+201098765432".to_string(),
-            recipient_name: Some("فاطمة علي".to_string()),
-            rendered_text: "نذكرك بأن وصفتك الطبية جاهزة لإعادة التعبئة".to_string(),
-            image_url: None,
-            status: QueueItemStatus::Sent,
-            assigned_session_id: None,
-            attempts: 1,
-            last_error: None,
-            sent_at: Some(now - chrono::Duration::minutes(1)),
-            scheduled_for: None,
-            rate_limit_hold_until: None,
-            time_window_hold_until: None,
-            response_payload: None,
-        },
-    ];
+    let mut query = sqlx::query(query_str);
+    if let Some(p) = param {
+        query = query.bind(p);
+    }
 
-    Ok(mock)
+    let rows = query.fetch_all(db.pool()).await?;
+
+    rows.iter()
+        .map(|row| {
+            let id_str: &str = row.try_get("id")?;
+            let id = Uuid::parse_str(id_str).map_err(|_| {
+                StoreError::InvalidData(format!("Invalid queue item ID: {}", id_str))
+            })?;
+
+            let campaign_id_str: &str = row.try_get("campaign_id")?;
+            let campaign_id = Uuid::parse_str(campaign_id_str).map_err(|_| {
+                StoreError::InvalidData(format!("Invalid campaign_id: {}", campaign_id_str))
+            })?;
+
+            let contact_id_str: &str = row.try_get("contact_id")?;
+            let contact_id = Uuid::parse_str(contact_id_str).map_err(|_| {
+                StoreError::InvalidData(format!("Invalid contact_id: {}", contact_id_str))
+            })?;
+
+            let status_str: &str = row.try_get("status")?;
+            let status = match status_str {
+                "pending" => QueueItemStatus::Pending,
+                "verifying" => QueueItemStatus::Verifying,
+                "sending" => QueueItemStatus::Sending,
+                "sent" => QueueItemStatus::Sent,
+                "skipped_unregistered" => QueueItemStatus::SkippedUnregistered,
+                "failed" => QueueItemStatus::Failed,
+                "held_rate_limit" => QueueItemStatus::HeldRateLimit,
+                "held_time_window" => QueueItemStatus::HeldTimeWindow,
+                "cancelled" => QueueItemStatus::Cancelled,
+                _ => {
+                    return Err(StoreError::InvalidData(format!(
+                        "Unknown status: {}",
+                        status_str
+                    )));
+                }
+            };
+
+            let assigned_session_id: Option<String> = row.try_get("assigned_session_id")?;
+            let assigned_session_id = assigned_session_id.and_then(|s| Uuid::parse_str(&s).ok());
+
+            let sent_at: Option<i64> = row.try_get("sent_at")?;
+            let scheduled_for: Option<i64> = row.try_get("scheduled_for")?;
+            let rate_limit_hold_until: Option<i64> = row.try_get("rate_limit_hold_until")?;
+            let time_window_hold_until: Option<i64> = row.try_get("time_window_hold_until")?;
+
+            Ok(QueueItem {
+                id,
+                campaign_id,
+                campaign_title: row.try_get("campaign_title")?,
+                contact_id,
+                phone: row.try_get("phone")?,
+                recipient_name: row.try_get("recipient_name")?,
+                rendered_text: row.try_get("rendered_text")?,
+                image_url: row.try_get("image_url")?,
+                status,
+                assigned_session_id,
+                attempts: row.try_get("attempts")?,
+                last_error: row.try_get("last_error")?,
+                sent_at: sent_at.and_then(chrono::DateTime::from_timestamp_millis),
+                scheduled_for: scheduled_for.and_then(chrono::DateTime::from_timestamp_millis),
+                rate_limit_hold_until: rate_limit_hold_until
+                    .and_then(chrono::DateTime::from_timestamp_millis),
+                time_window_hold_until: time_window_hold_until
+                    .and_then(chrono::DateTime::from_timestamp_millis),
+                response_payload: row.try_get("response_payload")?,
+            })
+        })
+        .collect()
 }
 
 /// GET /api/queue/:id
-///
-/// TODO: Phase 2 — implement real SQL query
-pub async fn get_by_id(_db: &Db, id: Uuid) -> Result<QueueItem, StoreError> {
-    let all = list_all(_db, None).await?;
-    all.into_iter()
-        .find(|q| q.id == id)
-        .ok_or_else(|| StoreError::NotFound(format!("Queue item {} not found", id)))
+pub async fn get_by_id(db: &Db, id: Uuid) -> Result<QueueItem, StoreError> {
+    let row = sqlx::query!(
+        r#"
+        SELECT id, campaign_id, campaign_title, contact_id, phone, recipient_name,
+               rendered_text, image_url, status, assigned_session_id, attempts,
+               last_error, sent_at, scheduled_for, rate_limit_hold_until,
+               time_window_hold_until, response_payload
+        FROM queue_items
+        WHERE id = ?
+        "#,
+        id.to_string()
+    )
+    .fetch_optional(db.pool())
+    .await?
+    .ok_or_else(|| StoreError::NotFound(format!("Queue item {} not found", id)))?;
+
+    let id_str = row.id.as_deref().unwrap_or("");
+    let parsed_id = Uuid::parse_str(id_str)
+        .map_err(|_| StoreError::InvalidData(format!("Invalid queue item ID: {}", id_str)))?;
+
+    let campaign_id_str = row.campaign_id.as_str();
+    let campaign_id = Uuid::parse_str(campaign_id_str).map_err(|_| {
+        StoreError::InvalidData(format!("Invalid campaign_id: {}", campaign_id_str))
+    })?;
+
+    let contact_id_str = row.contact_id.as_str();
+    let contact_id = Uuid::parse_str(contact_id_str)
+        .map_err(|_| StoreError::InvalidData(format!("Invalid contact_id: {}", contact_id_str)))?;
+
+    let status_str = row.status.as_str();
+    let status = match status_str {
+        "pending" => QueueItemStatus::Pending,
+        "verifying" => QueueItemStatus::Verifying,
+        "sending" => QueueItemStatus::Sending,
+        "sent" => QueueItemStatus::Sent,
+        "skipped_unregistered" => QueueItemStatus::SkippedUnregistered,
+        "failed" => QueueItemStatus::Failed,
+        "held_rate_limit" => QueueItemStatus::HeldRateLimit,
+        "held_time_window" => QueueItemStatus::HeldTimeWindow,
+        "cancelled" => QueueItemStatus::Cancelled,
+        _ => {
+            return Err(StoreError::InvalidData(format!(
+                "Unknown status: {}",
+                status_str
+            )));
+        }
+    };
+
+    let assigned_session_id = row
+        .assigned_session_id
+        .and_then(|s| Uuid::parse_str(&s).ok());
+
+    Ok(QueueItem {
+        id: parsed_id,
+        campaign_id,
+        campaign_title: row.campaign_title,
+        contact_id,
+        phone: row.phone,
+        recipient_name: row.recipient_name,
+        rendered_text: row.rendered_text,
+        image_url: row.image_url,
+        status,
+        assigned_session_id,
+        attempts: row.attempts,
+        last_error: row.last_error,
+        sent_at: row
+            .sent_at
+            .and_then(chrono::DateTime::from_timestamp_millis),
+        scheduled_for: row
+            .scheduled_for
+            .and_then(chrono::DateTime::from_timestamp_millis),
+        rate_limit_hold_until: row
+            .rate_limit_hold_until
+            .and_then(chrono::DateTime::from_timestamp_millis),
+        time_window_hold_until: row
+            .time_window_hold_until
+            .and_then(chrono::DateTime::from_timestamp_millis),
+        response_payload: row.response_payload,
+    })
 }
 
 /// Batch-load items by ID list — used by the scheduler tick handler.
-///
-/// TODO: Phase 2 — SELECT * FROM queue_items WHERE id IN (?)
-pub async fn list_by_ids(_db: &Db, ids: &[Uuid]) -> Result<Vec<QueueItem>, StoreError> {
-    let all = list_all(_db, None).await?;
-    Ok(all.into_iter().filter(|q| ids.contains(&q.id)).collect())
+pub async fn list_by_ids(db: &Db, ids: &[Uuid]) -> Result<Vec<QueueItem>, StoreError> {
+    if ids.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let id_strings: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
+    let placeholders = id_strings
+        .iter()
+        .map(|_| "?")
+        .collect::<Vec<_>>()
+        .join(", ");
+    let query_str = format!(
+        "SELECT id, campaign_id, campaign_title, contact_id, phone, recipient_name,
+                rendered_text, image_url, status, assigned_session_id, attempts,
+                last_error, sent_at, scheduled_for, rate_limit_hold_until,
+                time_window_hold_until, response_payload
+         FROM queue_items
+         WHERE id IN ({})",
+        placeholders
+    );
+
+    let mut query = sqlx::query(AssertSqlSafe(query_str));
+    for id_str in &id_strings {
+        query = query.bind(id_str);
+    }
+
+    let rows = query.fetch_all(db.pool()).await?;
+
+    rows.iter()
+        .map(|row| {
+            let id_str: &str = row.try_get("id")?;
+            let id = Uuid::parse_str(id_str).map_err(|_| {
+                StoreError::InvalidData(format!("Invalid queue item ID: {}", id_str))
+            })?;
+
+            let campaign_id_str: &str = row.try_get("campaign_id")?;
+            let campaign_id = Uuid::parse_str(campaign_id_str).map_err(|_| {
+                StoreError::InvalidData(format!("Invalid campaign_id: {}", campaign_id_str))
+            })?;
+
+            let contact_id_str: &str = row.try_get("contact_id")?;
+            let contact_id = Uuid::parse_str(contact_id_str).map_err(|_| {
+                StoreError::InvalidData(format!("Invalid contact_id: {}", contact_id_str))
+            })?;
+
+            let status_str: &str = row.try_get("status")?;
+            let status = match status_str {
+                "pending" => QueueItemStatus::Pending,
+                "verifying" => QueueItemStatus::Verifying,
+                "sending" => QueueItemStatus::Sending,
+                "sent" => QueueItemStatus::Sent,
+                "skipped_unregistered" => QueueItemStatus::SkippedUnregistered,
+                "failed" => QueueItemStatus::Failed,
+                "held_rate_limit" => QueueItemStatus::HeldRateLimit,
+                "held_time_window" => QueueItemStatus::HeldTimeWindow,
+                "cancelled" => QueueItemStatus::Cancelled,
+                _ => {
+                    return Err(StoreError::InvalidData(format!(
+                        "Unknown status: {}",
+                        status_str
+                    )));
+                }
+            };
+
+            let assigned_session_id: Option<String> = row.try_get("assigned_session_id")?;
+            let assigned_session_id = assigned_session_id.and_then(|s| Uuid::parse_str(&s).ok());
+
+            let sent_at: Option<i64> = row.try_get("sent_at")?;
+            let scheduled_for: Option<i64> = row.try_get("scheduled_for")?;
+            let rate_limit_hold_until: Option<i64> = row.try_get("rate_limit_hold_until")?;
+            let time_window_hold_until: Option<i64> = row.try_get("time_window_hold_until")?;
+
+            Ok(QueueItem {
+                id,
+                campaign_id,
+                campaign_title: row.try_get("campaign_title")?,
+                contact_id,
+                phone: row.try_get("phone")?,
+                recipient_name: row.try_get("recipient_name")?,
+                rendered_text: row.try_get("rendered_text")?,
+                image_url: row.try_get("image_url")?,
+                status,
+                assigned_session_id,
+                attempts: row.try_get("attempts")?,
+                last_error: row.try_get("last_error")?,
+                sent_at: sent_at.and_then(chrono::DateTime::from_timestamp_millis),
+                scheduled_for: scheduled_for.and_then(chrono::DateTime::from_timestamp_millis),
+                rate_limit_hold_until: rate_limit_hold_until
+                    .and_then(chrono::DateTime::from_timestamp_millis),
+                time_window_hold_until: time_window_hold_until
+                    .and_then(chrono::DateTime::from_timestamp_millis),
+                response_payload: row.try_get("response_payload")?,
+            })
+        })
+        .collect()
 }
 
 /// Return pending items for a given campaign.
-///
-/// TODO: Phase 2 — implement real SQL query
 pub async fn list_pending_for_campaign(
-    _db: &Db,
+    db: &Db,
     campaign_id: Uuid,
 ) -> Result<Vec<QueueItem>, StoreError> {
-    let all = list_all(_db, None).await?;
-    Ok(all
-        .into_iter()
-        .filter(|q| q.campaign_id == campaign_id && q.status == QueueItemStatus::Pending)
-        .collect())
-}
+    let rows = sqlx::query!(
+        r#"
+        SELECT id, campaign_id, campaign_title, contact_id, phone, recipient_name,
+               rendered_text, image_url, status, assigned_session_id, attempts,
+               last_error, sent_at, scheduled_for, rate_limit_hold_until,
+               time_window_hold_until, response_payload
+        FROM queue_items
+        WHERE campaign_id = ? AND status = 'pending'
+        ORDER BY scheduled_for ASC, id ASC
+        "#,
+        campaign_id.to_string()
+    )
+    .fetch_all(db.pool())
+    .await?;
 
+    rows.into_iter()
+        .map(|row| {
+            let id_str = row.id.as_deref().unwrap_or("");
+            let id = Uuid::parse_str(id_str).map_err(|_| {
+                StoreError::InvalidData(format!("Invalid queue item ID: {}", id_str))
+            })?;
+
+            let campaign_id_str = row.campaign_id.as_str();
+            let campaign_id = Uuid::parse_str(campaign_id_str).map_err(|_| {
+                StoreError::InvalidData(format!("Invalid campaign_id: {}", campaign_id_str))
+            })?;
+
+            let contact_id_str = row.contact_id.as_str();
+            let contact_id = Uuid::parse_str(contact_id_str).map_err(|_| {
+                StoreError::InvalidData(format!("Invalid contact_id: {}", contact_id_str))
+            })?;
+
+            let assigned_session_id = row
+                .assigned_session_id
+                .and_then(|s| Uuid::parse_str(&s).ok());
+
+            Ok(QueueItem {
+                id,
+                campaign_id,
+                campaign_title: row.campaign_title,
+                contact_id,
+                phone: row.phone,
+                recipient_name: row.recipient_name,
+                rendered_text: row.rendered_text,
+                image_url: row.image_url,
+                status: QueueItemStatus::Pending,
+                assigned_session_id,
+                attempts: row.attempts,
+                last_error: row.last_error,
+                sent_at: row
+                    .sent_at
+                    .and_then(chrono::DateTime::from_timestamp_millis),
+                scheduled_for: row
+                    .scheduled_for
+                    .and_then(chrono::DateTime::from_timestamp_millis),
+                rate_limit_hold_until: row
+                    .rate_limit_hold_until
+                    .and_then(chrono::DateTime::from_timestamp_millis),
+                time_window_hold_until: row
+                    .time_window_hold_until
+                    .and_then(chrono::DateTime::from_timestamp_millis),
+                response_payload: row.response_payload,
+            })
+        })
+        .collect()
+}
 /// Update item status.
-///
-/// TODO: Phase 2 — implement real SQL UPDATE
 pub async fn update_status(
-    _db: &Db,
+    db: &Db,
     id: Uuid,
     status: QueueItemStatus,
     assigned_session_id: Option<Uuid>,
     last_error: Option<String>,
     response_payload: Option<String>,
 ) -> Result<QueueItem, StoreError> {
-    let mut item = get_by_id(_db, id).await?;
-    item.status = status;
-    item.assigned_session_id = assigned_session_id;
-    item.last_error = last_error;
-    item.response_payload = response_payload;
-    Ok(item)
+    let status_str = match status {
+        QueueItemStatus::Pending => "pending",
+        QueueItemStatus::Verifying => "verifying",
+        QueueItemStatus::Sending => "sending",
+        QueueItemStatus::Sent => "sent",
+        QueueItemStatus::SkippedUnregistered => "skipped_unregistered",
+        QueueItemStatus::Failed => "failed",
+        QueueItemStatus::HeldRateLimit => "held_rate_limit",
+        QueueItemStatus::HeldTimeWindow => "held_time_window",
+        QueueItemStatus::Cancelled => "cancelled",
+    };
+
+    let sent_at = if status == QueueItemStatus::Sent {
+        Some(Utc::now().timestamp_millis())
+    } else {
+        None
+    };
+
+    let assigned_session_str = assigned_session_id.map(|id| id.to_string());
+
+    sqlx::query!(
+        r#"
+        UPDATE queue_items
+        SET status = ?,
+            assigned_session_id = ?,
+            last_error = ?,
+            response_payload = ?,
+            sent_at = COALESCE(?, sent_at),
+            attempts = attempts + 1
+        WHERE id = ?
+        "#,
+        status_str,
+        assigned_session_str,
+        last_error,
+        response_payload,
+        sent_at,
+        id.to_string()
+    )
+    .execute(db.pool())
+    .await?;
+
+    get_by_id(db, id).await
 }
 
 /// GET /api/queue/stats
-///
-/// TODO: Phase 2 — SELECT status, COUNT(*) FROM queue_items GROUP BY status
-pub async fn stats(_db: &Db) -> Result<QueueStats, StoreError> {
-    let all = list_all(_db, None).await?;
+pub async fn stats(db: &Db) -> Result<QueueStats, StoreError> {
+    let rows = sqlx::query!(
+        r#"
+        SELECT status, COUNT(*) as count
+        FROM queue_items
+        GROUP BY status
+        "#
+    )
+    .fetch_all(db.pool())
+    .await?;
+
     let mut s = QueueStats::default();
-    for item in &all {
-        match item.status {
-            QueueItemStatus::Pending => s.pending += 1,
-            QueueItemStatus::Sending => s.sending += 1,
-            QueueItemStatus::Sent => s.sent += 1,
-            QueueItemStatus::Failed => s.failed += 1,
-            QueueItemStatus::HeldRateLimit | QueueItemStatus::HeldTimeWindow => s.held += 1,
+
+    for row in rows {
+        let status_str = row.status.as_str();
+        let count = row.count;
+
+        match status_str {
+            "pending" => s.pending = count,
+            "sending" => s.sending = count,
+            "sent" => s.sent = count,
+            "failed" => s.failed = count,
+            "held_rate_limit" | "held_time_window" => s.held += count,
             _ => {}
         }
     }
+
     Ok(s)
 }
 
 /// POST /api/queue/:id/cancel
-///
-/// TODO: Phase 2 — implement real SQL UPDATE
-pub async fn cancel(_db: &Db, id: Uuid) -> Result<QueueItem, StoreError> {
-    let mut item = get_by_id(_db, id).await?;
-    item.status = QueueItemStatus::Cancelled;
-    Ok(item)
+pub async fn cancel(db: &Db, id: Uuid) -> Result<QueueItem, StoreError> {
+    sqlx::query!(
+        r#"
+        UPDATE queue_items
+        SET status = 'cancelled'
+        WHERE id = ?
+        "#,
+        id.to_string()
+    )
+    .execute(db.pool())
+    .await?;
+
+    get_by_id(db, id).await
 }
 
 /// Reset all failed items for a campaign back to pending.
-///
-/// TODO: Phase 2 — implement real SQL UPDATE
-pub async fn requeue_failed(_db: &Db, campaign_id: Uuid) -> Result<i64, StoreError> {
-    let all = list_all(_db, None).await?;
-    let count = all
-        .iter()
-        .filter(|q| q.campaign_id == campaign_id && q.status == QueueItemStatus::Failed)
-        .count() as i64;
-    Ok(count)
+pub async fn requeue_failed(db: &Db, campaign_id: Uuid) -> Result<i64, StoreError> {
+    let result = sqlx::query!(
+        r#"
+        UPDATE queue_items
+        SET status = 'pending', attempts = 0, last_error = NULL
+        WHERE campaign_id = ? AND status = 'failed'
+        "#,
+        campaign_id.to_string()
+    )
+    .execute(db.pool())
+    .await?;
+
+    Ok(result.rows_affected() as i64)
 }
 
 /// Aggregated queue status counts.

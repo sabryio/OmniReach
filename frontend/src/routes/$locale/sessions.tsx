@@ -26,6 +26,30 @@ function SessionsRoute() {
   const { resetLimits } = useResetSessionLimits();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
+  const handleVerifyNumber = async (
+    _sessionId: string,
+    phone: string,
+  ): Promise<{
+    isRegistered: boolean;
+    waId?: string;
+    error?: string;
+  }> => {
+    // TODO: Call actual verification API endpoint
+    // POST /api/contacts/verify with { sessionId, phone }
+    // For now, simulate verification
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    // Simulate: numbers ending in '4' are unregistered
+    const isRegistered = !phone.endsWith("4");
+
+    return {
+      isRegistered,
+      waId: isRegistered
+        ? `${phone.replace(/\D/g, "")}@s.whatsapp.net`
+        : undefined,
+    };
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
@@ -51,6 +75,7 @@ function SessionsRoute() {
         onUpdateSessions={() => {}}
         onAddSession={() => setIsAddModalOpen(true)}
         onSyncSession={(id) => syncSession(id)}
+        onVerifyNumber={handleVerifyNumber}
       />
       <AddSessionModal
         isOpen={isAddModalOpen}

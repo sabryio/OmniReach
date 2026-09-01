@@ -3,7 +3,22 @@
  * Beautiful UI with exact mockup structure and enhanced functionality
  */
 import { useState, useEffect } from "react";
-import { Server, RotateCcw, Clock, Phone, Plus, Zap, Send } from "lucide-react";
+import {
+  Server,
+  RotateCcw,
+  Clock,
+  Phone,
+  Plus,
+  Zap,
+  Send,
+  MoreVertical,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
 import type { Session } from "../schemas/session.schema";
 import { getSessionQuota, formatDuration } from "../utils/quota";
@@ -114,15 +129,39 @@ export function SessionsDashboard({
                       </div>
                     </div>
 
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
-                        session.status === "connected"
-                          ? "bg-success/10 text-success border border-success/30"
-                          : "bg-warning/10 text-warning border border-warning/30"
-                      }`}
-                    >
-                      {session.status}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                          session.status === "connected"
+                            ? "bg-success/10 text-success border border-success/30"
+                            : "bg-warning/10 text-warning border border-warning/30"
+                        }`}
+                      >
+                        {session.status}
+                      </span>
+
+                      {/* Dropdown Menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                            title="Session options"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem
+                            onClick={() => onResetSessionLimits(session.id)}
+                            className="cursor-pointer"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 mr-2" />
+                            Reset Limits
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
 
                   {/* Quota Counters */}
@@ -237,17 +276,6 @@ export function SessionsDashboard({
                 {/* Action Buttons for Session */}
                 <div className="pt-3 border-t border-border space-y-2">
                   <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      id={`reset-limits-${session.id}`}
-                      onClick={() => onResetSessionLimits(session.id)}
-                      className="w-full px-2.5 py-1 rounded-lg text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent hover:border-border transition-colors flex items-center justify-center gap-1"
-                      title="Reset rate counters to test edge cases"
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                      <span>Reset Limits</span>
-                    </button>
-
                     {/* Check Number Button */}
                     <button
                       type="button"
@@ -269,20 +297,20 @@ export function SessionsDashboard({
                       <Send className="w-3 h-3" />
                       <span>Send Test</span>
                     </button>
-
-                    {/* Sync Session Status Button (conditionally rendered) */}
-                    {session.status !== "connected" && (
-                      <button
-                        type="button"
-                        onClick={() => onSyncSession(session.id)}
-                        className="w-full px-2.5 py-1 rounded-lg text-[11px] bg-warning/10 hover:bg-warning/20 text-warning border border-warning/20 transition-colors flex items-center justify-center gap-1 font-semibold"
-                        title="Sync session status with WABridge"
-                      >
-                        <Server className="w-3 h-3" />
-                        <span>Sync Status</span>
-                      </button>
-                    )}
                   </div>
+
+                  {/* Sync Session Status Button (conditionally rendered, full width) */}
+                  {session.status !== "connected" && (
+                    <button
+                      type="button"
+                      onClick={() => onSyncSession(session.id)}
+                      className="w-full px-2.5 py-1 rounded-lg text-[11px] bg-warning/10 hover:bg-warning/20 text-warning border border-warning/20 transition-colors flex items-center justify-center gap-1 font-semibold"
+                      title="Sync session status with WABridge"
+                    >
+                      <Server className="w-3 h-3" />
+                      <span>Sync Status</span>
+                    </button>
+                  )}
                 </div>
               </div>
             );

@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { toast } from "sonner";
 import { SessionsDashboard, AddSessionModal } from "@/features/sessions";
 import { useSessions } from "@/features/sessions/hooks/useSessionsQuery";
 import {
   useSyncSession,
   useResetSessionLimits,
   useSendTestMessage,
+  useDeleteSession,
 } from "@/features/sessions/hooks/useSessionMutations";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
 
@@ -26,6 +28,7 @@ function SessionsRoute() {
   const { syncSession } = useSyncSession();
   const { resetLimits } = useResetSessionLimits();
   const { sendTestMessageAsync } = useSendTestMessage();
+  const { deleteSession } = useDeleteSession();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editSessionId, setEditSessionId] = useState<string | null>(null);
 
@@ -61,6 +64,19 @@ function SessionsRoute() {
     await sendTestMessageAsync({ sessionId, phone, message });
   };
 
+  const handleDeleteSession = (sessionId: string) => {
+    deleteSession(sessionId, {
+      onSuccess: () => {
+        toast.success("Session deleted successfully");
+      },
+      onError: (error) => {
+        toast.error("Failed to delete session", {
+          description: error instanceof Error ? error.message : "Unknown error",
+        });
+      },
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
@@ -89,6 +105,7 @@ function SessionsRoute() {
         onVerifyNumber={handleVerifyNumber}
         onSendTest={handleSendTest}
         onEditSession={(id) => setEditSessionId(id)}
+        onDeleteSession={handleDeleteSession}
       />
       <AddSessionModal
         isOpen={isAddModalOpen || !!editSessionId}

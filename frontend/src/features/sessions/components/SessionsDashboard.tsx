@@ -13,13 +13,25 @@ import {
   Send,
   MoreVertical,
   Pencil,
+  Trash2,
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
 import type { Session } from "../schemas/session.schema";
 import { getSessionQuota, formatDuration } from "../utils/quota";
@@ -47,6 +59,7 @@ interface SessionsDashboardProps {
     message: string,
   ) => Promise<void>;
   onEditSession: (sessionId: string) => void;
+  onDeleteSession: (sessionId: string) => void;
 }
 
 export function SessionsDashboard({
@@ -57,18 +70,38 @@ export function SessionsDashboard({
   onVerifyNumber,
   onSendTest,
   onEditSession,
+  onDeleteSession,
 }: SessionsDashboardProps) {
   const [now, setNow] = useState<number>(Date.now());
   const [verifierModalSession, setVerifierModalSession] =
     useState<Session | null>(null);
   const [testMessageModalSession, setTestMessageModalSession] =
     useState<Session | null>(null);
+  const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
 
   // Update clock every second for smooth reset countdowns
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Find the session being deleted for confirmation dialog
+  const sessionToDelete = sessions.find((s) => s.id === deleteSessionId);
+
+  const handleDeleteClick = (sessionId: string) => {
+    setDeleteSessionId(sessionId);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (deleteSessionId) {
+      onDeleteSession(deleteSessionId);
+      setDeleteSessionId(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteSessionId(null);
+  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -168,6 +201,14 @@ export function SessionsDashboard({
                           >
                             <RotateCcw className="w-3.5 h-3.5 mr-2" />
                             Reset Limits
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteClick(session.id)}
+                            className="cursor-pointer text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mr-2" />
+                            Delete Session
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -347,6 +388,37 @@ export function SessionsDashboard({
           onSendTest={onSendTest}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={!!deleteSessionId}
+        onOpenChange={(open) => !open && handleDeleteCancel()}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Session</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-foreground">
+                {sessionToDelete?.name || "this session"}
+              </span>
+              ? This action cannot be undone. This will permanently delete the
+              session from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeleteCancel}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Session
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

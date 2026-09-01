@@ -7,6 +7,7 @@
 use omnireach_glue::WaBridgeClient;
 use omnireach_store::Db;
 use std::sync::Arc;
+use std::time::Instant;
 
 use crate::sse::SseBroadcaster;
 
@@ -24,6 +25,9 @@ pub struct AppState {
 
     /// Static bearer token for MVP auth (from `OMNIREACH_TOKEN` env var).
     pub auth_token: Arc<String>,
+
+    /// Server start time — used for uptime calculation in health check.
+    start_time: Instant,
 }
 
 impl AppState {
@@ -33,6 +37,12 @@ impl AppState {
             wa: Arc::new(wa),
             sse: Arc::new(sse),
             auth_token: Arc::new(auth_token),
+            start_time: Instant::now(),
         }
+    }
+
+    /// Returns the server start time for uptime calculation.
+    pub fn start_time(&self) -> Instant {
+        self.start_time
     }
 }

@@ -45,7 +45,9 @@
 //!   POST   /api/media/upload
 
 use crate::{
-    handlers::{campaigns, contacts, logs, media, queue, scheduler, sessions, settings, templates},
+    handlers::{
+        campaigns, contacts, health, logs, media, queue, scheduler, sessions, settings, templates,
+    },
     middleware::auth_middleware,
     state::AppState,
 };
@@ -119,10 +121,12 @@ pub fn build(state: AppState) -> Router {
             state.clone(),
             auth_middleware,
         ))
-        .with_state(state);
+        .with_state(state.clone());
 
     Router::new()
+        .route("/health", get(health::health_check))
         .nest("/api", api)
         .layer(cors)
         .layer(TraceLayer::new_for_http())
+        .with_state(state)
 }

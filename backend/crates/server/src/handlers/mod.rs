@@ -5,6 +5,7 @@
 
 pub mod campaigns;
 pub mod contacts;
+pub mod health;
 pub mod logs;
 pub mod media;
 pub mod queue;

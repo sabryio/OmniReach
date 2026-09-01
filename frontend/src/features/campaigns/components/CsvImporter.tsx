@@ -21,9 +21,10 @@ import type { Contact } from "../schemas/campaign.schema";
 
 interface CsvImporterProps {
   onContactsParsed: (contacts: Contact[]) => void;
+  onProceed?: () => void;
 }
 
-export function CsvImporter({ onContactsParsed }: CsvImporterProps) {
+export function CsvImporter({ onContactsParsed, onProceed }: CsvImporterProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showInvalidRows, setShowInvalidRows] = useState(false);
@@ -75,6 +76,7 @@ export function CsvImporter({ onContactsParsed }: CsvImporterProps) {
   const handleApply = () => {
     if (contacts.length > 0) {
       onContactsParsed(contacts);
+      onProceed?.();
     }
   };
 
@@ -366,7 +368,7 @@ export function CsvImporter({ onContactsParsed }: CsvImporterProps) {
             disabled={contacts.length === 0}
             className="px-5 py-2.5 text-xs rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold shadow-sm"
           >
-            Apply & Continue →
+            Apply & Proceed to Template →
           </button>
         </div>
       </div>

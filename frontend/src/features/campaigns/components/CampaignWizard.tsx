@@ -252,21 +252,10 @@ export function CampaignWizard({
               </div>
             </div>
 
-            <CsvImporter onContactsParsed={handleContactsParsed} />
-
-            {contacts.length > 0 && (
-              <div className="flex justify-end pt-2">
-                <button
-                  type="button"
-                  id="wizard-next-composer-btn"
-                  onClick={() => setStep("composer")}
-                  className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold flex items-center gap-2 shadow-md transition-all"
-                >
-                  <span>Proceed to Template</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            )}
+            <CsvImporter
+              onContactsParsed={handleContactsParsed}
+              onProceed={() => setStep("composer")}
+            />
           </div>
         )}
 

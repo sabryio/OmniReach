@@ -2,7 +2,7 @@
  * CampaignWizard — 4-step wizard: csv → composer → sessions → review
  * Beautiful UI with exact mockup structure and enhanced functionality
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Send,
   ShieldCheck,
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { CsvImporter } from "./CsvImporter";
 import { MessageComposer } from "./MessageComposer";
+import { getSessionQuota } from "@/features/sessions/utils/quota";
 import type { Session } from "@/features/sessions/schemas/session.schema";
 import type { Contact } from "@/features/customers/schemas/customer.schema";
 import type { Campaign } from "../schemas/campaign.schema";
@@ -58,6 +59,15 @@ export function CampaignWizard({
   // Pre-verification state
   const [isPreVerifying, setIsPreVerifying] = useState<boolean>(false);
   const [unregisteredCount, setUnregisteredCount] = useState<number>(0);
+
+  // Track current time for quota calculations
+  const [now, setNow] = useState<number>(Date.now());
+
+  // Update clock every second for live quota display
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleContactsParsed = (parsedContacts: Contact[]) => {
     setContacts(parsedContacts);
@@ -323,17 +333,7 @@ export function CampaignWizard({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {sessions.map((session) => {
                   const isSelected = selectedSessionIds.includes(session.id);
-                  // Calculate quota (mock for now)
-                  const hourlyLimit = session.hourlyLimit || 1000;
-                  const hourlyUsed = Math.floor(
-                    Math.random() * hourlyLimit * 0.3,
-                  );
-                  const hourlyRemaining = hourlyLimit - hourlyUsed;
-                  const dailyLimit = 10000;
-                  const dailyUsed = Math.floor(
-                    Math.random() * dailyLimit * 0.5,
-                  );
-                  const dailyRemaining = dailyLimit - dailyUsed;
+                  const quota = getSessionQuota(session, now);
 
                   return (
                     <div
@@ -380,23 +380,24 @@ export function CampaignWizard({
                             </span>
                             <span
                               className={`font-mono font-semibold ${
-                                hourlyRemaining === 0
+                                quota.isHourlyCapped
                                   ? "text-destructive"
                                   : "text-success"
                               }`}
                             >
-                              {hourlyRemaining} / {hourlyLimit} remaining
+                              {quota.hourlyLimit - quota.hourlyUsed} /{" "}
+                              {quota.hourlyLimit} remaining
                             </span>
                           </div>
                           <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden border border-border">
                             <div
                               className={`h-full transition-all ${
-                                hourlyRemaining === 0
+                                quota.isHourlyCapped
                                   ? "bg-destructive"
                                   : "bg-success"
                               }`}
                               style={{
-                                width: `${(hourlyUsed / hourlyLimit) * 100}%`,
+                                width: `${(quota.hourlyUsed / quota.hourlyLimit) * 100}%`,
                               }}
                             />
                           </div>
@@ -407,15 +408,26 @@ export function CampaignWizard({
                             <span className="text-muted-foreground">
                               Daily Cap:
                             </span>
-                            <span className="font-mono font-semibold text-foreground">
-                              {dailyRemaining} / {dailyLimit} remaining
+                            <span
+                              className={`font-mono font-semibold ${
+                                quota.isDailyCapped
+                                  ? "text-destructive"
+                                  : "text-foreground"
+                              }`}
+                            >
+                              {quota.dailyLimit - quota.dailyUsed} /{" "}
+                              {quota.dailyLimit} remaining
                             </span>
                           </div>
                           <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden border border-border">
                             <div
-                              className="h-full bg-primary transition-all"
+                              className={`h-full transition-all ${
+                                quota.isDailyCapped
+                                  ? "bg-destructive"
+                                  : "bg-primary"
+                              }`}
                               style={{
-                                width: `${(dailyUsed / dailyLimit) * 100}%`,
+                                width: `${(quota.dailyUsed / quota.dailyLimit) * 100}%`,
                               }}
                             />
                           </div>

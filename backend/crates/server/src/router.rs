@@ -5,11 +5,13 @@
 //!   GET    /api/events
 //!
 //!   GET    /api/sessions
+//!   GET    /api/sessions/{id}
 //!   POST   /api/sessions
 //!   PATCH  /api/sessions/{id}
 //!   DELETE /api/sessions/{id}
 //!   POST   /api/sessions/{id}/sync
 //!   POST   /api/sessions/{id}/reset-limits
+//!   POST   /api/sessions/{id}/send-test
 //!
 //!   GET    /api/templates
 //!   POST   /api/templates
@@ -74,7 +76,9 @@ pub fn build(state: AppState) -> Router {
         .route("/sessions", get(sessions::list).post(sessions::create))
         .route(
             "/sessions/{id}",
-            patch(sessions::update).delete(sessions::destroy),
+            get(sessions::get)
+                .patch(sessions::update)
+                .delete(sessions::destroy),
         )
         .route("/sessions/{id}/sync", post(sessions::sync))
         .route("/sessions/{id}/reset-limits", post(sessions::reset_limits))

@@ -3,6 +3,7 @@
 //! Route → Handler mapping:
 //!   GET    /api/events                      → sse_handler
 //!   GET    /api/sessions                    → list
+//!   GET    /api/sessions/:id                → get
 //!   POST   /api/sessions                    → create
 //!   PATCH  /api/sessions/:id                → update
 //!   DELETE /api/sessions/:id                → destroy
@@ -50,6 +51,15 @@ pub async fn list(
 ) -> Result<Json<Vec<omnireach_core::types::Session>>, ApiError> {
     let sessions = omnireach_store::sessions::list_all(&state.db).await?;
     Ok(Json(sessions))
+}
+
+/// GET /api/sessions/:id
+pub async fn get(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<omnireach_core::types::Session>, ApiError> {
+    let session = omnireach_store::sessions::get_by_id(&state.db, id).await?;
+    Ok(Json(session))
 }
 
 /// POST /api/sessions
@@ -158,28 +168,32 @@ pub async fn send_test(
         .unwrap()
         .as_millis() as i64;
 
-    // Try to acquire send slot (checks quota and increments atomically)
-    let result = omnireach_store::sessions::try_acquire_send_slot(&state.db, id, now_ms).await?;
+    // Load session to get API key
+    let session = omnireach_store::sessions::get_by_id(&state.db, id).await?;
 
-    if !result.can_send {
+    // Check quota BEFORE incrementing (read-only check)
+    let quota = omnireach_core::quota::check_quota(&session, now_ms);
+
+    if !quota.can_send {
         return Err(ApiError::BadRequest(
-            result
+            quota
                 .reason
                 .unwrap_or_else(|| "Session quota exhausted".to_string()),
         ));
     }
 
-    // Load session to get API key
-    let session = omnireach_store::sessions::get_by_id(&state.db, id).await?;
-
     // Build JID and send message
     let normalized_phone = body.phone.trim().trim_start_matches('+');
     let jid = format!("{}@s.whatsapp.net", normalized_phone);
 
+    // Send the message FIRST (if this fails, quota is not consumed)
     state
         .wa
         .send_text(&jid, &body.message, &session.api_key)
         .await?;
+
+    // Only increment quota AFTER successful send
+    let _result = omnireach_store::sessions::try_acquire_send_slot(&state.db, id, now_ms).await?;
 
     // Log the test send
     let log_entry = omnireach_core::types::LogEntry {

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { SessionsDashboard } from "@/features/sessions";
+import { useState } from "react";
+import { SessionsDashboard, AddSessionModal } from "@/features/sessions";
 import { useSessions } from "@/features/sessions/hooks/useSessionsQuery";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
 
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/$locale/sessions")({
 
 function SessionsRoute() {
   const { sessions, isLoading, error } = useSessions();
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -35,11 +37,18 @@ function SessionsRoute() {
   }
 
   return (
-    <SessionsDashboard
-      sessions={sessions}
-      config={DEFAULT_CONFIG}
-      onResetSessionLimits={() => {}}
-      onUpdateSessions={() => {}}
-    />
+    <>
+      <SessionsDashboard
+        sessions={sessions}
+        config={DEFAULT_CONFIG}
+        onResetSessionLimits={() => {}}
+        onUpdateSessions={() => {}}
+        onAddSession={() => setIsAddModalOpen(true)}
+      />
+      <AddSessionModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+      />
+    </>
   );
 }

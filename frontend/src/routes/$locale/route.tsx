@@ -236,7 +236,6 @@ function SharedLayout() {
         schedulerState={schedulerState}
         themeMode={layout.themeMode}
         themeColor={layout.themeColor}
-        sessions={sessions}
         onSaveConfig={async (newConfig) => {
           await updateSettingsAsync({
             wabridgeBaseUrl: newConfig.baseUrl,

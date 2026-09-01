@@ -228,7 +228,7 @@ export function useCampaignWizard() {
 
   const initFromTemplate = useCallback((t: Template) => {
     setTemplateText(t.text);
-    setImageUrl(t.imageUrl);
+    setImageUrl(t.imageUrl ?? undefined);
     setCampaignTitle(t.title);
     setStep("composer");
   }, []);

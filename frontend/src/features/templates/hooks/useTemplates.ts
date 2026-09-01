@@ -245,8 +245,8 @@ export function useTemplateManager(
         title: `${tmpl.title} (Copy)`,
         category: tmpl.category,
         text: tmpl.text,
-        imageUrl: tmpl.imageUrl,
-        imageFileName: tmpl.imageFileName,
+        imageUrl: tmpl.imageUrl ?? undefined,
+        imageFileName: tmpl.imageFileName ?? undefined,
         suggestedVariables: tmpl.suggestedVariables,
       };
 

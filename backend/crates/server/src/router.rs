@@ -9,7 +9,6 @@
 //!   PATCH  /api/sessions/{id}
 //!   DELETE /api/sessions/{id}
 //!   POST   /api/sessions/{id}/sync
-//!   GET    /api/sessions/{id}/qr
 //!   POST   /api/sessions/{id}/reset-limits
 //!
 //!   GET    /api/templates
@@ -45,7 +44,9 @@
 //!   POST   /api/media/upload
 
 use crate::{
-    handlers::{campaigns, contacts, logs, media, queue, scheduler, sessions, settings, templates},
+    handlers::{
+        campaigns, contacts, health, logs, media, queue, scheduler, sessions, settings, templates,
+    },
     middleware::auth_middleware,
     state::AppState,
 };
@@ -76,8 +77,8 @@ pub fn build(state: AppState) -> Router {
             patch(sessions::update).delete(sessions::destroy),
         )
         .route("/sessions/{id}/sync", post(sessions::sync))
-        .route("/sessions/{id}/qr", get(sessions::get_qr))
         .route("/sessions/{id}/reset-limits", post(sessions::reset_limits))
+        .route("/sessions/{id}/send-test", post(sessions::send_test))
         // ── Contacts ────────────────────────────────────────────────────────
         .route("/contacts/verify", post(contacts::verify))
         // ── Templates ───────────────────────────────────────────────────────
@@ -119,10 +120,12 @@ pub fn build(state: AppState) -> Router {
             state.clone(),
             auth_middleware,
         ))
-        .with_state(state);
+        .with_state(state.clone());
 
     Router::new()
+        .route("/health", get(health::health_check))
         .nest("/api", api)
         .layer(cors)
         .layer(TraceLayer::new_for_http())
+        .with_state(state)
 }

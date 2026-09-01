@@ -16,10 +16,7 @@ import { MessageComposer } from "./MessageComposer";
 import type { Session } from "@/features/sessions/schemas/session.schema";
 import type { Contact } from "@/features/customers/schemas/customer.schema";
 import type { Campaign } from "../schemas/campaign.schema";
-import type {
-  CSVParseResult,
-  WABridgeConfig,
-} from "@/features/layout/schemas/layout.schema";
+import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
 
 interface CampaignWizardProps {
   sessions: Session[];
@@ -51,6 +48,7 @@ export function CampaignWizard({
   const [imageFileName, _setImageFileName] = useState<string | undefined>(
     "pharmacy_promo.jpg",
   );
+  const [mediaRef, setMediaRef] = useState<string | undefined>(undefined);
 
   // Selected WABridge session IDs
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>(
@@ -61,10 +59,7 @@ export function CampaignWizard({
   const [isPreVerifying, setIsPreVerifying] = useState<boolean>(false);
   const [unregisteredCount, setUnregisteredCount] = useState<number>(0);
 
-  const handleContactsParsed = (
-    parsedContacts: Contact[],
-    _result: CSVParseResult,
-  ) => {
+  const handleContactsParsed = (parsedContacts: Contact[]) => {
     setContacts(parsedContacts);
   };
 
@@ -126,6 +121,7 @@ export function CampaignWizard({
       title: campaignTitle.trim() || "Untitled Broadcast Campaign",
       templateText: templateText.trim(),
       imageUrl,
+      mediaRef,
       sessionIds: selectedSessionIds,
       status: "running",
       createdAt: new Date().toISOString(),
@@ -272,9 +268,13 @@ export function CampaignWizard({
             <MessageComposer
               templateText={templateText}
               imageUrl={imageUrl}
+              mediaRef={mediaRef}
               contacts={contacts}
               onTemplateChange={setTemplateText}
-              onImageChange={setImageUrl}
+              onImageChange={(url, ref) => {
+                setImageUrl(url);
+                setMediaRef(ref);
+              }}
             />
 
             <div className="flex items-center justify-between pt-4 border-t border-border">

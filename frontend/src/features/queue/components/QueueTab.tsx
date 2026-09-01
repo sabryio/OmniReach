@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Code,
   X,
+  XCircle,
 } from "lucide-react";
 import type { QueueItem } from "@/features/queue/schemas/queue.schema";
 
@@ -25,6 +26,7 @@ interface QueueTabProps {
   selectedPayload: { title: string; json: string } | null;
   setSelectedPayload: (payload: { title: string; json: string } | null) => void;
   getQueueCountFor: (filterId: string) => number;
+  onCancelItem: (id: string) => void;
 }
 
 const QUEUE_FILTERS = [
@@ -111,6 +113,7 @@ export function QueueTab({
   selectedPayload,
   setSelectedPayload,
   getQueueCountFor,
+  onCancelItem,
 }: QueueTabProps) {
   return (
     <div className="bg-card border border-border rounded-2xl shadow-md overflow-hidden space-y-4 p-4 sm:p-5">
@@ -179,8 +182,8 @@ export function QueueTab({
                 <th className="px-3 py-2.5 text-left text-[10px] uppercase tracking-wider">
                   Message
                 </th>
-                <th className="px-3 py-2.5 text-right text-[10px] uppercase tracking-wider">
-                  Inspect
+                <th className="px-3 py-2.5 text-center text-[10px] uppercase tracking-wider">
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -203,7 +206,10 @@ export function QueueTab({
                     {item.phone}
                   </td>
                   <td className="px-3 py-2.5">
-                    <StatusBadge status={item.status} error={item.lastError} />
+                    <StatusBadge
+                      status={item.status}
+                      error={item.lastError ?? undefined}
+                    />
                   </td>
                   <td className="px-3 py-2.5 font-mono text-[10px] text-muted-foreground">
                     {item.assignedSessionId || "Auto-balance"}
@@ -214,22 +220,37 @@ export function QueueTab({
                   >
                     {item.renderedText}
                   </td>
-                  <td className="px-3 py-2.5 text-right">
-                    {item.responsePayload && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSelectedPayload({
-                            title: `Payload — ${item.phone}`,
-                            json: item.responsePayload || "{}",
-                          })
-                        }
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                        title="Inspect WABridge JSON Payload"
-                      >
-                        <Code className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center justify-center gap-1">
+                      {item.responsePayload && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedPayload({
+                              title: `Payload — ${item.phone}`,
+                              json: item.responsePayload || "{}",
+                            })
+                          }
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                          title="Inspect WABridge JSON Payload"
+                        >
+                          <Code className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {(item.status === "pending" ||
+                        item.status === "held_rate_limit" ||
+                        item.status === "held_time_window" ||
+                        item.status === "failed") && (
+                        <button
+                          type="button"
+                          onClick={() => onCancelItem(item.id)}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          title="Cancel this queue item"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

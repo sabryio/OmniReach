@@ -41,6 +41,13 @@ pub async fn cancel(
     Path(id): Path<Uuid>,
 ) -> Result<Json<QueueItem>, ApiError> {
     let item = omnireach_store::queue::cancel(&state.db, id).await?;
-    // TODO: emit SSE event
+
+    // Emit SSE event for queue item update
+    state.sse.send(crate::sse::SseEvent::QueueItemUpdated {
+        item_id: item.id.to_string(),
+        new_status: item.status.to_string(),
+        campaign_id: item.campaign_id.to_string(),
+    });
+
     Ok(Json(item))
 }

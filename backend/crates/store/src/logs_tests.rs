@@ -147,10 +147,7 @@ mod tests {
         let recent = logs::list_recent(&db, 10).await.unwrap();
 
         assert_eq!(recent.len(), 3);
-        assert_eq!(
-            recent[0].message, "Newest",
-            "Most recent should be first"
-        );
+        assert_eq!(recent[0].message, "Newest", "Most recent should be first");
         assert_eq!(recent[1].message, "Middle");
         assert_eq!(recent[2].message, "Oldest", "Oldest should be last");
     }
@@ -161,7 +158,14 @@ mod tests {
 
         // Insert 10 log entries
         let entries: Vec<LogEntry> = (0..10)
-            .map(|i| create_log_entry(LogLevel::Info, LogCategory::System, &format!("Log {}", i), 0))
+            .map(|i| {
+                create_log_entry(
+                    LogLevel::Info,
+                    LogCategory::System,
+                    &format!("Log {}", i),
+                    0,
+                )
+            })
             .collect();
 
         logs::insert_many(&db, entries).await.unwrap();
@@ -304,12 +308,7 @@ mod tests {
     async fn test_log_with_complex_details_json() {
         let db = setup_test_db().await;
 
-        let mut entry = create_log_entry(
-            LogLevel::Error,
-            LogCategory::Send,
-            "Complex error",
-            0,
-        );
+        let mut entry = create_log_entry(LogLevel::Error, LogCategory::Send, "Complex error", 0);
         entry.details = Some(json!({
             "error": {
                 "code": "NETWORK_TIMEOUT",
@@ -372,12 +371,14 @@ mod tests {
 
         // Insert 1000 log entries
         let entries: Vec<LogEntry> = (0..1000)
-            .map(|i| create_log_entry(
-                LogLevel::Info,
-                LogCategory::System,
-                &format!("Batch log entry {}", i),
-                0,
-            ))
+            .map(|i| {
+                create_log_entry(
+                    LogLevel::Info,
+                    LogCategory::System,
+                    &format!("Batch log entry {}", i),
+                    0,
+                )
+            })
             .collect();
 
         let result = logs::insert_many(&db, entries).await;

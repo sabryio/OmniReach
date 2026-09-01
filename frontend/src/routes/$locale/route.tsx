@@ -20,8 +20,11 @@ import {
   AboutModal,
 } from "@/features/modals";
 import { useSessions } from "@/features/sessions";
-import { useLogsQuery } from "@/features/queue";
+import { useLogsQuery, useQueueQuery } from "@/features/queue";
+import { useCampaignsQuery } from "@/features/campaigns";
 import { useSettingsQuery, useUpdateSettings } from "@/features/settings";
+import { useSchedulerLoop } from "@/features/scheduler";
+import { useSseConnection } from "@/features/sse";
 import type {
   SchedulerState,
   WABridgeConfig,
@@ -55,7 +58,7 @@ const DEFAULT_SCHEDULER: SchedulerState = {
 };
 
 const DEFAULT_CONFIG: WABridgeConfig = {
-  baseUrl: "http://127.0.0.1:8080",
+  baseUrl: "http://127.0.0.1:7171",
   timeoutMs: 5000,
   useSimulationMode: true,
   simulatedNetworkLatencyMs: 400,
@@ -95,6 +98,8 @@ function SharedLayout() {
   // Data from TanStack Query
   const { sessions } = useSessions();
   const { logs } = useLogsQuery();
+  const { queue = [] } = useQueueQuery();
+  const { campaigns = [] } = useCampaignsQuery();
   const { settings } = useSettingsQuery();
   const { updateSettingsAsync } = useUpdateSettings();
 
@@ -158,6 +163,20 @@ function SharedLayout() {
   const handleToggleScheduler = useCallback(() => {
     setSchedulerState((prev) => ({ ...prev, isRunning: !prev.isRunning }));
   }, []);
+
+  // SSE connection — connects on mount, invalidates caches on events
+  useSseConnection();
+
+  // Scheduler loop — runs every 5 seconds when isRunning=true
+  useSchedulerLoop({
+    schedulerState,
+    queue,
+    campaigns,
+    // Handlers removed — SSE triggers cache invalidation directly
+    onUpdateQueue: () => {},
+    onAppendLogs: () => {},
+    onUpdateCampaign: () => {},
+  });
 
   const compactPadding = layout.compactMode ? "p-3" : "p-5";
 

@@ -24,8 +24,7 @@ async fn main() -> anyhow::Result<()> {
     // ── Tracing ───────────────────────────────────────────────────────────────
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info".into()),
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
         )
         .init();
 
@@ -41,8 +40,8 @@ async fn main() -> anyhow::Result<()> {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "sqlite:omnireach.db?mode=rwc".to_string());
 
-    let wabridge_base_url = std::env::var("WABRIDGE_BASE_URL")
-        .unwrap_or_else(|_| "http://localhost:7171".to_string());
+    let wabridge_base_url =
+        std::env::var("WABRIDGE_BASE_URL").unwrap_or_else(|_| "http://localhost:7171".to_string());
 
     let wabridge_timeout_ms: u64 = std::env::var("WABRIDGE_TIMEOUT_MS")
         .unwrap_or_else(|_| "5000".to_string())

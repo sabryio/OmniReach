@@ -57,6 +57,7 @@ mod tests {
             template_text: "Hello {{name}}".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: contacts_input,
         };
 
@@ -85,6 +86,7 @@ mod tests {
                 recipient_name: Some(contact.name.clone()),
                 rendered_text: format!("Hello {}", contact.name),
                 image_url: campaign.image_url.clone(),
+                media_ref: None,
                 status: QueueItemStatus::Pending,
                 assigned_session_id: None,
                 attempts: 0,

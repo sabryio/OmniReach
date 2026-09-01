@@ -27,6 +27,8 @@ pub struct Campaign {
     pub template_text: String,
     pub image_url: Option<String>,
     pub image_file_name: Option<String>,
+    /// WABridge media reference from upload (valid ~2 hours)
+    pub media_ref: Option<String>,
     /// IDs of the WABridge sessions assigned to send this campaign.
     pub session_ids: Vec<Uuid>,
     pub status: CampaignStatus,
@@ -54,6 +56,7 @@ pub struct CreateCampaignInput {
     pub title: String,
     pub template_text: String,
     pub image_url: Option<String>,
+    pub media_ref: Option<String>,
     pub session_ids: Vec<Uuid>,
     pub contacts: Vec<CreateContactInput>,
 }

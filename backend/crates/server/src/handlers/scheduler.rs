@@ -57,6 +57,7 @@ pub async fn tick(
 
     let mut processed_items = Vec::new();
     let mut new_logs = Vec::new();
+    let mut item_campaign_map = std::collections::HashMap::new();
 
     for item_id in body.item_ids {
         // 1. Load queue item
@@ -76,6 +77,9 @@ pub async fn tick(
                 continue;
             }
         };
+
+        // Track campaign_id for SSE emission later
+        item_campaign_map.insert(item_id, campaign.id);
 
         // Load contact
         let contact = match contacts::get_by_id(&state.db, item.contact_id).await {
@@ -326,18 +330,21 @@ pub async fn tick(
         // 4. Send message
         let to_jid = format!("{}@s.whatsapp.net", contact.formatted_phone);
 
-        let send_result = if item.image_url.is_some() {
-            // TODO: For MVP Phase 3, skip media upload and send as text
-            // Full implementation (Phase 6):
-            // 1. Download image from image_url
-            // 2. Call wa.upload_media()
-            // 3. Call wa.send_image() with media_ref and rendered_text as caption
+        let send_result = if let Some(media_ref) = &item.media_ref {
+            // Campaign has an uploaded image - send with media_ref
+            state
+                .wa
+                .send_image(&to_jid, media_ref, Some(&rendered_text), &session.api_key)
+                .await
+        } else if item.image_url.is_some() {
+            // Legacy: image_url without media_ref (uploaded images should have media_ref in Phase 6+)
+            // For MVP, send as text since we don't have the media_ref
             state
                 .wa
                 .send_text(&to_jid, &rendered_text, &session.api_key)
                 .await
         } else {
-            // Send text message
+            // No image - send text message
             state
                 .wa
                 .send_text(&to_jid, &rendered_text, &session.api_key)
@@ -479,9 +486,26 @@ pub async fn tick(
         }
     }
 
-    // TODO: Phase 7 - Emit SSE events for UI updates
-    // state.sse.emit_queue_updates(&processed_items);
-    // state.sse.emit_queue_stats(...);
+    // Emit SSE events for each processed item
+    for item in &processed_items {
+        if let Some(&campaign_id) = item_campaign_map.get(&item.item_id) {
+            state.sse.send(crate::sse::SseEvent::QueueItemUpdated {
+                item_id: item.item_id.to_string(),
+                new_status: item.new_status.clone(),
+                campaign_id: campaign_id.to_string(),
+            });
+        }
+    }
+
+    // Compute and emit queue stats
+    let stats = queue::stats(&state.db).await?;
+    state.sse.send(crate::sse::SseEvent::QueueStats {
+        pending: stats.pending,
+        sending: stats.sending,
+        sent: stats.sent,
+        failed: stats.failed,
+        held: stats.held,
+    });
 
     Ok(Json(TickResponse {
         processed: processed_items,

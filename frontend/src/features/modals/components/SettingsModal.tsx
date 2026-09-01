@@ -173,7 +173,6 @@ export function SettingsModal({
 
   // WABridge local state
   const [baseUrl, setBaseUrl] = useState(config.baseUrl);
-  const [apiKey, setApiKey] = useState(config.apiKey ?? "");
   const [useSimulation, setUseSimulation] = useState(config.useSimulationMode);
   const [latencyMs, setLatencyMs] = useState(config.simulatedNetworkLatencyMs);
   const [unregisteredRate, setUnregisteredRate] = useState(
@@ -198,8 +197,7 @@ export function SettingsModal({
 
   const handleSave = () => {
     onSaveConfig({
-      baseUrl: baseUrl.trim() || "http://127.0.0.1:8080",
-      apiKey: apiKey.trim() || undefined,
+      baseUrl: baseUrl.trim() || "http://127.0.0.1:7171",
       timeoutMs: config.timeoutMs,
       useSimulationMode: useSimulation,
       simulatedNetworkLatencyMs: latencyMs,
@@ -425,19 +423,7 @@ export function SettingsModal({
                       type="text"
                       value={baseUrl}
                       onChange={(e) => setBaseUrl(e.target.value)}
-                      placeholder="http://127.0.0.1:8080"
-                      className="w-full px-3 py-2 rounded-xl border border-border bg-muted/30 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
-                      API Key
-                    </label>
-                    <input
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="Optional WABridge token..."
+                      placeholder="http://127.0.0.1:7171"
                       className="w-full px-3 py-2 rounded-xl border border-border bg-muted/30 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
                     />
                   </div>

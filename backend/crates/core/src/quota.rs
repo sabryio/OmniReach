@@ -156,14 +156,13 @@ mod tests {
         Session {
             id: Uuid::new_v4(),
             name: "test".into(),
-            phone_number: None,
+            phone_number: "+201234567890".to_string(),
             status: SessionStatus::Connected,
             api_key: "key".into(),
             hourly_limit,
             daily_limit,
             hourly_sent_timestamps: timestamps.clone(),
             daily_sent_timestamps: timestamps,
-            qr_code_data: None,
             last_activity_at: None,
         }
     }

@@ -2,6 +2,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use uuid::Uuid;
 
 /// Lifecycle status of a single message dispatch unit.
@@ -20,6 +21,22 @@ pub enum QueueItemStatus {
     Cancelled,
 }
 
+impl fmt::Display for QueueItemStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Pending => write!(f, "pending"),
+            Self::Verifying => write!(f, "verifying"),
+            Self::Sending => write!(f, "sending"),
+            Self::Sent => write!(f, "sent"),
+            Self::SkippedUnregistered => write!(f, "skipped_unregistered"),
+            Self::Failed => write!(f, "failed"),
+            Self::HeldRateLimit => write!(f, "held_rate_limit"),
+            Self::HeldTimeWindow => write!(f, "held_time_window"),
+            Self::Cancelled => write!(f, "cancelled"),
+        }
+    }
+}
+
 /// A single message dispatch unit — one per contact per campaign.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,6 +51,8 @@ pub struct QueueItem {
     /// Message with merge tags already substituted at campaign creation time.
     pub rendered_text: String,
     pub image_url: Option<String>,
+    /// WABridge media reference (if campaign has an uploaded image)
+    pub media_ref: Option<String>,
     pub status: QueueItemStatus,
     pub assigned_session_id: Option<Uuid>,
     pub attempts: i64,

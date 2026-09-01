@@ -295,7 +295,7 @@ export function CustomersView({
                         {contact.verificationStatus === "unregistered" && (
                           <span
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-warning/10 text-warning border border-warning/30"
-                            title={contact.verificationError}
+                            title={contact.verificationError ?? undefined}
                           >
                             <AlertCircle className="w-3 h-3" /> Unregistered
                           </span>

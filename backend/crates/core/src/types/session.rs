@@ -11,8 +11,6 @@ use uuid::Uuid;
 pub enum SessionStatus {
     Connected,
     Disconnected,
-    QrRequired,
-    Connecting,
 }
 
 impl SessionStatus {
@@ -20,8 +18,6 @@ impl SessionStatus {
         match self {
             Self::Connected => "connected",
             Self::Disconnected => "disconnected",
-            Self::QrRequired => "qr_required",
-            Self::Connecting => "connecting",
         }
     }
 
@@ -29,8 +25,6 @@ impl SessionStatus {
         match s {
             "connected" => Ok(Self::Connected),
             "disconnected" => Ok(Self::Disconnected),
-            "qr_required" => Ok(Self::QrRequired),
-            "connecting" => Ok(Self::Connecting),
             _ => Err(format!("Invalid session status: {}", s)),
         }
     }
@@ -41,12 +35,15 @@ impl SessionStatus {
 /// Each session carries its own WABridge API key and rate-limit counters.
 /// `api_key` is write-only at the API layer — it is stored but never echoed
 /// back in GET responses after the initial creation response.
+///
+/// QR code pairing is handled entirely by WABridge — OmniReach doesn't store
+/// or display QR codes. Use WABridge console for pairing.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Session {
     pub id: Uuid,
     pub name: String,
-    pub phone_number: Option<String>,
+    pub phone_number: String,
     pub status: SessionStatus,
     /// WABridge API key scoped to this session. Never returned after creation.
     #[serde(skip_serializing)]
@@ -57,8 +54,6 @@ pub struct Session {
     pub hourly_sent_timestamps: Vec<i64>,
     /// Rolling window timestamps (Unix ms) of sent messages in the last 24 h.
     pub daily_sent_timestamps: Vec<i64>,
-    /// Base64-encoded QR code image; present only when `status = qr_required`.
-    pub qr_code_data: Option<String>,
     pub last_activity_at: Option<DateTime<Utc>>,
 }
 
@@ -67,6 +62,7 @@ pub struct Session {
 #[serde(rename_all = "camelCase")]
 pub struct CreateSessionInput {
     pub name: String,
+    pub phone_number: String,
     pub api_key: String,
     pub hourly_limit: Option<u32>,
     pub daily_limit: Option<u32>,

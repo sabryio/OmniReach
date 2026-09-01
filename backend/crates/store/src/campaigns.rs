@@ -14,7 +14,7 @@ pub async fn list_all(db: &Db) -> Result<Vec<Campaign>, StoreError> {
     // Step 1: Fetch all campaigns
     let campaign_rows = sqlx::query!(
         r#"
-        SELECT id, title, template_text, image_url, image_file_name, session_ids,
+        SELECT id, title, template_text, image_url, image_file_name, media_ref, session_ids,
                status, created_at, started_at, completed_at, scheduled_for,
                total_contacts, verified_contacts, unregistered_count,
                sent_count, skipped_count, failed_count, is_archived, archived_at
@@ -99,6 +99,7 @@ pub async fn list_all(db: &Db) -> Result<Vec<Campaign>, StoreError> {
             template_text: row.template_text,
             image_url: row.image_url,
             image_file_name: row.image_file_name,
+            media_ref: row.media_ref,
             session_ids,
             status,
             created_at: chrono::DateTime::from_timestamp_millis(row.created_at)
@@ -149,13 +150,14 @@ pub async fn insert(db: &Db, input: CreateCampaignInput) -> Result<Campaign, Sto
     // Insert campaign
     sqlx::query!(
         r#"
-        INSERT INTO campaigns (id, title, template_text, image_url, session_ids, status, created_at, total_contacts)
-        VALUES (?, ?, ?, ?, ?, 'draft', ?, ?)
+        INSERT INTO campaigns (id, title, template_text, image_url, media_ref, session_ids, status, created_at, total_contacts)
+        VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?)
         "#,
         id.to_string(),
         input.title,
         input.template_text,
         input.image_url,
+        input.media_ref,
         session_ids_json,
         now_ms,
         input.contacts.len() as i64

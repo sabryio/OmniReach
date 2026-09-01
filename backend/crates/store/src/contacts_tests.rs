@@ -57,6 +57,7 @@ mod tests {
             template_text: "Hello {{name}}".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: create_test_contacts_input(5),
         };
 
@@ -76,6 +77,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: vec![],
         };
 
@@ -94,6 +96,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: create_test_contacts_input(3),
         };
 
@@ -102,6 +105,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: create_test_contacts_input(2),
         };
 
@@ -133,6 +137,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: create_test_contacts_input(3),
         };
 
@@ -172,6 +177,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: create_test_contacts_input(1),
         };
 
@@ -211,6 +217,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: create_test_contacts_input(1),
         };
 
@@ -246,6 +253,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: create_test_contacts_input(1),
         };
 
@@ -283,6 +291,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: create_test_contacts_input(5),
         };
 
@@ -330,6 +339,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: vec![CreateContactInput {
                 name: "Test Patient".to_string(),
                 raw_phone: "+201234567890".to_string(),
@@ -362,6 +372,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: vec![CreateContactInput {
                 name: "Phone Test".to_string(),
                 raw_phone: "+20 (100) 000-1234".to_string(),
@@ -388,6 +399,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: vec![CreateContactInput {
                 name: "أحمد محمد علي 🏥".to_string(),
                 raw_phone: "+201234567890".to_string(),
@@ -412,6 +424,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: create_test_contacts_input(3),
         };
 

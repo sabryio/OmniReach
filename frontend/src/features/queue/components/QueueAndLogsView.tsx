@@ -22,6 +22,7 @@ interface QueueAndLogsViewProps {
   logs: LogEntry[];
   schedulerState: SchedulerState;
   onClearLogs: () => void;
+  onCancelItem: (id: string) => void;
 }
 
 export function QueueAndLogsView({
@@ -29,6 +30,7 @@ export function QueueAndLogsView({
   logs,
   schedulerState,
   onClearLogs,
+  onCancelItem,
 }: QueueAndLogsViewProps) {
   const {
     activeTab,
@@ -172,6 +174,7 @@ export function QueueAndLogsView({
           selectedPayload={selectedPayload}
           setSelectedPayload={setSelectedPayload}
           getQueueCountFor={getQueueCountFor}
+          onCancelItem={onCancelItem}
         />
       )}
       {activeTab === "events" && (

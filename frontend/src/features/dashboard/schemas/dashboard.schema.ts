@@ -2,7 +2,7 @@
  * Dashboard Domain — Zod Schemas (Single Source of Truth)
  */
 
-import { z } from 'zod'
+import { z } from "zod";
 
 export const sessionRateQuotaSchema = z.object({
   sessionId: z.string(),
@@ -16,9 +16,9 @@ export const sessionRateQuotaSchema = z.object({
   isHourlyCapped: z.boolean(),
   isDailyCapped: z.boolean(),
   canSend: z.boolean(),
-  nextHourlySlotMs: z.number().optional(),
-  nextDailySlotMs: z.number().optional(),
-  reason: z.string().optional(),
-})
+  nextHourlySlotMs: z.number().nullable().optional(),
+  nextDailySlotMs: z.number().nullable().optional(),
+  reason: z.string().nullable().optional(),
+});
 
-export type SessionRateQuota = z.infer<typeof sessionRateQuotaSchema>
+export type SessionRateQuota = z.infer<typeof sessionRateQuotaSchema>;

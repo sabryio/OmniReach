@@ -11,7 +11,7 @@ pub async fn list_all(db: &Db, campaign_id: Option<Uuid>) -> Result<Vec<QueueIte
     let (query_str, param) = if let Some(cid) = campaign_id {
         (
             "SELECT id, campaign_id, campaign_title, contact_id, phone, recipient_name,
-                    rendered_text, image_url, status, assigned_session_id, attempts,
+                    rendered_text, image_url, media_ref, status, assigned_session_id, attempts,
                     last_error, sent_at, scheduled_for, rate_limit_hold_until,
                     time_window_hold_until, response_payload
              FROM queue_items
@@ -22,7 +22,7 @@ pub async fn list_all(db: &Db, campaign_id: Option<Uuid>) -> Result<Vec<QueueIte
     } else {
         (
             "SELECT id, campaign_id, campaign_title, contact_id, phone, recipient_name,
-                    rendered_text, image_url, status, assigned_session_id, attempts,
+                    rendered_text, image_url, media_ref, status, assigned_session_id, attempts,
                     last_error, sent_at, scheduled_for, rate_limit_hold_until,
                     time_window_hold_until, response_payload
              FROM queue_items
@@ -75,7 +75,9 @@ pub async fn list_all(db: &Db, campaign_id: Option<Uuid>) -> Result<Vec<QueueIte
             };
 
             let assigned_session_id: Option<String> = row.try_get("assigned_session_id")?;
-            let assigned_session_id = assigned_session_id.and_then(|s| Uuid::parse_str(&s).ok());
+            let assigned_session_id = assigned_session_id
+                .as_deref()
+                .and_then(|s| Uuid::parse_str(s).ok());
 
             let sent_at: Option<i64> = row.try_get("sent_at")?;
             let scheduled_for: Option<i64> = row.try_get("scheduled_for")?;
@@ -91,6 +93,7 @@ pub async fn list_all(db: &Db, campaign_id: Option<Uuid>) -> Result<Vec<QueueIte
                 recipient_name: row.try_get("recipient_name")?,
                 rendered_text: row.try_get("rendered_text")?,
                 image_url: row.try_get("image_url")?,
+                media_ref: row.try_get("media_ref")?,
                 status,
                 assigned_session_id,
                 attempts: row.try_get("attempts")?,
@@ -112,7 +115,7 @@ pub async fn get_by_id(db: &Db, id: Uuid) -> Result<QueueItem, StoreError> {
     let row = sqlx::query!(
         r#"
         SELECT id, campaign_id, campaign_title, contact_id, phone, recipient_name,
-               rendered_text, image_url, status, assigned_session_id, attempts,
+               rendered_text, image_url, media_ref, status, assigned_session_id, attempts,
                last_error, sent_at, scheduled_for, rate_limit_hold_until,
                time_window_hold_until, response_payload
         FROM queue_items
@@ -158,7 +161,8 @@ pub async fn get_by_id(db: &Db, id: Uuid) -> Result<QueueItem, StoreError> {
 
     let assigned_session_id = row
         .assigned_session_id
-        .and_then(|s| Uuid::parse_str(&s).ok());
+        .as_deref()
+        .and_then(|s| Uuid::parse_str(s).ok());
 
     Ok(QueueItem {
         id: parsed_id,
@@ -169,6 +173,7 @@ pub async fn get_by_id(db: &Db, id: Uuid) -> Result<QueueItem, StoreError> {
         recipient_name: row.recipient_name,
         rendered_text: row.rendered_text,
         image_url: row.image_url,
+        media_ref: row.media_ref,
         status,
         assigned_session_id,
         attempts: row.attempts,
@@ -203,7 +208,7 @@ pub async fn list_by_ids(db: &Db, ids: &[Uuid]) -> Result<Vec<QueueItem>, StoreE
         .join(", ");
     let query_str = format!(
         "SELECT id, campaign_id, campaign_title, contact_id, phone, recipient_name,
-                rendered_text, image_url, status, assigned_session_id, attempts,
+                rendered_text, image_url, media_ref, status, assigned_session_id, attempts,
                 last_error, sent_at, scheduled_for, rate_limit_hold_until,
                 time_window_hold_until, response_payload
          FROM queue_items
@@ -255,7 +260,9 @@ pub async fn list_by_ids(db: &Db, ids: &[Uuid]) -> Result<Vec<QueueItem>, StoreE
             };
 
             let assigned_session_id: Option<String> = row.try_get("assigned_session_id")?;
-            let assigned_session_id = assigned_session_id.and_then(|s| Uuid::parse_str(&s).ok());
+            let assigned_session_id = assigned_session_id
+                .as_deref()
+                .and_then(|s| Uuid::parse_str(s).ok());
 
             let sent_at: Option<i64> = row.try_get("sent_at")?;
             let scheduled_for: Option<i64> = row.try_get("scheduled_for")?;
@@ -271,6 +278,7 @@ pub async fn list_by_ids(db: &Db, ids: &[Uuid]) -> Result<Vec<QueueItem>, StoreE
                 recipient_name: row.try_get("recipient_name")?,
                 rendered_text: row.try_get("rendered_text")?,
                 image_url: row.try_get("image_url")?,
+                media_ref: row.try_get("media_ref")?,
                 status,
                 assigned_session_id,
                 attempts: row.try_get("attempts")?,
@@ -295,7 +303,7 @@ pub async fn list_pending_for_campaign(
     let rows = sqlx::query!(
         r#"
         SELECT id, campaign_id, campaign_title, contact_id, phone, recipient_name,
-               rendered_text, image_url, status, assigned_session_id, attempts,
+               rendered_text, image_url, media_ref, status, assigned_session_id, attempts,
                last_error, sent_at, scheduled_for, rate_limit_hold_until,
                time_window_hold_until, response_payload
         FROM queue_items
@@ -326,7 +334,8 @@ pub async fn list_pending_for_campaign(
 
             let assigned_session_id = row
                 .assigned_session_id
-                .and_then(|s| Uuid::parse_str(&s).ok());
+                .as_deref()
+                .and_then(|s| Uuid::parse_str(s).ok());
 
             Ok(QueueItem {
                 id,
@@ -337,6 +346,7 @@ pub async fn list_pending_for_campaign(
                 recipient_name: row.recipient_name,
                 rendered_text: row.rendered_text,
                 image_url: row.image_url,
+                media_ref: row.media_ref,
                 status: QueueItemStatus::Pending,
                 assigned_session_id,
                 attempts: row.attempts,

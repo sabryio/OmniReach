@@ -9,6 +9,8 @@ import {
   useSendTestMessage,
   useDeleteSession,
 } from "@/features/sessions/hooks/useSessionMutations";
+import { verifyBatch } from "@/features/customers/api/contacts.api";
+import type { VerifyCompletePayload } from "@/features/customers/api/contacts.api";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
 
 const DEFAULT_CONFIG: WABridgeConfig = {
@@ -33,27 +35,33 @@ function SessionsRoute() {
   const [editSessionId, setEditSessionId] = useState<string | null>(null);
 
   const handleVerifyNumber = async (
-    _sessionId: string,
+    sessionId: string,
     phone: string,
   ): Promise<{
     isRegistered: boolean;
     waId?: string;
     error?: string;
   }> => {
-    // TODO: Call actual verification API endpoint
-    // POST /api/contacts/verify with { sessionId, phone }
-    // For now, simulate verification
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const { jobId } = await verifyBatch({ sessionId, phones: [phone] });
 
-    // Simulate: numbers ending in '4' are unregistered
-    const isRegistered = !phone.endsWith("4");
-
-    return {
-      isRegistered,
-      waId: isRegistered
-        ? `${phone.replace(/\D/g, "")}@s.whatsapp.net`
-        : undefined,
-    };
+    return new Promise((resolve) => {
+      const onComplete = (e: Event) => {
+        const payload = (e as CustomEvent<VerifyCompletePayload>).detail;
+        if (payload.job_id !== jobId) return;
+        window.removeEventListener("contact.verify_complete", onComplete);
+        const result = payload.results[0];
+        if (!result) {
+          resolve({ isRegistered: false, error: "No result returned" });
+          return;
+        }
+        resolve({
+          isRegistered: result.is_registered,
+          waId: result.wa_id ?? undefined,
+          error: result.error ?? undefined,
+        });
+      };
+      window.addEventListener("contact.verify_complete", onComplete);
+    });
   };
 
   const handleSendTest = async (

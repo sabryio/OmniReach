@@ -13,7 +13,8 @@
 use crate::{
     error::GlueError,
     models::{
-        CheckContactResponse, MediaUploadResponse, MessageReceipt, WaBridgeQr, WaBridgeSession,
+        CheckContactsBatchRequest, CheckContactsBatchResponse, MediaUploadResponse, MessageReceipt,
+        WaBridgeQr, WaBridgeSession,
     },
 };
 use reqwest::{Client, StatusCode};
@@ -140,18 +141,17 @@ impl WaBridgeClient {
 
     // ── Contact verification ──────────────────────────────────────────────────
 
-    /// Check whether a phone number (as JID) is registered on WhatsApp.
+    /// Check whether a batch of JIDs are registered on WhatsApp.
     ///
-    /// `jid` format: `"15551234567@s.whatsapp.net"`
-    pub async fn check_contact(
+    /// Sends all JIDs in a single HTTP call to WABridge.
+    /// `jids` format: `["15551234567@s.whatsapp.net", ...]`
+    pub async fn check_contacts_batch(
         &self,
-        jid: &str,
+        jids: Vec<String>,
         api_key: &str,
-    ) -> Result<CheckContactResponse, GlueError> {
+    ) -> Result<CheckContactsBatchResponse, GlueError> {
         let url = self._url("/v1/contacts/check");
-        let request_body = crate::models::CheckContactRequest {
-            jid: jid.to_string(),
-        };
+        let request_body = CheckContactsBatchRequest { jids };
 
         let response = self
             .http
@@ -159,7 +159,14 @@ impl WaBridgeClient {
             .header("x-api-key", api_key)
             .json(&request_body)
             .send()
-            .await?;
+            .await
+            .map_err(|e| {
+                if e.is_timeout() {
+                    GlueError::Timeout(e.to_string())
+                } else {
+                    GlueError::Network(e)
+                }
+            })?;
 
         let status = response.status();
 
@@ -168,19 +175,30 @@ impl WaBridgeClient {
             return Err(GlueError::Unauthorized(body));
         }
 
+        if status == StatusCode::TOO_MANY_REQUESTS {
+            let body = response.text().await.unwrap_or_default();
+            return Err(GlueError::RateLimit(body));
+        }
+
+        if status.is_server_error() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(GlueError::ServerError {
+                status: status.as_u16(),
+                body,
+            });
+        }
+
         if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
             return Err(Self::_map_error(status, body).await);
         }
 
-        let contact_response: CheckContactResponse = response
+        let resp: CheckContactsBatchResponse = response
             .json()
             .await
             .map_err(|e| GlueError::Parse(e.to_string()))?;
 
-        // If the contact is not registered, return the response
-        // (caller can check contact_response.registered)
-        Ok(contact_response)
+        Ok(resp)
     }
 
     // ── Message sending ───────────────────────────────────────────────────────

@@ -120,6 +120,22 @@ export function useSseConnection(): SseConnectionState {
                   queryClient.invalidateQueries({ queryKey: ["logs"] });
                   break;
 
+                case "contact.verify_progress":
+                  window.dispatchEvent(
+                    new CustomEvent("contact.verify_progress", {
+                      detail: data,
+                    }),
+                  );
+                  break;
+
+                case "contact.verify_complete":
+                  window.dispatchEvent(
+                    new CustomEvent("contact.verify_complete", {
+                      detail: data,
+                    }),
+                  );
+                  break;
+
                 default:
                   console.warn("Unknown SSE event type:", event.event, data);
               }

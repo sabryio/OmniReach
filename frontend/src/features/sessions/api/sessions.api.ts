@@ -185,16 +185,3 @@ export async function sendTestMessage(
     );
   }
 }
-
-export type CheckContactParams = {
-  sessionId: string;
-  phone: string;
-};
-
-export async function checkContact(
-  _params: CheckContactParams,
-): Promise<{ registered: boolean }> {
-  // TODO: Phase 2 — implement contact verification via /api/contacts/verify
-  await new Promise((r) => setTimeout(r, 800));
-  return { registered: Math.random() > 0.15 };
-}

@@ -5,7 +5,6 @@ import {
   deleteSession,
   updateSession,
   sendTestMessage,
-  checkContact,
   syncSession,
   resetSessionLimits,
 } from "../api/sessions.api";
@@ -88,20 +87,6 @@ export function useSendTestMessage() {
     sendTestMessage: mutation.mutate,
     sendTestMessageAsync: mutation.mutateAsync,
     isSending: mutation.isPending,
-    error: mutation.error,
-    reset: mutation.reset,
-  };
-}
-
-export function useCheckContact() {
-  const mutation = useMutation({
-    mutationFn: checkContact,
-  });
-  return {
-    checkContact: mutation.mutate,
-    checkContactAsync: mutation.mutateAsync,
-    isChecking: mutation.isPending,
-    result: mutation.data,
     error: mutation.error,
     reset: mutation.reset,
   };

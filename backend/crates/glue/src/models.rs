@@ -24,18 +24,23 @@ pub struct WaBridgeQr {
 
 // ── Contacts ──────────────────────────────────────────────────────────────────
 
-/// Request body for POST /v1/contacts/check
+/// Request body for POST /v1/contacts/check — batch variant
 #[derive(Debug, Serialize)]
-pub struct CheckContactRequest {
-    pub jid: String,
+pub struct CheckContactsBatchRequest {
+    pub jids: Vec<String>,
 }
 
-/// Response shape for POST /v1/contacts/check
+/// Single result item in a batch check response
 #[derive(Debug, Deserialize)]
-pub struct CheckContactResponse {
-    pub registered: bool,
-    pub jid: Option<String>,
-    pub error: Option<String>,
+pub struct CheckContactResultItem {
+    pub jid: String,
+    pub is_registered: bool,
+}
+
+/// Response shape for POST /v1/contacts/check — batch variant
+#[derive(Debug, Deserialize)]
+pub struct CheckContactsBatchResponse {
+    pub results: Vec<CheckContactResultItem>,
 }
 
 // ── Messages ──────────────────────────────────────────────────────────────────

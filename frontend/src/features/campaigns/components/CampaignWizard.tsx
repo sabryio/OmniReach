@@ -7,13 +7,14 @@ import {
   Send,
   ShieldCheck,
   Layers,
-  Zap,
   Check,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
 import { CsvImporter } from "./CsvImporter";
 import { MessageComposer } from "./MessageComposer";
 import { getSessionQuota } from "@/features/sessions/utils/quota";
+import { useVerificationJob } from "../hooks/useVerificationJob";
 import type { Session } from "@/features/sessions/schemas/session.schema";
 import type { Contact } from "@/features/customers/schemas/customer.schema";
 import type { Campaign } from "../schemas/campaign.schema";
@@ -51,12 +52,11 @@ export function CampaignWizard({
 
   // Selected WABridge session IDs
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>(
-    sessions.map((s) => s.id), // Default all sessions selected for maximum throughput
+    sessions.map((s) => s.id),
   );
 
-  // Pre-verification state
-  const [isPreVerifying, setIsPreVerifying] = useState<boolean>(false);
-  const [unregisteredCount, setUnregisteredCount] = useState<number>(0);
+  // Batch verification job — replaces old runPreVerification simulation
+  const verification = useVerificationJob();
 
   // Track current time for quota calculations
   const [now, setNow] = useState<number>(Date.now());
@@ -73,7 +73,7 @@ export function CampaignWizard({
 
   const toggleSession = (sessionId: string) => {
     if (selectedSessionIds.includes(sessionId)) {
-      if (selectedSessionIds.length === 1) return; // Must keep at least one
+      if (selectedSessionIds.length === 1) return;
       setSelectedSessionIds(
         selectedSessionIds.filter((id) => id !== sessionId),
       );
@@ -82,37 +82,30 @@ export function CampaignWizard({
     }
   };
 
-  // Pre-verification function: test all contacts with WABridge check-number before queueing
-  const runPreVerification = async () => {
+  // When verification completes, patch contacts with real results
+  useEffect(() => {
+    if (!verification.results) return;
+
+    const resultMap = new Map(verification.results.map((r) => [r.phone, r]));
+
+    setContacts((prev) =>
+      prev.map((c) => {
+        const r = resultMap.get(c.normalizedPhone);
+        if (!r) return c;
+        return {
+          ...c,
+          verificationStatus: r.is_registered ? "registered" : "unregistered",
+          waId: r.wa_id ?? undefined,
+        };
+      }),
+    );
+  }, [verification.results]);
+
+  const runPreVerification = () => {
     if (contacts.length === 0 || selectedSessionIds.length === 0) return;
-    setIsPreVerifying(true);
-
-    // TODO: Implement actual WABridge verification
-    // Simulate verification for now
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    const updatedContacts = [...contacts];
-    let regCount = 0;
-    let unregCount = 0;
-
-    for (let i = 0; i < updatedContacts.length; i++) {
-      const contact = updatedContacts[i];
-      if (!contact) continue;
-
-      // Simulate verification results
-      const isRegistered = Math.random() > 0.15; // 85% registered
-      contact.verificationStatus = isRegistered ? "registered" : "unregistered";
-      if (isRegistered) {
-        contact.waId = `${contact.normalizedPhone.replace("+", "")}@s.whatsapp.net`;
-        regCount++;
-      } else {
-        unregCount++;
-      }
-    }
-
-    setUnregisteredCount(unregCount);
-    setContacts(updatedContacts);
-    setIsPreVerifying(false);
+    const sessionId = selectedSessionIds[0]!;
+    const phones = contacts.map((c) => c.normalizedPhone);
+    verification.startJob(sessionId, phones);
   };
 
   const handleCreateAndLaunch = () => {
@@ -138,7 +131,9 @@ export function CampaignWizard({
       verifiedContacts: 0,
       sentCount: 0,
       skippedCount: 0,
-      unregisteredCount: unregisteredCount,
+      unregisteredCount:
+        verification.progress?.unregistered ??
+        contacts.filter((c) => c.verificationStatus === "unregistered").length,
       failedCount: 0,
       contacts: [...contacts],
       isArchived: false,
@@ -503,13 +498,13 @@ export function CampaignWizard({
                   <button
                     type="button"
                     id="run-pre-verify-btn"
-                    disabled={isPreVerifying}
+                    disabled={verification.isRunning}
                     onClick={runPreVerification}
                     className="px-3 py-1.5 rounded-lg bg-muted/50 hover:bg-muted text-foreground text-xs font-semibold flex items-center gap-1.5 border border-border transition-colors disabled:opacity-50"
                   >
-                    {isPreVerifying ? (
+                    {verification.isRunning ? (
                       <>
-                        <Zap className="w-3.5 h-3.5 animate-spin text-success" />
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
                         <span>Checking...</span>
                       </>
                     ) : (
@@ -520,6 +515,49 @@ export function CampaignWizard({
                     )}
                   </button>
                 </div>
+
+                {/* Progress bar — visible while running */}
+                {verification.isRunning && verification.progress && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>
+                        Checking {verification.progress.checked} /{" "}
+                        {verification.progress.total} numbers…
+                      </span>
+                      <span className="font-mono">
+                        {Math.round(
+                          (verification.progress.checked /
+                            verification.progress.total) *
+                            100,
+                        )}
+                        %
+                      </span>
+                    </div>
+                    <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden border border-border">
+                      <div
+                        className="h-full bg-primary transition-all"
+                        style={{
+                          width: `${(verification.progress.checked / verification.progress.total) * 100}%`,
+                        }}
+                      />
+                    </div>
+                    <div className="flex gap-3 text-[11px]">
+                      <span className="text-success">
+                        ✓ {verification.progress.registered} registered
+                      </span>
+                      <span className="text-warning">
+                        ✗ {verification.progress.unregistered} unregistered
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error state */}
+                {verification.error && (
+                  <p className="text-xs text-destructive pt-1">
+                    Pre-check failed: {verification.error}
+                  </p>
+                )}
 
                 {/* Verification badges */}
                 <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">

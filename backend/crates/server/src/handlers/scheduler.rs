@@ -165,16 +165,27 @@ pub async fn tick(
             // Build JID from phone: +966501234567 -> 966501234567@s.whatsapp.net
             let jid = format!("{}@s.whatsapp.net", contact.formatted_phone);
 
-            match state.wa.check_contact(&jid, &session.api_key).await {
-                Ok(response) => {
-                    if response.registered {
+            match state
+                .wa
+                .check_contacts_batch(vec![jid.clone()], &session.api_key)
+                .await
+            {
+                Ok(batch) => {
+                    // Single-item batch — take first result, default to unregistered if empty
+                    let response = batch.results.into_iter().next();
+                    let is_registered = response.as_ref().map(|r| r.is_registered).unwrap_or(false);
+                    let wa_id_opt = if is_registered {
+                        Some(jid.clone())
+                    } else {
+                        None
+                    };
+                    if is_registered {
                         // Update contact as registered
-                        let wa_id = response.jid.clone();
                         let _ = contacts::update_verification(
                             &state.db,
                             contact.id,
                             ContactVerificationStatus::Registered,
-                            wa_id,
+                            wa_id_opt.clone(),
                             None,
                         )
                         .await;
@@ -189,7 +200,7 @@ pub async fn tick(
                             details: Some(serde_json::json!({
                                 "contact_id": contact.id,
                                 "phone": contact.raw_phone,
-                                "wa_id": response.jid,
+                                "wa_id": wa_id_opt,
                             })),
                         };
                         let _ = logs::insert(&state.db, log.clone()).await;

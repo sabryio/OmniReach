@@ -46,6 +46,19 @@ pub enum SseEvent {
     },
     /// A new log entry was inserted.
     LogEntry(serde_json::Value),
+    /// Progress update for a background batch contact verification job.
+    ContactVerifyProgress {
+        job_id: String,
+        checked: u32,
+        total: u32,
+        registered: u32,
+        unregistered: u32,
+    },
+    /// Final results for a completed batch contact verification job.
+    ContactVerifyComplete {
+        job_id: String,
+        results: serde_json::Value,
+    },
 }
 
 impl SseEvent {
@@ -104,6 +117,26 @@ impl SseEvent {
                 }),
             ),
             SseEvent::LogEntry(v) => ("log.entry", v),
+            SseEvent::ContactVerifyProgress {
+                job_id,
+                checked,
+                total,
+                registered,
+                unregistered,
+            } => (
+                "contact.verify_progress",
+                json!({
+                    "job_id": job_id,
+                    "checked": checked,
+                    "total": total,
+                    "registered": registered,
+                    "unregistered": unregistered,
+                }),
+            ),
+            SseEvent::ContactVerifyComplete { job_id, results } => (
+                "contact.verify_complete",
+                json!({ "job_id": job_id, "results": results }),
+            ),
         };
 
         Event::default().event(event_type).data(data.to_string())

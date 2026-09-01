@@ -19,7 +19,7 @@
 //!   PATCH  /api/templates/{id}
 //!   DELETE /api/templates/{id}
 //!
-//!   POST   /api/contacts/verify
+//!   POST   /api/contacts/verify-batch
 //!
 //!   GET    /api/campaigns
 //!   POST   /api/campaigns
@@ -84,7 +84,7 @@ pub fn build(state: AppState) -> Router {
         .route("/sessions/{id}/reset-limits", post(sessions::reset_limits))
         .route("/sessions/{id}/send-test", post(sessions::send_test))
         // ── Contacts ────────────────────────────────────────────────────────
-        .route("/contacts/verify", post(contacts::verify))
+        .route("/contacts/verify-batch", post(contacts::verify_batch))
         // ── Templates ───────────────────────────────────────────────────────
         .route("/templates", get(templates::list).post(templates::create))
         .route(

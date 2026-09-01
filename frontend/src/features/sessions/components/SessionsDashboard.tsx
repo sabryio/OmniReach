@@ -21,12 +21,14 @@ interface SessionsDashboardProps {
   config: WABridgeConfig;
   onResetSessionLimits: (id: string) => void;
   onUpdateSessions: (sessions: Session[]) => void;
+  onAddSession: () => void;
 }
 
 export function SessionsDashboard({
   sessions,
   onResetSessionLimits,
   onUpdateSessions,
+  onAddSession,
 }: SessionsDashboardProps) {
   const [testPhone, setTestPhone] = useState<string>("+966 50 123 4567");
   const [testResult, setTestResult] = useState<{
@@ -133,18 +135,30 @@ export function SessionsDashboard({
           </p>
         </div>
 
-        {/* Quick Test Box */}
-        <div className="flex items-center gap-2 bg-muted/30 p-2 rounded-xl border border-border">
-          <input
-            type="text"
-            value={testPhone}
-            onChange={(e) => setTestPhone(e.target.value)}
-            placeholder="Enter test phone..."
-            className="px-3 py-1.5 text-xs rounded-lg border border-border bg-card text-foreground font-mono w-44 focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground transition-all"
-          />
-          <span className="text-[10px] text-muted-foreground">
-            Check Number
-          </span>
+        <div className="flex items-center gap-3">
+          {/* Quick Test Box */}
+          <div className="flex items-center gap-2 bg-muted/30 p-2 rounded-xl border border-border">
+            <input
+              type="text"
+              value={testPhone}
+              onChange={(e) => setTestPhone(e.target.value)}
+              placeholder="Enter test phone..."
+              className="px-3 py-1.5 text-xs rounded-lg border border-border bg-card text-foreground font-mono w-44 focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground transition-all"
+            />
+            <span className="text-[10px] text-muted-foreground">
+              Check Number
+            </span>
+          </div>
+
+          {/* Add Session Button */}
+          <button
+            type="button"
+            onClick={onAddSession}
+            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all flex items-center gap-2 shrink-0"
+          >
+            <Send className="w-3.5 h-3.5" />
+            Add Session
+          </button>
         </div>
       </div>
 
@@ -241,31 +255,48 @@ export function SessionsDashboard({
                         </span>
                       </div>
 
-                      {/* Visual Segment Bars (5 slots) */}
-                      <div className="grid grid-cols-5 gap-1.5">
-                        {Array.from({ length: quota.hourlyLimit }).map(
-                          (_, idx) => {
-                            const isUsed = idx < quota.hourlyUsed;
-                            return (
-                              <div
-                                key={idx}
-                                className={`h-2 rounded-sm transition-all ${
-                                  isUsed
-                                    ? quota.isHourlyCapped
-                                      ? "bg-destructive"
-                                      : "bg-success"
-                                    : "bg-muted border border-border"
-                                }`}
-                                title={
-                                  isUsed
-                                    ? `Used slot #${idx + 1}`
-                                    : `Available slot #${idx + 1}`
-                                }
-                              />
-                            );
-                          },
-                        )}
-                      </div>
+                      {/* Visual Quota Display - Segments for small limits, progress bar for large */}
+                      {quota.hourlyLimit <= 10 ? (
+                        // Segment bars for limits ≤ 10 (easier to see individual slots)
+                        <div className="grid grid-cols-5 gap-1.5">
+                          {Array.from({ length: quota.hourlyLimit }).map(
+                            (_, idx) => {
+                              const isUsed = idx < quota.hourlyUsed;
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`h-2 rounded-sm transition-all ${
+                                    isUsed
+                                      ? quota.isHourlyCapped
+                                        ? "bg-destructive"
+                                        : "bg-success"
+                                      : "bg-muted border border-border"
+                                  }`}
+                                  title={
+                                    isUsed
+                                      ? `Used slot #${idx + 1}`
+                                      : `Available slot #${idx + 1}`
+                                  }
+                                />
+                              );
+                            },
+                          )}
+                        </div>
+                      ) : (
+                        // Progress bar for limits > 10 (more compact)
+                        <div className="w-full bg-muted h-2 rounded-full overflow-hidden border border-border">
+                          <div
+                            className={`h-full transition-all ${
+                              quota.isHourlyCapped
+                                ? "bg-destructive"
+                                : "bg-success"
+                            }`}
+                            style={{
+                              width: `${(quota.hourlyUsed / quota.hourlyLimit) * 100}%`,
+                            }}
+                          />
+                        </div>
+                      )}
 
                       {quota.isHourlyCapped && quota.nextHourlySlotMs && (
                         <p className="text-[11px] text-warning flex items-center gap-1 font-medium pt-0.5">

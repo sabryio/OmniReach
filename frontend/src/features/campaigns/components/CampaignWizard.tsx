@@ -43,11 +43,9 @@ export function CampaignWizard({
   const [templateText, setTemplateText] = useState<string>(
     "Hello {{name}}! 🌟 We are pleased to share our latest catalog update with you. Check your exclusive member perks today.",
   );
-  const [imageUrl, setImageUrl] = useState<string | undefined>(
-    "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?auto=format&fit=crop&w=600&q=80",
-  );
+  const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
   const [imageFileName, _setImageFileName] = useState<string | undefined>(
-    "pharmacy_promo.jpg",
+    undefined,
   );
   const [mediaRef, setMediaRef] = useState<string | undefined>(undefined);
 

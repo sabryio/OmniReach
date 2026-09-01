@@ -5,6 +5,7 @@ import { useSessions } from "@/features/sessions/hooks/useSessionsQuery";
 import {
   useSyncSession,
   useResetSessionLimits,
+  useSendTestMessage,
 } from "@/features/sessions/hooks/useSessionMutations";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
 
@@ -24,6 +25,7 @@ function SessionsRoute() {
   const { sessions, isLoading, error } = useSessions();
   const { syncSession } = useSyncSession();
   const { resetLimits } = useResetSessionLimits();
+  const { sendTestMessageAsync } = useSendTestMessage();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const handleVerifyNumber = async (
@@ -48,6 +50,14 @@ function SessionsRoute() {
         ? `${phone.replace(/\D/g, "")}@s.whatsapp.net`
         : undefined,
     };
+  };
+
+  const handleSendTest = async (
+    sessionId: string,
+    phone: string,
+    message: string,
+  ): Promise<void> => {
+    await sendTestMessageAsync({ sessionId, phone, message });
   };
 
   if (isLoading) {
@@ -76,6 +86,7 @@ function SessionsRoute() {
         onAddSession={() => setIsAddModalOpen(true)}
         onSyncSession={(id) => syncSession(id)}
         onVerifyNumber={handleVerifyNumber}
+        onSendTest={handleSendTest}
       />
       <AddSessionModal
         isOpen={isAddModalOpen}

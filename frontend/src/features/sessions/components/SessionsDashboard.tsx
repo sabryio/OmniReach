@@ -3,11 +3,12 @@
  * Beautiful UI with exact mockup structure and enhanced functionality
  */
 import { useState, useEffect } from "react";
-import { Server, RotateCcw, Clock, Phone, Plus, Zap } from "lucide-react";
+import { Server, RotateCcw, Clock, Phone, Plus, Zap, Send } from "lucide-react";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
 import type { Session } from "../schemas/session.schema";
 import { getSessionQuota, formatDuration } from "../utils/quota";
 import { SessionNumberVerifierModal } from "./SessionNumberVerifierModal";
+import { SessionTestMessageModal } from "./SessionTestMessageModal";
 
 interface SessionsDashboardProps {
   sessions: Session[];
@@ -24,6 +25,11 @@ interface SessionsDashboardProps {
     waId?: string;
     error?: string;
   }>;
+  onSendTest: (
+    sessionId: string,
+    phone: string,
+    message: string,
+  ) => Promise<void>;
 }
 
 export function SessionsDashboard({
@@ -32,9 +38,12 @@ export function SessionsDashboard({
   onAddSession,
   onSyncSession,
   onVerifyNumber,
+  onSendTest,
 }: SessionsDashboardProps) {
   const [now, setNow] = useState<number>(Date.now());
   const [verifierModalSession, setVerifierModalSession] =
+    useState<Session | null>(null);
+  const [testMessageModalSession, setTestMessageModalSession] =
     useState<Session | null>(null);
 
   // Update clock every second for smooth reset countdowns
@@ -249,20 +258,31 @@ export function SessionsDashboard({
                       <Phone className="w-3 h-3" />
                       <span>Check Number</span>
                     </button>
-                  </div>
 
-                  {/* Sync Session Status Button */}
-                  {session.status !== "connected" && (
+                    {/* Send Test Button */}
                     <button
                       type="button"
-                      onClick={() => onSyncSession(session.id)}
+                      onClick={() => setTestMessageModalSession(session)}
                       className="w-full px-2.5 py-1 rounded-lg text-[11px] bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-colors flex items-center justify-center gap-1 font-semibold"
-                      title="Sync session status with WABridge"
+                      title="Send a test WhatsApp message using this session"
                     >
-                      <Server className="w-3 h-3" />
-                      <span>Sync Status</span>
+                      <Send className="w-3 h-3" />
+                      <span>Send Test</span>
                     </button>
-                  )}
+
+                    {/* Sync Session Status Button (conditionally rendered) */}
+                    {session.status !== "connected" && (
+                      <button
+                        type="button"
+                        onClick={() => onSyncSession(session.id)}
+                        className="w-full px-2.5 py-1 rounded-lg text-[11px] bg-warning/10 hover:bg-warning/20 text-warning border border-warning/20 transition-colors flex items-center justify-center gap-1 font-semibold"
+                        title="Sync session status with WABridge"
+                      >
+                        <Server className="w-3 h-3" />
+                        <span>Sync Status</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -277,6 +297,16 @@ export function SessionsDashboard({
           onClose={() => setVerifierModalSession(null)}
           session={verifierModalSession}
           onVerify={onVerifyNumber}
+        />
+      )}
+
+      {/* Session Test Message Modal */}
+      {testMessageModalSession && (
+        <SessionTestMessageModal
+          isOpen={!!testMessageModalSession}
+          onClose={() => setTestMessageModalSession(null)}
+          session={testMessageModalSession}
+          onSendTest={onSendTest}
         />
       )}
     </div>

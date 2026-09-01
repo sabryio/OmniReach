@@ -129,10 +129,29 @@ export type SendTestMessageParams = {
 };
 
 export async function sendTestMessage(
-  _params: SendTestMessageParams,
+  params: SendTestMessageParams,
 ): Promise<void> {
-  // TODO: Phase 2 — implement /api/sessions/:id/send-test endpoint in backend
-  throw new Error("Not implemented yet");
+  const response = await fetch(
+    `${config.apiBaseUrl}/api/sessions/${params.sessionId}/send-test`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.authToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        phone: params.phone,
+        message: params.message,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to send test message: ${response.statusText} - ${errorText}`,
+    );
+  }
 }
 
 export type CheckContactParams = {

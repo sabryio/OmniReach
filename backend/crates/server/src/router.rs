@@ -78,6 +78,7 @@ pub fn build(state: AppState) -> Router {
         )
         .route("/sessions/{id}/sync", post(sessions::sync))
         .route("/sessions/{id}/reset-limits", post(sessions::reset_limits))
+        .route("/sessions/{id}/send-test", post(sessions::send_test))
         // ── Contacts ────────────────────────────────────────────────────────
         .route("/contacts/verify", post(contacts::verify))
         // ── Templates ───────────────────────────────────────────────────────

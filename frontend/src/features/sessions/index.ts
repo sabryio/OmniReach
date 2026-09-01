@@ -13,3 +13,4 @@ export { useSessionDashboard } from "./hooks/useSessions";
 export * from "./components/SessionsDashboard";
 export * from "./components/AddSessionModal";
 export { SessionNumberVerifierModal } from "./components/SessionNumberVerifierModal";
+export { SessionTestMessageModal } from "./components/SessionTestMessageModal";

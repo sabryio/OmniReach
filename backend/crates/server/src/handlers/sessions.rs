@@ -8,6 +8,7 @@
 //!   DELETE /api/sessions/:id                → destroy
 //!   POST   /api/sessions/:id/sync           → sync
 //!   POST   /api/sessions/:id/reset-limits   → reset_limits
+//!   POST   /api/sessions/:id/send-test      → send_test
 
 use crate::{error::ApiError, state::AppState};
 use axum::{
@@ -138,4 +139,61 @@ pub async fn reset_limits(
     // TODO: emit SSE event
     // state.sse.send(SseEvent::SessionLimitsReset { id })?;
     Ok(Json(session))
+}
+
+#[derive(serde::Deserialize)]
+pub struct SendTestRequest {
+    pub phone: String,
+    pub message: String,
+}
+
+/// POST /api/sessions/:id/send-test
+pub async fn send_test(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Json(body): Json<SendTestRequest>,
+) -> Result<StatusCode, ApiError> {
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64;
+
+    // Try to acquire send slot (checks quota and increments atomically)
+    let result = omnireach_store::sessions::try_acquire_send_slot(&state.db, id, now_ms).await?;
+
+    if !result.can_send {
+        return Err(ApiError::BadRequest(
+            result
+                .reason
+                .unwrap_or_else(|| "Session quota exhausted".to_string()),
+        ));
+    }
+
+    // Load session to get phone number (API key)
+    let session = omnireach_store::sessions::get_by_id(&state.db, id).await?;
+
+    // Build JID and send message
+    let normalized_phone = body.phone.trim().trim_start_matches('+');
+    let jid = format!("{}@s.whatsapp.net", normalized_phone);
+
+    state
+        .wa
+        .send_text(&jid, &body.message, &session.phone_number)
+        .await?;
+
+    // Log the test send
+    let log_entry = omnireach_core::types::LogEntry {
+        id: Uuid::new_v4(),
+        timestamp: chrono::Utc::now(),
+        level: omnireach_core::types::LogLevel::Info,
+        category: omnireach_core::types::LogCategory::Send,
+        message: format!(
+            "Test message sent to {} via session {}",
+            body.phone, session.name
+        ),
+        details: None,
+    };
+    omnireach_store::logs::insert(&state.db, log_entry).await?;
+
+    Ok(StatusCode::OK)
 }

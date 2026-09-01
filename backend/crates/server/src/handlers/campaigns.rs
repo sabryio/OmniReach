@@ -32,7 +32,13 @@ pub async fn create(
     Json(input): Json<CreateCampaignInput>,
 ) -> Result<(StatusCode, Json<Campaign>), ApiError> {
     let campaign = omnireach_store::campaigns::insert(&state.db, input).await?;
-    // TODO: emit SSE event
+
+    // Emit SSE event for campaign creation
+    state.sse.send(crate::sse::SseEvent::CampaignCreated {
+        campaign_id: campaign.id.to_string(),
+        title: campaign.title.clone(),
+    });
+
     Ok((StatusCode::CREATED, Json(campaign)))
 }
 
@@ -53,13 +59,20 @@ pub async fn update(
             _ => None,
         });
 
-    let campaign = if let Some(status) = status {
-        omnireach_store::campaigns::update_status(&state.db, id, status).await?
+    let campaign = if let Some(ref status) = status {
+        omnireach_store::campaigns::update_status(&state.db, id, status.clone()).await?
     } else {
         omnireach_store::campaigns::get_by_id(&state.db, id).await?
     };
 
-    // TODO: emit SSE event
+    // Emit SSE event for campaign status change
+    if status.is_some() {
+        state.sse.send(crate::sse::SseEvent::CampaignStatus {
+            campaign_id: campaign.id.to_string(),
+            status: campaign.status.as_str().to_string(),
+        });
+    }
+
     Ok(Json(campaign))
 }
 
@@ -80,7 +93,13 @@ pub async fn pause(
 ) -> Result<Json<Campaign>, ApiError> {
     let campaign =
         omnireach_store::campaigns::update_status(&state.db, id, CampaignStatus::Paused).await?;
-    // TODO: emit SSE event
+
+    // Emit SSE event for pause
+    state.sse.send(crate::sse::SseEvent::CampaignStatus {
+        campaign_id: campaign.id.to_string(),
+        status: "paused".to_string(),
+    });
+
     Ok(Json(campaign))
 }
 
@@ -91,7 +110,13 @@ pub async fn resume(
 ) -> Result<Json<Campaign>, ApiError> {
     let campaign =
         omnireach_store::campaigns::update_status(&state.db, id, CampaignStatus::Running).await?;
-    // TODO: emit SSE event
+
+    // Emit SSE event for resume
+    state.sse.send(crate::sse::SseEvent::CampaignStatus {
+        campaign_id: campaign.id.to_string(),
+        status: "running".to_string(),
+    });
+
     Ok(Json(campaign))
 }
 
@@ -120,6 +145,12 @@ pub async fn retry_failed(
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let queued_count = omnireach_store::queue::requeue_failed(&state.db, id).await?;
     omnireach_store::campaigns::update_status(&state.db, id, CampaignStatus::Running).await?;
-    // TODO: emit SSE event
+
+    // Emit SSE event for retry
+    state.sse.send(crate::sse::SseEvent::CampaignStatus {
+        campaign_id: id.to_string(),
+        status: "running".to_string(),
+    });
+
     Ok(Json(serde_json::json!({ "queuedCount": queued_count })))
 }

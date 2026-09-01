@@ -28,19 +28,17 @@ use uuid::Uuid;
 /// Opens a long-lived SSE connection; streams `SseEvent` frames to the client.
 ///
 /// TODO: implement — subscribe to SseBroadcaster, map to Event, return Sse stream.
-/// Implementation sketch:
-///   use tokio_stream::wrappers::BroadcastStream;
-///   use futures::StreamExt;
-///   let rx = state.sse.subscribe();
-///   let stream = BroadcastStream::new(rx)
-///       .filter_map(|r| async move { r.ok() })
-///       .map(|ev| Ok(ev.into_axum_event()));
-///   Sse::new(stream).keep_alive(KeepAlive::default())
 pub async fn sse_handler(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    // Placeholder: return an empty stream until real implementation lands.
-    let stream = futures::stream::empty::<Result<Event, Infallible>>();
+    use futures::StreamExt;
+    use tokio_stream::wrappers::BroadcastStream;
+
+    let rx = state.sse.subscribe();
+    let stream = BroadcastStream::new(rx)
+        .filter_map(|r| async move { r.ok() })
+        .map(|ev| Ok(ev.into_axum_event()));
+
     Sse::new(stream).keep_alive(KeepAlive::default())
 }
 
@@ -121,7 +119,12 @@ pub async fn sync(
     // 1. load session from DB to get api_key
     // 2. state.wa.get_session(wabridge_id, api_key).await
     // 3. store::sessions::update_status(...)
-    // 4. state.sse.send(SseEvent::SessionStatus { ... })
+    // 4. After status/QR update, emit SSE:
+    //    state.sse.send(crate::sse::SseEvent::SessionStatus {
+    //        session_id: session.id.to_string(),
+    //        status: session.status.as_str().to_string(),
+    //        qr_code_data: session.qr_code_data.clone(),
+    //    });
 
     // For now, just return the existing session
     let session = omnireach_store::sessions::get_by_id(&state.db, id).await?;

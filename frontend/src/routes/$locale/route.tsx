@@ -24,13 +24,12 @@ import { useLogsQuery, useQueueQuery } from "@/features/queue";
 import { useCampaignsQuery } from "@/features/campaigns";
 import { useSettingsQuery, useUpdateSettings } from "@/features/settings";
 import { useSchedulerLoop } from "@/features/scheduler";
+import { useSseConnection } from "@/features/sse";
 import type {
   SchedulerState,
   WABridgeConfig,
 } from "@/features/layout/schemas/layout.schema";
 import type { AppSettings } from "@/features/settings";
-import type { QueueItem } from "@/features/queue/schemas/queue.schema";
-import type { Campaign } from "@/features/campaigns/schemas/campaign.schema";
 
 export const Route = createFileRoute("/$locale")({
   beforeLoad: ({ params }) => {
@@ -165,39 +164,18 @@ function SharedLayout() {
     setSchedulerState((prev) => ({ ...prev, isRunning: !prev.isRunning }));
   }, []);
 
-  // Scheduler loop handlers
-  const handleUpdateQueue = useCallback(
-    (updates: Array<{ id: string; updates: Partial<QueueItem> }>) => {
-      // TODO: Implement optimistic queue updates
-      // For now, TanStack Query will refetch queue data
-      console.log("Queue updates:", updates);
-    },
-    [],
-  );
-
-  const handleAppendLogs = useCallback((newLogs: typeof logs) => {
-    // TODO: Implement optimistic log appends
-    // For now, TanStack Query will refetch logs
-    console.log("New logs:", newLogs);
-  }, []);
-
-  const handleUpdateCampaign = useCallback(
-    (campaignId: string, updates: Partial<Campaign>) => {
-      // TODO: Implement optimistic campaign updates
-      // For now, TanStack Query will refetch campaigns
-      console.log("Campaign update:", campaignId, updates);
-    },
-    [],
-  );
+  // SSE connection — connects on mount, invalidates caches on events
+  useSseConnection();
 
   // Scheduler loop — runs every 5 seconds when isRunning=true
   useSchedulerLoop({
     schedulerState,
     queue,
     campaigns,
-    onUpdateQueue: handleUpdateQueue,
-    onAppendLogs: handleAppendLogs,
-    onUpdateCampaign: handleUpdateCampaign,
+    // Handlers removed — SSE triggers cache invalidation directly
+    onUpdateQueue: () => {},
+    onAppendLogs: () => {},
+    onUpdateCampaign: () => {},
   });
 
   const compactPadding = layout.compactMode ? "p-3" : "p-5";

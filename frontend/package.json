@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
+    "@microsoft/fetch-event-source": "^2.0.1",
     "@shadcn/react": "^0.3.0",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/query-db-collection": "^1.2.11",

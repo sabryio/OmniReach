@@ -79,8 +79,8 @@ pub async fn update(
     Path(id): Path<Uuid>,
     Json(patch): Json<serde_json::Value>,
 ) -> Result<Json<omnireach_core::types::Session>, ApiError> {
-    // Extract fields from patch object
     let name = patch.get("name").and_then(|v| v.as_str());
+    let api_key = patch.get("apiKey").and_then(|v| v.as_str());
     let hourly_limit = patch
         .get("hourlyLimit")
         .and_then(|v| v.as_u64())
@@ -90,22 +90,10 @@ pub async fn update(
         .and_then(|v| v.as_u64())
         .map(|v| v as u32);
 
-    // TODO: Phase 2 — implement partial update in store layer
-    // For now, just fetch and return the existing session
-    let mut session = omnireach_store::sessions::get_by_id(&state.db, id).await?;
+    let session =
+        omnireach_store::sessions::update(&state.db, id, name, api_key, hourly_limit, daily_limit)
+            .await?;
 
-    if let Some(n) = name {
-        session.name = n.to_string();
-    }
-    if let Some(h) = hourly_limit {
-        session.hourly_limit = h;
-    }
-    if let Some(d) = daily_limit {
-        session.daily_limit = d;
-    }
-
-    // TODO: persist changes to DB
-    // TODO: emit SSE event
     Ok(Json(session))
 }
 
@@ -128,7 +116,7 @@ pub async fn sync(
     // TODO: Phase 2 — implement real WABridge sync
     // 1. load session from DB to get api_key
     // 2. state.wa.get_session(wabridge_id, api_key).await
-    // 3. store::sessions::update_status(...)
+    // 3. store::sessions::update(db, id, None, None, None, None) to refresh last_activity_at
     // 4. After status update, emit SSE:
     //    state.sse.send(crate::sse::SseEvent::SessionStatus {
     //        session_id: session.id.to_string(),

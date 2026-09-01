@@ -127,28 +127,34 @@ pub async fn insert(db: &Db, input: CreateSessionInput) -> Result<Session, Store
     get_by_id(db, id).await
 }
 
-/// PATCH /api/sessions/:id — update session metadata
-pub async fn update_status(
+/// PATCH /api/sessions/:id — update session fields (name, api_key, limits)
+pub async fn update(
     db: &Db,
     id: Uuid,
-    status: SessionStatus,
-    phone_number: Option<String>,
+    name: Option<&str>,
+    api_key: Option<&str>,
+    hourly_limit: Option<u32>,
+    daily_limit: Option<u32>,
 ) -> Result<Session, StoreError> {
     let now_ms = Utc::now().timestamp_millis();
-    let status_str = status.as_str();
 
-    // First verify session exists
+    // Verify session exists
     let _ = get_by_id(db, id).await?;
 
-    // Update status, phone number, and last activity
     sqlx::query!(
         r#"
         UPDATE sessions
-        SET status = ?, phone_number = COALESCE(?, phone_number), last_activity_at = ?
+        SET name         = COALESCE(?, name),
+            api_key      = COALESCE(?, api_key),
+            hourly_limit = COALESCE(?, hourly_limit),
+            daily_limit  = COALESCE(?, daily_limit),
+            last_activity_at = ?
         WHERE id = ?
         "#,
-        status_str,
-        phone_number,
+        name,
+        api_key,
+        hourly_limit.map(|v| v as i64),
+        daily_limit.map(|v| v as i64),
         now_ms,
         id.to_string()
     )

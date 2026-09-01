@@ -2,7 +2,7 @@
 //!
 //! Tests verify the actual implemented functions:
 //! - list_all, get_by_id, insert, delete
-//! - update_status (with phone_number)
+//! - update (name, api_key, hourly_limit, daily_limit)
 //! - reset_limits
 
 #[cfg(test)]
@@ -142,15 +142,15 @@ mod tests {
     }
 
     // ──────────────────────────────────────────────────────────────────────
-    // update_status (with phone_number)
+    // update (name, api_key, hourly_limit, daily_limit)
     // ──────────────────────────────────────────────────────────────────────
 
     #[tokio::test]
-    async fn test_update_status_to_connected() {
+    async fn test_update_name() {
         let db = setup_test_db().await;
 
         let input = CreateSessionInput {
-            name: "Status Test".to_string(),
+            name: "Old Name".to_string(),
             phone_number: "+201111111111".to_string(),
             api_key: "test-key".to_string(),
             hourly_limit: Some(20),
@@ -159,28 +159,22 @@ mod tests {
 
         let session = sessions::insert(&db, input).await.unwrap();
 
-        sessions::update_status(
-            &db,
-            session.id,
-            SessionStatus::Connected,
-            Some("+201234567890".to_string()),
-        )
-        .await
-        .unwrap();
+        sessions::update(&db, session.id, Some("New Name"), None, None, None)
+            .await
+            .unwrap();
 
         let updated = sessions::get_by_id(&db, session.id).await.unwrap();
 
-        assert_eq!(updated.status, SessionStatus::Connected);
-        assert_eq!(updated.phone_number, "+201234567890".to_string());
+        assert_eq!(updated.name, "New Name");
         assert!(updated.last_activity_at.is_some());
     }
 
     #[tokio::test]
-    async fn test_update_status_to_disconnected() {
+    async fn test_update_limits() {
         let db = setup_test_db().await;
 
         let input = CreateSessionInput {
-            name: "Disconnect Test".to_string(),
+            name: "Limits Test".to_string(),
             phone_number: "+201234567890".to_string(),
             api_key: "test-key".to_string(),
             hourly_limit: Some(20),
@@ -189,13 +183,36 @@ mod tests {
 
         let session = sessions::insert(&db, input).await.unwrap();
 
-        sessions::update_status(&db, session.id, SessionStatus::Disconnected, None)
+        sessions::update(&db, session.id, None, None, Some(50), Some(500))
             .await
             .unwrap();
 
         let updated = sessions::get_by_id(&db, session.id).await.unwrap();
 
-        assert_eq!(updated.status, SessionStatus::Disconnected);
+        assert_eq!(updated.hourly_limit, 50);
+        assert_eq!(updated.daily_limit, 500);
+    }
+
+    #[tokio::test]
+    async fn test_update_no_fields_returns_session_unchanged() {
+        let db = setup_test_db().await;
+
+        let input = CreateSessionInput {
+            name: "Unchanged".to_string(),
+            phone_number: "+201234567890".to_string(),
+            api_key: "test-key".to_string(),
+            hourly_limit: Some(20),
+            daily_limit: Some(200),
+        };
+
+        let session = sessions::insert(&db, input).await.unwrap();
+
+        let updated = sessions::update(&db, session.id, None, None, None, None)
+            .await
+            .unwrap();
+
+        assert_eq!(updated.name, "Unchanged");
+        assert_eq!(updated.hourly_limit, 20);
     }
 
     #[tokio::test]
@@ -212,16 +229,12 @@ mod tests {
 
         let session = sessions::insert(&db, input).await.unwrap();
 
-        let statuses = vec![SessionStatus::Disconnected, SessionStatus::Connected];
+        // status is always connected/disconnected — update should not change it
+        let updated = sessions::update(&db, session.id, Some("Updated Name"), None, None, None)
+            .await
+            .unwrap();
 
-        for status in statuses {
-            sessions::update_status(&db, session.id, status.clone(), None)
-                .await
-                .unwrap();
-
-            let updated = sessions::get_by_id(&db, session.id).await.unwrap();
-            assert_eq!(updated.status, status);
-        }
+        assert_eq!(updated.status, SessionStatus::Connected);
     }
 
     // ──────────────────────────────────────────────────────────────────────

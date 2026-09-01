@@ -86,6 +86,7 @@ export async function deleteSession(id: string): Promise<void> {
 export type UpdateSessionParams = {
   id: string;
   name?: string;
+  apiKey?: string;
   hourlyLimit?: number;
   dailyLimit?: number;
 };

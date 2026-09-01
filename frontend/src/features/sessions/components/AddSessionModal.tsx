@@ -3,19 +3,50 @@
  * When sessionId is provided, loads and edits existing session
  * When sessionId is null, creates new session
  */
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { X, Plus, Save, Server } from "lucide-react";
+import { useForm } from "@tanstack/react-form";
+import * as z from "zod";
 import {
   useCreateSession,
   useUpdateSession,
 } from "../hooks/useSessionMutations";
 import { useSession } from "../hooks/useSessionsQuery";
+import {
+  Field,
+  FieldLabel,
+  FieldError,
+  FieldDescription,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface AddSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  sessionId?: string | null; // Optional: if provided, edit mode
+  sessionId?: string | null; // null = create mode, string = edit mode
 }
+
+// Create: all fields required
+const createSchema = z.object({
+  name: z.string().min(1, "Session name is required"),
+  phoneNumber: z
+    .string()
+    .min(10, "Phone must be at least 10 digits")
+    .regex(/^\+?\d{10,15}$/, "Invalid phone number format (10-15 digits)"),
+  apiKey: z.string().min(1, "API key is required"),
+  hourlyLimit: z.number().int().positive("Must be a positive number"),
+  dailyLimit: z.number().int().positive("Must be a positive number"),
+});
+
+// Edit: phoneNumber read-only (not validated), apiKey optional (empty = keep current)
+const editSchema = z.object({
+  name: z.string().min(1, "Session name is required"),
+  phoneNumber: z.string(),
+  apiKey: z.string(),
+  hourlyLimit: z.number().int().positive("Must be a positive number"),
+  dailyLimit: z.number().int().positive("Must be a positive number"),
+});
 
 export function AddSessionModal({
   isOpen,
@@ -25,13 +56,13 @@ export function AddSessionModal({
   const isEditMode = !!sessionId;
 
   const {
-    createSession,
+    createSessionAsync,
     isCreating,
     error: createError,
     reset: resetCreate,
   } = useCreateSession();
   const {
-    updateSession,
+    updateSessionAsync,
     isUpdating,
     error: updateError,
     reset: resetUpdate,
@@ -40,75 +71,64 @@ export function AddSessionModal({
     sessionId || "",
   );
 
-  const [name, setName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [hourlyLimit, setHourlyLimit] = useState("1000");
-  const [dailyLimit, setDailyLimit] = useState("10000");
-
-  // Load existing session data in edit mode
-  useEffect(() => {
-    if (isEditMode && existingSession) {
-      setName(existingSession.name);
-      setPhoneNumber(existingSession.phoneNumber);
-      setHourlyLimit(String(existingSession.hourlyLimit));
-      setDailyLimit(String(existingSession.dailyLimit));
-      // API key is write-only, don't show it
-    }
-  }, [isEditMode, existingSession]);
-
   const isSubmitting = isCreating || isUpdating;
   const error = createError || updateError;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!name.trim() || !phoneNumber.trim()) {
-      return;
-    }
-
-    // Create mode requires API key
-    if (!isEditMode && !apiKey.trim()) {
-      return;
-    }
-
-    try {
-      if (isEditMode && sessionId) {
-        // Edit mode: update session
-        await updateSession({
-          id: sessionId,
-          name: name.trim(),
-          hourlyLimit: parseInt(hourlyLimit) || 1000,
-          dailyLimit: parseInt(dailyLimit) || 10000,
-        });
-      } else {
-        // Create mode: create new session
-        await createSession({
-          name: name.trim(),
-          phoneNumber: phoneNumber.trim(),
-          apiKey: apiKey.trim(),
-          hourlyLimit: parseInt(hourlyLimit) || 1000,
-          dailyLimit: parseInt(dailyLimit) || 10000,
-        });
+  const form = useForm({
+    defaultValues: {
+      name: "",
+      phoneNumber: "",
+      apiKey: "",
+      hourlyLimit: 1000,
+      dailyLimit: 10000,
+    },
+    validators: {
+      onSubmit: isEditMode ? editSchema : createSchema,
+    },
+    onSubmit: async ({ value }) => {
+      try {
+        if (isEditMode && sessionId) {
+          await updateSessionAsync({
+            id: sessionId,
+            name: value.name,
+            // Only send apiKey if user typed a new one
+            apiKey: value.apiKey.trim() || undefined,
+            hourlyLimit: value.hourlyLimit,
+            dailyLimit: value.dailyLimit,
+          });
+        } else {
+          await createSessionAsync({
+            name: value.name,
+            phoneNumber: value.phoneNumber,
+            apiKey: value.apiKey,
+            hourlyLimit: value.hourlyLimit,
+            dailyLimit: value.dailyLimit,
+          });
+        }
+        form.reset();
+        handleClose();
+      } catch (err) {
+        console.error(
+          `Failed to ${isEditMode ? "update" : "create"} session:`,
+          err,
+        );
       }
+    },
+  });
 
-      // Reset form and close
-      handleClose();
-    } catch (err) {
-      // Error is handled by the mutation hook
-      console.error(
-        `Failed to ${isEditMode ? "update" : "create"} session:`,
-        err,
-      );
+  // Load existing session data into form when in edit mode
+  useEffect(() => {
+    if (isEditMode && existingSession) {
+      form.setFieldValue("name", existingSession.name);
+      form.setFieldValue("phoneNumber", existingSession.phoneNumber);
+      form.setFieldValue("hourlyLimit", existingSession.hourlyLimit);
+      form.setFieldValue("dailyLimit", existingSession.dailyLimit);
+      // apiKey is write-only — leave blank (placeholder explains)
     }
-  };
+  }, [isEditMode, existingSession]);
 
   const handleClose = () => {
-    setName("");
-    setPhoneNumber("");
-    setApiKey("");
-    setHourlyLimit("1000");
-    setDailyLimit("10000");
+    form.reset();
     resetCreate();
     resetUpdate();
     onClose();
@@ -116,7 +136,6 @@ export function AddSessionModal({
 
   if (!isOpen) return null;
 
-  // Show loading state in edit mode while fetching session
   if (isEditMode && isLoadingSession) {
     return (
       <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -143,7 +162,7 @@ export function AddSessionModal({
               </h3>
               <p className="text-[11px] text-muted-foreground">
                 {isEditMode
-                  ? "Update session name and rate limits"
+                  ? "Update session name, API key, and rate limits"
                   : "Connect a new WhatsApp Business account"}
               </p>
             </div>
@@ -158,7 +177,13 @@ export function AddSessionModal({
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            form.handleSubmit();
+          }}
+          className="p-5 space-y-4"
+        >
           {/* Error banner */}
           {error && (
             <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-xs">
@@ -170,136 +195,198 @@ export function AddSessionModal({
           )}
 
           {/* Session Name */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground block">
-              Session Name
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Main Account, Support Line"
-              required
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-            />
-            <p className="text-[10px] text-muted-foreground">
-              A friendly name to identify this WhatsApp connection
-            </p>
-          </div>
+          <form.Field
+            name="name"
+            children={(field) => {
+              const isInvalid =
+                field.state.meta.isTouched && !field.state.meta.isValid;
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor={field.name}>Session Name</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder="e.g., Main Account, Support Line"
+                    aria-invalid={isInvalid}
+                  />
+                  <FieldDescription>
+                    A friendly name to identify this WhatsApp connection
+                  </FieldDescription>
+                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                </Field>
+              );
+            }}
+          />
 
-          {/* Phone Number - Read-only in edit mode */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground block">
-              Phone Number
-            </label>
-            <input
-              type="tel"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="+201234567890"
-              required
-              pattern="^\+?\d{10,15}$"
-              disabled={isEditMode}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-            <p className="text-[10px] text-muted-foreground">
-              {isEditMode
-                ? "Phone number cannot be changed after creation"
-                : "WhatsApp number for this session (10-15 digits with optional +)"}
-            </p>
-          </div>
+          {/* Phone Number — read-only in edit mode */}
+          <form.Field
+            name="phoneNumber"
+            children={(field) => {
+              const isInvalid =
+                !isEditMode &&
+                field.state.meta.isTouched &&
+                !field.state.meta.isValid;
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor={field.name}>Phone Number</FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    type="tel"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder="+201234567890"
+                    disabled={isEditMode}
+                    aria-invalid={isInvalid}
+                    className="font-mono"
+                  />
+                  <FieldDescription>
+                    {isEditMode
+                      ? "Phone number cannot be changed after creation"
+                      : "WhatsApp number for this session (10-15 digits with optional +)"}
+                  </FieldDescription>
+                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                </Field>
+              );
+            }}
+          />
 
-          {/* API Key - Only show in create mode */}
-          {!isEditMode && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground block">
-                WABridge API Key
-              </label>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter API key from WABridge"
-                required
-                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-              />
-              <p className="text-[10px] text-muted-foreground">
-                Obtained from your WABridge server configuration
-              </p>
-            </div>
-          )}
+          {/* API Key — required on create, optional on edit */}
+          <form.Field
+            name="apiKey"
+            children={(field) => {
+              const isInvalid =
+                !isEditMode &&
+                field.state.meta.isTouched &&
+                !field.state.meta.isValid;
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor={field.name}>
+                    WABridge API Key{" "}
+                    {isEditMode && (
+                      <span className="text-muted-foreground font-normal">
+                        (optional)
+                      </span>
+                    )}
+                  </FieldLabel>
+                  <Input
+                    id={field.name}
+                    name={field.name}
+                    type="password"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder={
+                      isEditMode
+                        ? "Leave empty to keep current key"
+                        : "Enter API key from WABridge"
+                    }
+                    aria-invalid={isInvalid}
+                    className="font-mono"
+                  />
+                  <FieldDescription>
+                    {isEditMode
+                      ? "Enter a new key to replace the existing one, or leave empty to keep it"
+                      : "Obtained from your WABridge server configuration"}
+                  </FieldDescription>
+                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                </Field>
+              );
+            }}
+          />
 
           {/* Rate Limits */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground block">
-                Hourly Limit
-              </label>
-              <input
-                type="number"
-                value={hourlyLimit}
-                onChange={(e) => setHourlyLimit(e.target.value)}
-                min="1"
-                max="10000"
-                required
-                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-              />
-              <p className="text-[10px] text-muted-foreground">
-                Messages per hour
-              </p>
-            </div>
+            <form.Field
+              name="hourlyLimit"
+              children={(field) => {
+                const isInvalid =
+                  field.state.meta.isTouched && !field.state.meta.isValid;
+                return (
+                  <Field data-invalid={isInvalid}>
+                    <FieldLabel htmlFor={field.name}>Hourly Limit</FieldLabel>
+                    <Input
+                      id={field.name}
+                      name={field.name}
+                      type="number"
+                      min="1"
+                      max="10000"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) =>
+                        field.handleChange(parseInt(e.target.value) || 0)
+                      }
+                      aria-invalid={isInvalid}
+                      className="font-mono"
+                    />
+                    <FieldDescription>Messages per hour</FieldDescription>
+                    {isInvalid && (
+                      <FieldError errors={field.state.meta.errors} />
+                    )}
+                  </Field>
+                );
+              }}
+            />
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground block">
-                Daily Limit
-              </label>
-              <input
-                type="number"
-                value={dailyLimit}
-                onChange={(e) => setDailyLimit(e.target.value)}
-                min="1"
-                max="100000"
-                required
-                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-              />
-              <p className="text-[10px] text-muted-foreground">
-                Messages per 24h
-              </p>
-            </div>
+            <form.Field
+              name="dailyLimit"
+              children={(field) => {
+                const isInvalid =
+                  field.state.meta.isTouched && !field.state.meta.isValid;
+                return (
+                  <Field data-invalid={isInvalid}>
+                    <FieldLabel htmlFor={field.name}>Daily Limit</FieldLabel>
+                    <Input
+                      id={field.name}
+                      name={field.name}
+                      type="number"
+                      min="1"
+                      max="100000"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) =>
+                        field.handleChange(parseInt(e.target.value) || 0)
+                      }
+                      aria-invalid={isInvalid}
+                      className="font-mono"
+                    />
+                    <FieldDescription>Messages per 24h</FieldDescription>
+                    {isInvalid && (
+                      <FieldError errors={field.state.meta.errors} />
+                    )}
+                  </Field>
+                );
+              }}
+            />
           </div>
 
           {/* Footer Actions */}
           <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="px-4 py-2 rounded-lg text-xs font-semibold text-foreground hover:bg-muted/50 border border-transparent hover:border-border transition-colors disabled:opacity-50"
             >
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={
-                isSubmitting ||
-                !name.trim() ||
-                !phoneNumber.trim() ||
-                (!isEditMode && !apiKey.trim())
-              }
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
-            >
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
               {isEditMode ? (
                 <>
-                  <Save className="w-3.5 h-3.5" />
+                  <Save className="w-3.5 h-3.5 mr-2" />
                   {isSubmitting ? "Saving..." : "Save Changes"}
                 </>
               ) : (
                 <>
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-3.5 h-3.5 mr-2" />
                   {isSubmitting ? "Creating..." : "Create Session"}
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

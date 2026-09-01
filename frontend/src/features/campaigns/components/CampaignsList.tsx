@@ -18,12 +18,11 @@ import {
   Inbox,
   RotateCcw,
 } from "lucide-react";
-import type {
-  Campaign,
-} from "@/features/campaigns/schemas/campaign.schema";
+import type { Campaign } from "@/features/campaigns/schemas/campaign.schema";
 import type { Session } from "@/features/sessions/schemas/session.schema";
 import { useCampaignsList } from "../hooks/useCampaigns";
 import type { QueueItem } from "@/features/queue/schemas/queue.schema";
+import { exportCampaignCsv } from "../lib/export";
 
 interface CampaignsListProps {
   campaigns: Campaign[];
@@ -453,6 +452,7 @@ export function CampaignsList({
 
                   <button
                     type="button"
+                    onClick={() => exportCampaignCsv(selectedCampaign)}
                     className="px-2.5 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-foreground text-xs font-semibold border border-border flex items-center gap-1 transition-colors"
                   >
                     <Download className="w-3.5 h-3.5 text-warning" />

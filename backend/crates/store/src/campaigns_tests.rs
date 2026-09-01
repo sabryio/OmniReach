@@ -51,6 +51,7 @@ mod tests {
             template_text: "Hello {{name}}".to_string(),
             image_url: Some("https://example.com/image.png".to_string()),
             session_ids: vec![Uuid::new_v4()],
+            media_ref: None,
             contacts: create_test_contacts(3),
         };
 
@@ -71,6 +72,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: vec![],
         };
 
@@ -94,6 +96,7 @@ mod tests {
                 template_text: "Test".to_string(),
                 image_url: None,
                 session_ids: vec![],
+                media_ref: None,
                 contacts: create_test_contacts(2),
             };
             campaigns::insert(&db, input).await.unwrap();
@@ -116,6 +119,7 @@ mod tests {
                 template_text: "Test".to_string(),
                 image_url: None,
                 session_ids: vec![],
+                media_ref: None,
                 contacts: vec![],
             };
             let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -144,6 +148,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: create_test_contacts(5),
         };
 
@@ -182,6 +187,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: vec![],
         };
 
@@ -205,6 +211,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: vec![],
         };
 
@@ -231,6 +238,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: vec![],
         };
 
@@ -256,6 +264,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: vec![],
         };
 
@@ -282,6 +291,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: vec![],
         };
 
@@ -304,6 +314,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: vec![],
         };
 
@@ -336,6 +347,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: vec![],
         };
 
@@ -363,6 +375,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![session1, session2],
+            media_ref: None,
             contacts: vec![],
         };
 
@@ -382,6 +395,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: create_test_contacts(3),
         };
 
@@ -390,6 +404,7 @@ mod tests {
             template_text: "Test".to_string(),
             image_url: None,
             session_ids: vec![],
+            media_ref: None,
             contacts: create_test_contacts(5),
         };
 

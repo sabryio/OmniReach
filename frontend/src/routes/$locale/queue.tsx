@@ -4,13 +4,14 @@ import {
   useQueueQuery,
   useLogsQuery,
 } from "@/features/queue/hooks/useQueueQuery";
+import { useCancelQueueItem } from "@/features/queue/hooks/useQueueMutations";
 import type { SchedulerState } from "@/features/layout/schemas/layout.schema";
 import { useState } from "react";
 
 const DEFAULT_SCHEDULER: SchedulerState = {
   isRunning: false,
   isWithinTimeWindow: true,
-  timeWindowText: "9AM–9PM Active",
+  timeWindowText: "9AM-9PM Active",
   currentLocalTimeStr: new Date().toLocaleTimeString(),
   activeSendingCount: 0,
   totalQueuePending: 0,
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/$locale/queue")({
 function QueueRoute() {
   const { queue, isLoading: queueLoading } = useQueueQuery();
   const { logs, isLoading: logsLoading } = useLogsQuery();
+  const { cancelQueueItem } = useCancelQueueItem();
   const [schedulerState] = useState<SchedulerState>(DEFAULT_SCHEDULER);
 
   if (queueLoading || logsLoading) {
@@ -44,6 +46,7 @@ function QueueRoute() {
       logs={logs}
       schedulerState={schedulerState}
       onClearLogs={() => {}}
+      onCancelItem={(id) => cancelQueueItem(id)}
     />
   );
 }

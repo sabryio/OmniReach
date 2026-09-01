@@ -2,6 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { SessionsDashboard, AddSessionModal } from "@/features/sessions";
 import { useSessions } from "@/features/sessions/hooks/useSessionsQuery";
+import {
+  useSyncSession,
+  useResetSessionLimits,
+} from "@/features/sessions/hooks/useSessionMutations";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
 
 const DEFAULT_CONFIG: WABridgeConfig = {
@@ -18,6 +22,8 @@ export const Route = createFileRoute("/$locale/sessions")({
 
 function SessionsRoute() {
   const { sessions, isLoading, error } = useSessions();
+  const { syncSession } = useSyncSession();
+  const { resetLimits } = useResetSessionLimits();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   if (isLoading) {
@@ -41,9 +47,10 @@ function SessionsRoute() {
       <SessionsDashboard
         sessions={sessions}
         config={DEFAULT_CONFIG}
-        onResetSessionLimits={() => {}}
+        onResetSessionLimits={(id) => resetLimits(id)}
         onUpdateSessions={() => {}}
         onAddSession={() => setIsAddModalOpen(true)}
+        onSyncSession={(id) => syncSession(id)}
       />
       <AddSessionModal
         isOpen={isAddModalOpen}

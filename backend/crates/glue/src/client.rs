@@ -53,7 +53,7 @@ impl WaBridgeClient {
         let response = self
             .http
             .get(&url)
-            .header("Authorization", format!("Bearer {}", api_key))
+            .header("x-api-key", api_key)
             .send()
             .await
             .map_err(|e| {
@@ -99,7 +99,7 @@ impl WaBridgeClient {
         let response = self
             .http
             .get(&url)
-            .header("Authorization", format!("Bearer {}", api_key))
+            .header("x-api-key", api_key)
             .send()
             .await
             .map_err(|e| {
@@ -156,7 +156,7 @@ impl WaBridgeClient {
         let response = self
             .http
             .post(&url)
-            .header("Authorization", format!("Bearer {}", api_key))
+            .header("x-api-key", api_key)
             .json(&request_body)
             .send()
             .await?;
@@ -202,7 +202,7 @@ impl WaBridgeClient {
         let response = self
             .http
             .post(&url)
-            .header("Authorization", format!("Bearer {}", api_key))
+            .header("x-api-key", api_key)
             .json(&request_body)
             .send()
             .await
@@ -266,7 +266,7 @@ impl WaBridgeClient {
         let response = self
             .http
             .post(&url)
-            .header("Authorization", format!("Bearer {}", api_key))
+            .header("x-api-key", api_key)
             .json(&request_body)
             .send()
             .await
@@ -335,7 +335,7 @@ impl WaBridgeClient {
         let response = self
             .http
             .post(&url)
-            .header("Authorization", format!("Bearer {}", api_key))
+            .header("x-api-key", api_key)
             .multipart(form)
             .send()
             .await

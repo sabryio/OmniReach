@@ -169,7 +169,7 @@ pub async fn send_test(
         ));
     }
 
-    // Load session to get phone number (API key)
+    // Load session to get API key
     let session = omnireach_store::sessions::get_by_id(&state.db, id).await?;
 
     // Build JID and send message
@@ -178,7 +178,7 @@ pub async fn send_test(
 
     state
         .wa
-        .send_text(&jid, &body.message, &session.phone_number)
+        .send_text(&jid, &body.message, &session.api_key)
         .await?;
 
     // Log the test send

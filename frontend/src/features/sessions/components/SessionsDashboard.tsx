@@ -237,29 +237,6 @@ export function SessionsDashboard({
                     </span>
                   </div>
 
-                  {/* QR Code Display for unpaired sessions */}
-                  {session.status === "qr_required" && session.qrCodeData && (
-                    <div className="pt-3 border-t border-border space-y-2">
-                      <div className="text-center space-y-2">
-                        <p className="text-xs text-muted-foreground font-semibold">
-                          Scan to pair WhatsApp
-                        </p>
-                        <img
-                          src={session.qrCodeData}
-                          alt="QR Code"
-                          className="w-40 h-40 mx-auto rounded-lg border-2 border-primary/20 bg-white p-2"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => onSyncSession(session.id)}
-                          className="text-[11px] text-primary hover:underline font-semibold"
-                        >
-                          Refresh QR Code
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
                   {/* Quota Counters */}
                   <div className="space-y-4 pt-3">
                     {/* Hourly Rate Limit */}

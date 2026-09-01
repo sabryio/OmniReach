@@ -3,10 +3,8 @@ import {
   sessionSchema,
   sessionsSchema,
   createSessionInputSchema,
-  sessionQrResponseSchema,
   type Session,
   type CreateSessionInput,
-  type SessionQrResponse,
 } from "../schemas/session.schema";
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
@@ -122,23 +120,6 @@ export async function syncSession(id: string): Promise<Session> {
 
   // Runtime validation
   return sessionSchema.parse(data);
-}
-
-export async function getSessionQr(id: string): Promise<SessionQrResponse> {
-  const response = await fetch(`${config.apiBaseUrl}/api/sessions/${id}/qr`, {
-    headers: {
-      Authorization: `Bearer ${config.authToken}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to get session QR: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-
-  // Runtime validation
-  return sessionQrResponseSchema.parse(data);
 }
 
 export type SendTestMessageParams = {

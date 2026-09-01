@@ -52,8 +52,15 @@ mod tests {
         hourly_limit: Option<u32>,
         daily_limit: Option<u32>,
     ) -> Uuid {
+        let random_suffix = (std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+            % 100000000) as u32;
+
         let input = CreateSessionInput {
             name: format!("Test Session {}", Uuid::new_v4()),
+            phone_number: format!("+2010{:08}", random_suffix),
             api_key: format!("test-key-{}", Uuid::new_v4()),
             hourly_limit,
             daily_limit,

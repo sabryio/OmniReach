@@ -9,7 +9,6 @@
 //!   PATCH  /api/sessions/{id}
 //!   DELETE /api/sessions/{id}
 //!   POST   /api/sessions/{id}/sync
-//!   GET    /api/sessions/{id}/qr
 //!   POST   /api/sessions/{id}/reset-limits
 //!
 //!   GET    /api/templates
@@ -78,7 +77,6 @@ pub fn build(state: AppState) -> Router {
             patch(sessions::update).delete(sessions::destroy),
         )
         .route("/sessions/{id}/sync", post(sessions::sync))
-        .route("/sessions/{id}/qr", get(sessions::get_qr))
         .route("/sessions/{id}/reset-limits", post(sessions::reset_limits))
         // ── Contacts ────────────────────────────────────────────────────────
         .route("/contacts/verify", post(contacts::verify))

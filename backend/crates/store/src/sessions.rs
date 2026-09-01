@@ -10,7 +10,7 @@ pub async fn list_all(db: &Db) -> Result<Vec<Session>, StoreError> {
     let rows = sqlx::query!(
         r#"
         SELECT id, name, phone_number, status, api_key, hourly_limit, daily_limit,
-               hourly_sent_timestamps, daily_sent_timestamps, qr_code_data, last_activity_at
+               hourly_sent_timestamps, daily_sent_timestamps, last_activity_at
         FROM sessions
         "#
     )
@@ -34,17 +34,20 @@ pub async fn list_all(db: &Db) -> Result<Vec<Session>, StoreError> {
                 .last_activity_at
                 .and_then(chrono::DateTime::from_timestamp_millis);
 
+            let phone_number = row
+                .phone_number
+                .ok_or_else(|| StoreError::InvalidData("Phone number is NULL".into()))?;
+
             Ok(Session {
                 id,
                 name: row.name,
-                phone_number: row.phone_number,
+                phone_number,
                 status,
                 api_key: row.api_key,
                 hourly_limit: row.hourly_limit as u32,
                 daily_limit: row.daily_limit as u32,
                 hourly_sent_timestamps,
                 daily_sent_timestamps,
-                qr_code_data: row.qr_code_data,
                 last_activity_at,
             })
         })
@@ -56,7 +59,7 @@ pub async fn get_by_id(db: &Db, id: Uuid) -> Result<Session, StoreError> {
     let row = sqlx::query!(
         r#"
         SELECT id, name, phone_number, status, api_key, hourly_limit, daily_limit,
-               hourly_sent_timestamps, daily_sent_timestamps, qr_code_data, last_activity_at
+               hourly_sent_timestamps, daily_sent_timestamps, last_activity_at
         FROM sessions
         WHERE id = ?
         "#,
@@ -80,17 +83,20 @@ pub async fn get_by_id(db: &Db, id: Uuid) -> Result<Session, StoreError> {
         .last_activity_at
         .and_then(chrono::DateTime::from_timestamp_millis);
 
+    let phone_number = row
+        .phone_number
+        .ok_or_else(|| StoreError::InvalidData("Phone number is NULL".into()))?;
+
     Ok(Session {
         id,
         name: row.name,
-        phone_number: row.phone_number,
+        phone_number,
         status,
         api_key: row.api_key,
         hourly_limit: row.hourly_limit as u32,
         daily_limit: row.daily_limit as u32,
         hourly_sent_timestamps,
         daily_sent_timestamps,
-        qr_code_data: row.qr_code_data,
         last_activity_at,
     })
 }
@@ -104,11 +110,12 @@ pub async fn insert(db: &Db, input: CreateSessionInput) -> Result<Session, Store
 
     sqlx::query!(
         r#"
-        INSERT INTO sessions (id, name, status, api_key, hourly_limit, daily_limit, last_activity_at)
-        VALUES (?, ?, 'disconnected', ?, ?, ?, ?)
+        INSERT INTO sessions (id, name, phone_number, status, api_key, hourly_limit, daily_limit, last_activity_at)
+        VALUES (?, ?, ?, 'connected', ?, ?, ?, ?)
         "#,
         id.to_string(),
         input.name,
+        input.phone_number,
         input.api_key,
         hourly_limit,
         daily_limit,
@@ -125,7 +132,6 @@ pub async fn update_status(
     db: &Db,
     id: Uuid,
     status: SessionStatus,
-    qr_code_data: Option<String>,
     phone_number: Option<String>,
 ) -> Result<Session, StoreError> {
     let now_ms = Utc::now().timestamp_millis();
@@ -134,15 +140,14 @@ pub async fn update_status(
     // First verify session exists
     let _ = get_by_id(db, id).await?;
 
-    // Update status, QR, and last activity
+    // Update status, phone number, and last activity
     sqlx::query!(
         r#"
         UPDATE sessions
-        SET status = ?, qr_code_data = ?, phone_number = COALESCE(?, phone_number), last_activity_at = ?
+        SET status = ?, phone_number = COALESCE(?, phone_number), last_activity_at = ?
         WHERE id = ?
         "#,
         status_str,
-        qr_code_data,
         phone_number,
         now_ms,
         id.to_string()
@@ -227,7 +232,7 @@ pub async fn try_acquire_send_slot(
     let row = sqlx::query!(
         r#"
         SELECT id, name, phone_number, status, api_key, hourly_limit, daily_limit,
-               hourly_sent_timestamps, daily_sent_timestamps, qr_code_data, last_activity_at
+               hourly_sent_timestamps, daily_sent_timestamps, last_activity_at
         FROM sessions
         WHERE id = ?
         "#,
@@ -245,6 +250,10 @@ pub async fn try_acquire_send_slot(
 
     let status_str = row.status;
     let status = SessionStatus::from_str(&status_str)?;
+
+    let phone_number = row
+        .phone_number
+        .ok_or_else(|| StoreError::InvalidData("Phone number is NULL".into()))?;
 
     let hourly_sent_timestamps: Vec<i64> = serde_json::from_str(&row.hourly_sent_timestamps)?;
     let daily_sent_timestamps: Vec<i64> = serde_json::from_str(&row.daily_sent_timestamps)?;
@@ -267,14 +276,13 @@ pub async fn try_acquire_send_slot(
     let session = Session {
         id,
         name: row.name,
-        phone_number: row.phone_number,
+        phone_number,
         status,
         api_key: row.api_key,
         hourly_limit: row.hourly_limit as u32,
         daily_limit: row.daily_limit as u32,
         hourly_sent_timestamps: hourly_in_window.clone(),
         daily_sent_timestamps: daily_in_window.clone(),
-        qr_code_data: row.qr_code_data,
         last_activity_at: row
             .last_activity_at
             .and_then(chrono::DateTime::from_timestamp_millis),

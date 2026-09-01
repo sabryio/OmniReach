@@ -2,7 +2,7 @@
 //!
 //! Tests verify the actual implemented functions:
 //! - list_all, get_by_id, insert, delete
-//! - update_status (with qr_code_data and phone_number)
+//! - update_status (with phone_number)
 //! - reset_limits
 
 #[cfg(test)]
@@ -37,6 +37,7 @@ mod tests {
         for i in 0..3 {
             let input = CreateSessionInput {
                 name: format!("Session {}", i),
+                phone_number: format!("+20100000000{}", i),
                 api_key: format!("key-{}", i),
                 hourly_limit: Some(20),
                 daily_limit: Some(200),
@@ -68,6 +69,7 @@ mod tests {
 
         let input = CreateSessionInput {
             name: "Test Session".to_string(),
+            phone_number: "+201234567890".to_string(),
             api_key: "test-key".to_string(),
             hourly_limit: Some(30),
             daily_limit: Some(300),
@@ -105,6 +107,7 @@ mod tests {
 
         let input = CreateSessionInput {
             name: "Custom Session".to_string(),
+            phone_number: "+201234567890".to_string(),
             api_key: "custom-key".to_string(),
             hourly_limit: Some(50),
             daily_limit: Some(500),
@@ -115,7 +118,7 @@ mod tests {
         assert_eq!(session.name, "Custom Session");
         assert_eq!(session.hourly_limit, 50);
         assert_eq!(session.daily_limit, 500);
-        assert_eq!(session.status, SessionStatus::Disconnected);
+        assert_eq!(session.status, SessionStatus::Connected);
         assert_eq!(session.hourly_sent_timestamps.len(), 0);
         assert_eq!(session.daily_sent_timestamps.len(), 0);
     }
@@ -126,6 +129,7 @@ mod tests {
 
         let input = CreateSessionInput {
             name: "Default Limits".to_string(),
+            phone_number: "+201234567890".to_string(),
             api_key: "default-key".to_string(),
             hourly_limit: None,
             daily_limit: None,
@@ -138,7 +142,7 @@ mod tests {
     }
 
     // ──────────────────────────────────────────────────────────────────────
-    // update_status (with qr_code_data and phone_number)
+    // update_status (with phone_number)
     // ──────────────────────────────────────────────────────────────────────
 
     #[tokio::test]
@@ -147,6 +151,7 @@ mod tests {
 
         let input = CreateSessionInput {
             name: "Status Test".to_string(),
+            phone_number: "+201111111111".to_string(),
             api_key: "test-key".to_string(),
             hourly_limit: Some(20),
             daily_limit: Some(200),
@@ -158,7 +163,6 @@ mod tests {
             &db,
             session.id,
             SessionStatus::Connected,
-            None,
             Some("+201234567890".to_string()),
         )
         .await
@@ -167,16 +171,17 @@ mod tests {
         let updated = sessions::get_by_id(&db, session.id).await.unwrap();
 
         assert_eq!(updated.status, SessionStatus::Connected);
-        assert_eq!(updated.phone_number, Some("+201234567890".to_string()));
+        assert_eq!(updated.phone_number, "+201234567890".to_string());
         assert!(updated.last_activity_at.is_some());
     }
 
     #[tokio::test]
-    async fn test_update_status_with_qr_code() {
+    async fn test_update_status_to_disconnected() {
         let db = setup_test_db().await;
 
         let input = CreateSessionInput {
-            name: "QR Test".to_string(),
+            name: "Disconnect Test".to_string(),
+            phone_number: "+201234567890".to_string(),
             api_key: "test-key".to_string(),
             hourly_limit: Some(20),
             daily_limit: Some(200),
@@ -184,55 +189,13 @@ mod tests {
 
         let session = sessions::insert(&db, input).await.unwrap();
 
-        let qr_data = "data:image/png;base64,iVBORw0KGgo...".to_string();
-        sessions::update_status(
-            &db,
-            session.id,
-            SessionStatus::QrRequired,
-            Some(qr_data.clone()),
-            None,
-        )
-        .await
-        .unwrap();
-
-        let updated = sessions::get_by_id(&db, session.id).await.unwrap();
-
-        assert_eq!(updated.status, SessionStatus::QrRequired);
-        assert_eq!(updated.qr_code_data, Some(qr_data));
-    }
-
-    #[tokio::test]
-    async fn test_update_status_clears_qr_on_connected() {
-        let db = setup_test_db().await;
-
-        let input = CreateSessionInput {
-            name: "Clear QR Test".to_string(),
-            api_key: "test-key".to_string(),
-            hourly_limit: Some(20),
-            daily_limit: Some(200),
-        };
-
-        let session = sessions::insert(&db, input).await.unwrap();
-
-        // Set QR
-        sessions::update_status(
-            &db,
-            session.id,
-            SessionStatus::QrRequired,
-            Some("qr-data".to_string()),
-            None,
-        )
-        .await
-        .unwrap();
-
-        // Clear QR on connected
-        sessions::update_status(&db, session.id, SessionStatus::Connected, None, None)
+        sessions::update_status(&db, session.id, SessionStatus::Disconnected, None)
             .await
             .unwrap();
 
         let updated = sessions::get_by_id(&db, session.id).await.unwrap();
 
-        assert!(updated.qr_code_data.is_none(), "QR should be cleared");
+        assert_eq!(updated.status, SessionStatus::Disconnected);
     }
 
     #[tokio::test]
@@ -241,6 +204,7 @@ mod tests {
 
         let input = CreateSessionInput {
             name: "All Status Test".to_string(),
+            phone_number: "+201234567890".to_string(),
             api_key: "test-key".to_string(),
             hourly_limit: Some(20),
             daily_limit: Some(200),
@@ -248,15 +212,10 @@ mod tests {
 
         let session = sessions::insert(&db, input).await.unwrap();
 
-        let statuses = vec![
-            SessionStatus::Disconnected,
-            SessionStatus::QrRequired,
-            SessionStatus::Connecting,
-            SessionStatus::Connected,
-        ];
+        let statuses = vec![SessionStatus::Disconnected, SessionStatus::Connected];
 
         for status in statuses {
-            sessions::update_status(&db, session.id, status.clone(), None, None)
+            sessions::update_status(&db, session.id, status.clone(), None)
                 .await
                 .unwrap();
 
@@ -275,6 +234,7 @@ mod tests {
 
         let input = CreateSessionInput {
             name: "Reset Test".to_string(),
+            phone_number: "+201234567890".to_string(),
             api_key: "test-key".to_string(),
             hourly_limit: Some(10),
             daily_limit: Some(100),
@@ -313,6 +273,7 @@ mod tests {
 
         let input = CreateSessionInput {
             name: "Delete Me".to_string(),
+            phone_number: "+201234567890".to_string(),
             api_key: "delete-key".to_string(),
             hourly_limit: Some(20),
             daily_limit: Some(200),
@@ -336,6 +297,7 @@ mod tests {
 
         let input = CreateSessionInput {
             name: "JSON Test".to_string(),
+            phone_number: "+201234567890".to_string(),
             api_key: "test-key".to_string(),
             hourly_limit: Some(10),
             daily_limit: Some(100),
@@ -364,6 +326,7 @@ mod tests {
 
         let input = CreateSessionInput {
             name: "صيدلية النور 🏥".to_string(),
+            phone_number: "+201234567890".to_string(),
             api_key: "unicode-key".to_string(),
             hourly_limit: Some(20),
             daily_limit: Some(200),

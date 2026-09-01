@@ -7,7 +7,6 @@
 //!   PATCH  /api/sessions/:id                → update
 //!   DELETE /api/sessions/:id                → destroy
 //!   POST   /api/sessions/:id/sync           → sync
-//!   GET    /api/sessions/:id/qr             → get_qr
 //!   POST   /api/sessions/:id/reset-limits   → reset_limits
 
 use crate::{error::ApiError, state::AppState};
@@ -119,32 +118,15 @@ pub async fn sync(
     // 1. load session from DB to get api_key
     // 2. state.wa.get_session(wabridge_id, api_key).await
     // 3. store::sessions::update_status(...)
-    // 4. After status/QR update, emit SSE:
+    // 4. After status update, emit SSE:
     //    state.sse.send(crate::sse::SseEvent::SessionStatus {
     //        session_id: session.id.to_string(),
     //        status: session.status.as_str().to_string(),
-    //        qr_code_data: session.qr_code_data.clone(),
     //    });
 
     // For now, just return the existing session
     let session = omnireach_store::sessions::get_by_id(&state.db, id).await?;
     Ok(Json(session))
-}
-
-/// GET /api/sessions/:id/qr
-pub async fn get_qr(
-    State(state): State<AppState>,
-    Path(id): Path<Uuid>,
-) -> Result<Json<serde_json::Value>, ApiError> {
-    // TODO: Phase 2 — implement real WABridge QR fetch
-    // 1. load session from DB
-    // 2. state.wa.get_qr(wabridge_id, api_key).await
-    // 3. return { qr_code_data: Option<String> }
-
-    let session = omnireach_store::sessions::get_by_id(&state.db, id).await?;
-    Ok(Json(serde_json::json!({
-        "qrCodeData": session.qr_code_data
-    })))
 }
 
 /// POST /api/sessions/:id/reset-limits

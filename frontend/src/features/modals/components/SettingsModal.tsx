@@ -13,7 +13,7 @@
  *   - Tauri setup guide
  *   - Footer Save / Cancel buttons
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Settings,
   Server,
@@ -30,6 +30,13 @@ import {
   Laptop,
   X,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type {
   WABridgeConfig,
   SchedulerState,
@@ -48,6 +55,7 @@ interface SettingsModalProps {
   onSetThemeColor: (color: ThemeColor) => void;
   onToggleThemeMode: () => void;
   onSetStrictTimeWindow: (strict: boolean) => void;
+  onSetTimeWindowHours: (startHour: number, endHour: number) => void;
   onSetSimulatedHourOffset: (offset: number) => void;
   onClearAllData: () => void;
 }
@@ -166,6 +174,7 @@ export function SettingsModal({
   onSetThemeColor,
   onToggleThemeMode,
   onSetStrictTimeWindow,
+  onSetTimeWindowHours,
   onSetSimulatedHourOffset,
   onClearAllData,
 }: SettingsModalProps) {
@@ -179,9 +188,31 @@ export function SettingsModal({
     config.simulatedUnregisteredRate,
   );
 
+  // Sync local state when config changes (e.g., after settings load from backend)
+  useEffect(() => {
+    setBaseUrl(config.baseUrl);
+    setUseSimulation(config.useSimulationMode);
+    setLatencyMs(config.simulatedNetworkLatencyMs);
+    setUnregisteredRate(config.simulatedUnregisteredRate);
+  }, [config]);
+
+  // Sync schedule hours when schedulerState changes
+  useEffect(() => {
+    setStrictWindow(schedulerState.strictTimeWindow);
+    setStartHour(schedulerState.customWindowStartHour ?? 9);
+    setEndHour(schedulerState.customWindowEndHour ?? 21);
+    setHourOffset(schedulerState.simulatedHourOffset ?? 0);
+  }, [schedulerState]);
+
   // Schedule local state
   const [strictWindow, setStrictWindow] = useState(
     schedulerState.strictTimeWindow,
+  );
+  const [startHour, setStartHour] = useState(
+    schedulerState.customWindowStartHour ?? 9,
+  );
+  const [endHour, setEndHour] = useState(
+    schedulerState.customWindowEndHour ?? 21,
   );
   const [hourOffset, setHourOffset] = useState(
     schedulerState.simulatedHourOffset ?? 0,
@@ -204,6 +235,7 @@ export function SettingsModal({
       simulatedUnregisteredRate: unregisteredRate,
     });
     onSetStrictTimeWindow(strictWindow);
+    onSetTimeWindowHours(startHour, endHour);
     onSetSimulatedHourOffset(hourOffset);
     onClose();
   };
@@ -501,7 +533,7 @@ export function SettingsModal({
                 <label className="flex items-center justify-between cursor-pointer">
                   <div>
                     <p className="text-xs font-medium text-foreground">
-                      Strict Time Window (9AM – 9PM)
+                      Strict Time Window
                     </p>
                     <p className="text-[11px] text-muted-foreground">
                       Block sending outside approved hours
@@ -514,6 +546,55 @@ export function SettingsModal({
                     className="w-4 h-4 accent-primary rounded"
                   />
                 </label>
+
+                {strictWindow && (
+                  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block">
+                        Start Hour
+                      </label>
+                      <Select
+                        value={startHour.toString()}
+                        onValueChange={(value) => setStartHour(Number(value))}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select start hour" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <SelectItem key={i} value={i.toString()}>
+                              {i.toString().padStart(2, "0")}:00 (
+                              {i === 0 ? "12" : i <= 12 ? i : i - 12}
+                              {i < 12 ? "AM" : "PM"})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block">
+                        End Hour
+                      </label>
+                      <Select
+                        value={endHour.toString()}
+                        onValueChange={(value) => setEndHour(Number(value))}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select end hour" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 24 }, (_, i) => (
+                            <SelectItem key={i} value={i.toString()}>
+                              {i.toString().padStart(2, "0")}:00 (
+                              {i === 0 ? "12" : i <= 12 ? i : i - 12}
+                              {i < 12 ? "AM" : "PM"})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
               </SectionCard>
 
               <SectionCard

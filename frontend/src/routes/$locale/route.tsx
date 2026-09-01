@@ -270,6 +270,17 @@ function SharedLayout() {
           setSchedulerState((p) => ({ ...p, strictTimeWindow: strict }));
           updateSettingsAsync({ schedulerStrictTimeWindow: strict });
         }}
+        onSetTimeWindowHours={(startHour, endHour) => {
+          setSchedulerState((p) => ({
+            ...p,
+            customWindowStartHour: startHour,
+            customWindowEndHour: endHour,
+          }));
+          updateSettingsAsync({
+            schedulerStartHour: startHour,
+            schedulerEndHour: endHour,
+          });
+        }}
         onSetSimulatedHourOffset={(offset) =>
           setSchedulerState((p) => ({ ...p, simulatedHourOffset: offset }))
         }

@@ -203,7 +203,10 @@ export function QueueTab({
                     {item.phone}
                   </td>
                   <td className="px-3 py-2.5">
-                    <StatusBadge status={item.status} error={item.lastError} />
+                    <StatusBadge
+                      status={item.status}
+                      error={item.lastError ?? undefined}
+                    />
                   </td>
                   <td className="px-3 py-2.5 font-mono text-[10px] text-muted-foreground">
                     {item.assignedSessionId || "Auto-balance"}

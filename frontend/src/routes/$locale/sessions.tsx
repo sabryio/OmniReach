@@ -16,12 +16,20 @@ export const Route = createFileRoute("/$locale/sessions")({
 });
 
 function SessionsRoute() {
-  const { sessions, isLoading } = useSessions();
+  const { sessions, isLoading, error } = useSessions();
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
         Loading sessions...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64 text-destructive text-sm">
+        Error loading sessions: {String(error)}
       </div>
     );
   }

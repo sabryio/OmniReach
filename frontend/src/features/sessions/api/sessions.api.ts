@@ -83,6 +83,37 @@ export async function deleteSession(id: string): Promise<void> {
   }
 }
 
+export type UpdateSessionParams = {
+  id: string;
+  name?: string;
+  hourlyLimit?: number;
+  dailyLimit?: number;
+};
+
+export async function updateSession(
+  params: UpdateSessionParams,
+): Promise<Session> {
+  const { id, ...updates } = params;
+
+  const response = await fetch(`${config.apiBaseUrl}/api/sessions/${id}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${config.authToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(updates),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to update session: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+
+  // Runtime validation
+  return sessionSchema.parse(data);
+}
+
 export async function resetSessionLimits(id: string): Promise<Session> {
   const response = await fetch(
     `${config.apiBaseUrl}/api/sessions/${id}/reset-limits`,

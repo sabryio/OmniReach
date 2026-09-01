@@ -27,6 +27,7 @@ function SessionsRoute() {
   const { resetLimits } = useResetSessionLimits();
   const { sendTestMessageAsync } = useSendTestMessage();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editSessionId, setEditSessionId] = useState<string | null>(null);
 
   const handleVerifyNumber = async (
     _sessionId: string,
@@ -87,10 +88,15 @@ function SessionsRoute() {
         onSyncSession={(id) => syncSession(id)}
         onVerifyNumber={handleVerifyNumber}
         onSendTest={handleSendTest}
+        onEditSession={(id) => setEditSessionId(id)}
       />
       <AddSessionModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        isOpen={isAddModalOpen || !!editSessionId}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setEditSessionId(null);
+        }}
+        sessionId={editSessionId}
       />
     </>
   );

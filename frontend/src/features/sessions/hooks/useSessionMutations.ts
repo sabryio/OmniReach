@@ -3,6 +3,7 @@ import { SessionQueryKeys } from "../api/queryKeys";
 import {
   createSession,
   deleteSession,
+  updateSession,
   sendTestMessage,
   checkContact,
   syncSession,
@@ -101,6 +102,23 @@ export function useCheckContact() {
     checkContactAsync: mutation.mutateAsync,
     isChecking: mutation.isPending,
     result: mutation.data,
+    error: mutation.error,
+    reset: mutation.reset,
+  };
+}
+
+export function useUpdateSession() {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: updateSession,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: SessionQueryKeys.all });
+    },
+  });
+  return {
+    updateSession: mutation.mutate,
+    updateSessionAsync: mutation.mutateAsync,
+    isUpdating: mutation.isPending,
     error: mutation.error,
     reset: mutation.reset,
   };

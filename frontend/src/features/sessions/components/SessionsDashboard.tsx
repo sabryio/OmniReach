@@ -12,6 +12,7 @@ import {
   Zap,
   Send,
   MoreVertical,
+  Pencil,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -45,6 +46,7 @@ interface SessionsDashboardProps {
     phone: string,
     message: string,
   ) => Promise<void>;
+  onEditSession: (sessionId: string) => void;
 }
 
 export function SessionsDashboard({
@@ -54,6 +56,7 @@ export function SessionsDashboard({
   onSyncSession,
   onVerifyNumber,
   onSendTest,
+  onEditSession,
 }: SessionsDashboardProps) {
   const [now, setNow] = useState<number>(Date.now());
   const [verifierModalSession, setVerifierModalSession] =
@@ -152,6 +155,13 @@ export function SessionsDashboard({
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem
+                            onClick={() => onEditSession(session.id)}
+                            className="cursor-pointer"
+                          >
+                            <Pencil className="w-3.5 h-3.5 mr-2" />
+                            Edit Session
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => onResetSessionLimits(session.id)}
                             className="cursor-pointer"

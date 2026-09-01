@@ -1,17 +1,44 @@
 /**
- * AddSessionModal — Create new WhatsApp session
+ * AddSessionModal — Create or edit WhatsApp session
+ * When sessionId is provided, loads and edits existing session
+ * When sessionId is null, creates new session
  */
-import { useState } from "react";
-import { X, Plus, Server } from "lucide-react";
-import { useCreateSession } from "../hooks/useSessionMutations";
+import { useState, useEffect } from "react";
+import { X, Plus, Save, Server } from "lucide-react";
+import {
+  useCreateSession,
+  useUpdateSession,
+} from "../hooks/useSessionMutations";
+import { useSession } from "../hooks/useSessionsQuery";
 
 interface AddSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  sessionId?: string | null; // Optional: if provided, edit mode
 }
 
-export function AddSessionModal({ isOpen, onClose }: AddSessionModalProps) {
-  const { createSession, isCreating, error, reset } = useCreateSession();
+export function AddSessionModal({
+  isOpen,
+  onClose,
+  sessionId = null,
+}: AddSessionModalProps) {
+  const isEditMode = !!sessionId;
+
+  const {
+    createSession,
+    isCreating,
+    error: createError,
+    reset: resetCreate,
+  } = useCreateSession();
+  const {
+    updateSession,
+    isUpdating,
+    error: updateError,
+    reset: resetUpdate,
+  } = useUpdateSession();
+  const { session: existingSession, isLoading: isLoadingSession } = useSession(
+    sessionId || "",
+  );
 
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -19,33 +46,60 @@ export function AddSessionModal({ isOpen, onClose }: AddSessionModalProps) {
   const [hourlyLimit, setHourlyLimit] = useState("1000");
   const [dailyLimit, setDailyLimit] = useState("10000");
 
+  // Load existing session data in edit mode
+  useEffect(() => {
+    if (isEditMode && existingSession) {
+      setName(existingSession.name);
+      setPhoneNumber(existingSession.phoneNumber);
+      setHourlyLimit(String(existingSession.hourlyLimit));
+      setDailyLimit(String(existingSession.dailyLimit));
+      // API key is write-only, don't show it
+    }
+  }, [isEditMode, existingSession]);
+
+  const isSubmitting = isCreating || isUpdating;
+  const error = createError || updateError;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim() || !phoneNumber.trim() || !apiKey.trim()) {
+    if (!name.trim() || !phoneNumber.trim()) {
+      return;
+    }
+
+    // Create mode requires API key
+    if (!isEditMode && !apiKey.trim()) {
       return;
     }
 
     try {
-      await createSession({
-        name: name.trim(),
-        phoneNumber: phoneNumber.trim(),
-        apiKey: apiKey.trim(),
-        hourlyLimit: parseInt(hourlyLimit) || 1000,
-        dailyLimit: parseInt(dailyLimit) || 10000,
-      });
+      if (isEditMode && sessionId) {
+        // Edit mode: update session
+        await updateSession({
+          id: sessionId,
+          name: name.trim(),
+          hourlyLimit: parseInt(hourlyLimit) || 1000,
+          dailyLimit: parseInt(dailyLimit) || 10000,
+        });
+      } else {
+        // Create mode: create new session
+        await createSession({
+          name: name.trim(),
+          phoneNumber: phoneNumber.trim(),
+          apiKey: apiKey.trim(),
+          hourlyLimit: parseInt(hourlyLimit) || 1000,
+          dailyLimit: parseInt(dailyLimit) || 10000,
+        });
+      }
 
       // Reset form and close
-      setName("");
-      setPhoneNumber("");
-      setApiKey("");
-      setHourlyLimit("1000");
-      setDailyLimit("10000");
-      reset();
-      onClose();
+      handleClose();
     } catch (err) {
       // Error is handled by the mutation hook
-      console.error("Failed to create session:", err);
+      console.error(
+        `Failed to ${isEditMode ? "update" : "create"} session:`,
+        err,
+      );
     }
   };
 
@@ -55,11 +109,24 @@ export function AddSessionModal({ isOpen, onClose }: AddSessionModalProps) {
     setApiKey("");
     setHourlyLimit("1000");
     setDailyLimit("10000");
-    reset();
+    resetCreate();
+    resetUpdate();
     onClose();
   };
 
   if (!isOpen) return null;
+
+  // Show loading state in edit mode while fetching session
+  if (isEditMode && isLoadingSession) {
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="bg-card border border-border rounded-2xl p-8 text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Loading session...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -72,10 +139,12 @@ export function AddSessionModal({ isOpen, onClose }: AddSessionModalProps) {
             </div>
             <div>
               <h3 className="text-sm font-bold text-foreground">
-                Add WhatsApp Session
+                {isEditMode ? "Edit Session" : "Add WhatsApp Session"}
               </h3>
               <p className="text-[11px] text-muted-foreground">
-                Connect a new WhatsApp Business account
+                {isEditMode
+                  ? "Update session name and rate limits"
+                  : "Connect a new WhatsApp Business account"}
               </p>
             </div>
           </div>
@@ -93,7 +162,9 @@ export function AddSessionModal({ isOpen, onClose }: AddSessionModalProps) {
           {/* Error banner */}
           {error && (
             <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-xs">
-              <p className="font-semibold">Failed to create session</p>
+              <p className="font-semibold">
+                Failed to {isEditMode ? "update" : "create"} session
+              </p>
               <p className="text-[11px] mt-0.5">{String(error)}</p>
             </div>
           )}
@@ -116,7 +187,7 @@ export function AddSessionModal({ isOpen, onClose }: AddSessionModalProps) {
             </p>
           </div>
 
-          {/* Phone Number */}
+          {/* Phone Number - Read-only in edit mode */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground block">
               Phone Number
@@ -128,30 +199,35 @@ export function AddSessionModal({ isOpen, onClose }: AddSessionModalProps) {
               placeholder="+201234567890"
               required
               pattern="^\+?\d{10,15}$"
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+              disabled={isEditMode}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <p className="text-[10px] text-muted-foreground">
-              WhatsApp number for this session (10-15 digits with optional +)
+              {isEditMode
+                ? "Phone number cannot be changed after creation"
+                : "WhatsApp number for this session (10-15 digits with optional +)"}
             </p>
           </div>
 
-          {/* API Key */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground block">
-              WABridge API Key
-            </label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter API key from WABridge"
-              required
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-            />
-            <p className="text-[10px] text-muted-foreground">
-              Obtained from your WABridge server configuration
-            </p>
-          </div>
+          {/* API Key - Only show in create mode */}
+          {!isEditMode && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground block">
+                WABridge API Key
+              </label>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Enter API key from WABridge"
+                required
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Obtained from your WABridge server configuration
+              </p>
+            </div>
+          )}
 
           {/* Rate Limits */}
           <div className="grid grid-cols-2 gap-3">
@@ -197,7 +273,7 @@ export function AddSessionModal({ isOpen, onClose }: AddSessionModalProps) {
             <button
               type="button"
               onClick={handleClose}
-              disabled={isCreating}
+              disabled={isSubmitting}
               className="px-4 py-2 rounded-lg text-xs font-semibold text-foreground hover:bg-muted/50 border border-transparent hover:border-border transition-colors disabled:opacity-50"
             >
               Cancel
@@ -205,15 +281,24 @@ export function AddSessionModal({ isOpen, onClose }: AddSessionModalProps) {
             <button
               type="submit"
               disabled={
-                isCreating ||
+                isSubmitting ||
                 !name.trim() ||
                 !phoneNumber.trim() ||
-                !apiKey.trim()
+                (!isEditMode && !apiKey.trim())
               }
               className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
             >
-              <Plus className="w-3.5 h-3.5" />
-              {isCreating ? "Creating..." : "Create Session"}
+              {isEditMode ? (
+                <>
+                  <Save className="w-3.5 h-3.5" />
+                  {isSubmitting ? "Saving..." : "Save Changes"}
+                </>
+              ) : (
+                <>
+                  <Plus className="w-3.5 h-3.5" />
+                  {isSubmitting ? "Creating..." : "Create Session"}
+                </>
+              )}
             </button>
           </div>
         </form>

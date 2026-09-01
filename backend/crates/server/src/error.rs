@@ -5,9 +5,9 @@
 //! it as `{ "error": "..." }` JSON with the correct status code.
 
 use axum::{
+    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use omnireach_glue::GlueError;
 use omnireach_store::StoreError;

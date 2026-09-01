@@ -48,6 +48,7 @@ export function CampaignWizard({
   const [imageFileName, _setImageFileName] = useState<string | undefined>(
     "pharmacy_promo.jpg",
   );
+  const [mediaRef, setMediaRef] = useState<string | undefined>(undefined);
 
   // Selected WABridge session IDs
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>(
@@ -120,6 +121,7 @@ export function CampaignWizard({
       title: campaignTitle.trim() || "Untitled Broadcast Campaign",
       templateText: templateText.trim(),
       imageUrl,
+      mediaRef,
       sessionIds: selectedSessionIds,
       status: "running",
       createdAt: new Date().toISOString(),
@@ -266,9 +268,13 @@ export function CampaignWizard({
             <MessageComposer
               templateText={templateText}
               imageUrl={imageUrl}
+              mediaRef={mediaRef}
               contacts={contacts}
               onTemplateChange={setTemplateText}
-              onImageChange={setImageUrl}
+              onImageChange={(url, ref) => {
+                setImageUrl(url);
+                setMediaRef(ref);
+              }}
             />
 
             <div className="flex items-center justify-between pt-4 border-t border-border">

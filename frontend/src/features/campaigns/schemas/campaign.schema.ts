@@ -41,6 +41,7 @@ export const campaignSchema = z.object({
   templateText: z.string(),
   imageUrl: z.string().nullable().optional(),
   imageFileName: z.string().nullable().optional(),
+  mediaRef: z.string().nullable().optional(), // WABridge media reference from upload
   sessionIds: z.array(z.string().uuid()),
   status: campaignStatusSchema,
   createdAt: z.string().datetime(),
@@ -64,6 +65,7 @@ export const createCampaignInputSchema = z.object({
   title: z.string().min(1),
   templateText: z.string().min(1),
   imageUrl: z.string().url().nullable().optional(),
+  mediaRef: z.string().nullable().optional(),
   sessionIds: z.array(z.string().uuid()),
   contacts: z.array(
     z.object({

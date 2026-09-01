@@ -55,14 +55,12 @@ pub async fn list_recent(db: &Db, limit: i64) -> Result<Vec<LogEntry>, StoreErro
                 }
             };
 
-            let details =
-                if let Some(details_str) = row.details {
-                    Some(serde_json::from_str(&details_str).map_err(|e| {
-                        StoreError::InvalidData(format!("Invalid details JSON: {}", e))
-                    })?)
-                } else {
-                    None
-                };
+            let details = match row.details.as_deref() {
+                Some(details_str) => Some(serde_json::from_str(details_str).map_err(|e| {
+                    StoreError::InvalidData(format!("Invalid details JSON: {}", e))
+                })?),
+                None => None,
+            };
 
             let timestamp =
                 chrono::DateTime::from_timestamp_millis(row.timestamp).ok_or_else(|| {

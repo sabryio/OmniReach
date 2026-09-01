@@ -27,12 +27,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(
-        db: Db,
-        wa: WaBridgeClient,
-        sse: SseBroadcaster,
-        auth_token: String,
-    ) -> Self {
+    pub fn new(db: Db, wa: WaBridgeClient, sse: SseBroadcaster, auth_token: String) -> Self {
         Self {
             db,
             wa: Arc::new(wa),

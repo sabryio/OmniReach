@@ -34,6 +34,8 @@ pub struct QueueItem {
     /// Message with merge tags already substituted at campaign creation time.
     pub rendered_text: String,
     pub image_url: Option<String>,
+    /// WABridge media reference (if campaign has an uploaded image)
+    pub media_ref: Option<String>,
     pub status: QueueItemStatus,
     pub assigned_session_id: Option<Uuid>,
     pub attempts: i64,

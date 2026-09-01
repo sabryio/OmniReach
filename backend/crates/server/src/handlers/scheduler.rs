@@ -326,18 +326,21 @@ pub async fn tick(
         // 4. Send message
         let to_jid = format!("{}@s.whatsapp.net", contact.formatted_phone);
 
-        let send_result = if item.image_url.is_some() {
-            // TODO: For MVP Phase 3, skip media upload and send as text
-            // Full implementation (Phase 6):
-            // 1. Download image from image_url
-            // 2. Call wa.upload_media()
-            // 3. Call wa.send_image() with media_ref and rendered_text as caption
+        let send_result = if let Some(media_ref) = &item.media_ref {
+            // Campaign has an uploaded image - send with media_ref
+            state
+                .wa
+                .send_image(&to_jid, media_ref, Some(&rendered_text), &session.api_key)
+                .await
+        } else if item.image_url.is_some() {
+            // Legacy: image_url without media_ref (uploaded images should have media_ref in Phase 6+)
+            // For MVP, send as text since we don't have the media_ref
             state
                 .wa
                 .send_text(&to_jid, &rendered_text, &session.api_key)
                 .await
         } else {
-            // Send text message
+            // No image - send text message
             state
                 .wa
                 .send_text(&to_jid, &rendered_text, &session.api_key)

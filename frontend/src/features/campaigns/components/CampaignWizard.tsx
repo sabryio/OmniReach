@@ -15,6 +15,7 @@ import { CsvImporter } from "./CsvImporter";
 import { MessageComposer } from "./MessageComposer";
 import { getSessionQuota } from "@/features/sessions/utils/quota";
 import { useVerificationJob } from "../hooks/useVerificationJob";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { Session } from "@/features/sessions/schemas/session.schema";
 import type { Contact } from "@/features/customers/schemas/customer.schema";
 import type { CreateCampaignInput } from "../schemas/campaign.schema";
@@ -56,6 +57,9 @@ export function CampaignWizard({
 
   // Batch verification job — replaces old runPreVerification simulation
   const verification = useVerificationJob();
+
+  // "Skip verification" checkbox state
+  const [skipVerification, setSkipVerification] = useState(false);
 
   // Track current time for quota calculations
   const [now, setNow] = useState<number>(Date.now());
@@ -121,6 +125,34 @@ export function CampaignWizard({
     const sessionId = selectedSessionIds[0]!;
     const phones = contacts.map((c) => c.normalizedPhone);
     verification.startJob(sessionId, phones);
+  };
+
+  // Mark all contacts as registered (skip verification)
+  const markAllAsRegistered = () => {
+    setContacts((prev) =>
+      prev.map((c) => ({
+        ...c,
+        verificationStatus: "registered" as const,
+        verificationError: null,
+      })),
+    );
+  };
+
+  // Handle skip verification checkbox
+  const handleSkipVerificationChange = (checked: boolean) => {
+    setSkipVerification(checked);
+    if (checked) {
+      markAllAsRegistered();
+    } else {
+      // Reset to unverified when unchecked
+      setContacts((prev) =>
+        prev.map((c) => ({
+          ...c,
+          verificationStatus: "unverified" as const,
+          verificationError: null,
+        })),
+      );
+    }
   };
 
   const handleCreateAndLaunch = () => {
@@ -494,7 +526,7 @@ export function CampaignWizard({
                   <button
                     type="button"
                     id="run-pre-verify-btn"
-                    disabled={verification.isRunning}
+                    disabled={verification.isRunning || skipVerification}
                     onClick={runPreVerification}
                     className="px-3 py-1.5 rounded-lg bg-muted/50 hover:bg-muted text-foreground text-xs font-semibold flex items-center gap-1.5 border border-border transition-colors disabled:opacity-50"
                   >
@@ -556,38 +588,52 @@ export function CampaignWizard({
                 )}
 
                 {/* Verification badges */}
-                <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
-                  <div className="px-2.5 py-1 rounded-md bg-success/10 text-success border border-success/30 font-medium">
-                    🟢 Valid:{" "}
-                    {
-                      contacts.filter(
-                        (c) => c.verificationStatus === "registered",
-                      ).length
-                    }
-                  </div>
-                  <div className="px-2.5 py-1 rounded-md bg-destructive/10 text-destructive border border-destructive/30 font-medium">
-                    🔴 Unregistered:{" "}
-                    {
-                      contacts.filter(
-                        (c) => c.verificationStatus === "unregistered",
-                      ).length
-                    }
-                  </div>
-                  <div className="px-2.5 py-1 rounded-md bg-muted text-muted-foreground border border-border font-medium">
-                    ⚪ Unverified:{" "}
-                    {
-                      contacts.filter(
-                        (c) => c.verificationStatus === "unverified",
-                      ).length
-                    }
-                  </div>
-                  {/* Show error count if any contacts have verification errors */}
-                  {contacts.some((c) => c.verificationError) && (
-                    <div className="px-2.5 py-1 rounded-md bg-warning/10 text-warning border border-warning/30 font-medium">
-                      ⚠️ Errors:{" "}
-                      {contacts.filter((c) => c.verificationError).length}
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="px-2.5 py-1 rounded-md bg-success/10 text-success border border-success/30 font-medium">
+                      🟢 Valid:{" "}
+                      {
+                        contacts.filter(
+                          (c) => c.verificationStatus === "registered",
+                        ).length
+                      }
                     </div>
-                  )}
+                    <div className="px-2.5 py-1 rounded-md bg-destructive/10 text-destructive border border-destructive/30 font-medium">
+                      🔴 Unregistered:{" "}
+                      {
+                        contacts.filter(
+                          (c) => c.verificationStatus === "unregistered",
+                        ).length
+                      }
+                    </div>
+                    <div className="px-2.5 py-1 rounded-md bg-muted text-muted-foreground border border-border font-medium">
+                      ⚪ Unverified:{" "}
+                      {
+                        contacts.filter(
+                          (c) => c.verificationStatus === "unverified",
+                        ).length
+                      }
+                    </div>
+                    {/* Show error count if any contacts have verification errors */}
+                    {contacts.some((c) => c.verificationError) && (
+                      <div className="px-2.5 py-1 rounded-md bg-warning/10 text-warning border border-warning/30 font-medium">
+                        ⚠️ Errors:{" "}
+                        {contacts.filter((c) => c.verificationError).length}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Skip verification checkbox - styled like a button */}
+                  <label className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 hover:bg-muted border border-border cursor-pointer transition-colors">
+                    <Checkbox
+                      checked={skipVerification}
+                      onCheckedChange={handleSkipVerificationChange}
+                      className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                    />
+                    <span className="text-foreground font-semibold">
+                      Skip Verification
+                    </span>
+                  </label>
                 </div>
               </div>
             </div>

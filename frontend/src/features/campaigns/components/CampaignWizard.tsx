@@ -37,9 +37,8 @@ export function CampaignWizard({
   onCancel,
 }: CampaignWizardProps) {
   const [step, setStep] = useState<WizardStep>("csv");
-  const [campaignTitle, setCampaignTitle] = useState<string>(
-    `Broadcast #${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })} Campaign`,
-  );
+  const [campaignTitle, setCampaignTitle] = useState<string>("");
+  const [showLaunchDialog, setShowLaunchDialog] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [templateText, setTemplateText] = useState<string>(
     "Hello {{name}}! 🌟 We are pleased to share our latest catalog update with you. Check your exclusive member perks today.",
@@ -218,29 +217,13 @@ export function CampaignWizard({
         {/* STEP 1: CSV IMPORT */}
         {step === "csv" && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
-                  Campaign Name
-                </label>
-                <input
-                  type="text"
-                  id="campaign-title-input"
-                  value={campaignTitle}
-                  onChange={(e) => setCampaignTitle(e.target.value)}
-                  placeholder="e.g. VIP Summer Promotion 2026"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-muted/30 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium transition-all"
-                />
-              </div>
-
-              <div className="bg-primary/10 border border-primary/20 rounded-xl p-3.5 flex items-center gap-3">
-                <ShieldCheck className="w-8 h-8 text-primary shrink-0" />
-                <div className="text-xs text-foreground">
-                  <p className="font-semibold">Auto-Verification Enabled</p>
-                  <p className="text-[11px] text-muted-foreground leading-tight">
-                    All contacts will be verified before sending
-                  </p>
-                </div>
+            <div className="bg-primary/10 border border-primary/20 rounded-xl p-3.5 flex items-center gap-3">
+              <ShieldCheck className="w-8 h-8 text-primary shrink-0" />
+              <div className="text-xs text-foreground">
+                <p className="font-semibold">Auto-Verification Enabled</p>
+                <p className="text-[11px] text-muted-foreground leading-tight">
+                  All contacts will be verified before sending
+                </p>
               </div>
             </div>
 
@@ -607,7 +590,7 @@ export function CampaignWizard({
                 <button
                   type="button"
                   id="launch-campaign-submit-btn"
-                  onClick={handleCreateAndLaunch}
+                  onClick={() => setShowLaunchDialog(true)}
                   className="px-6 py-2.5 rounded-xl bg-success hover:bg-success/90 text-white text-xs font-bold flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
                 >
                   <Send className="w-4 h-4" />
@@ -618,6 +601,67 @@ export function CampaignWizard({
           </div>
         )}
       </div>
+
+      {/* Launch Campaign Dialog */}
+      {showLaunchDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl w-full max-w-md mx-4">
+            <h3 className="text-lg font-bold text-foreground mb-2">
+              Launch Campaign
+            </h3>
+            <p className="text-xs text-muted-foreground mb-4">
+              Enter a name for your campaign to begin sending
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2">
+                  Campaign Name
+                </label>
+                <input
+                  type="text"
+                  id="campaign-title-dialog-input"
+                  value={campaignTitle}
+                  onChange={(e) => setCampaignTitle(e.target.value)}
+                  placeholder="e.g. VIP Summer Promotion 2026"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && campaignTitle.trim()) {
+                      handleCreateAndLaunch();
+                    }
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-muted/30 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary font-medium transition-all"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLaunchDialog(false);
+                    setCampaignTitle("");
+                  }}
+                  className="px-4 py-2 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCreateAndLaunch();
+                    setShowLaunchDialog(false);
+                  }}
+                  disabled={!campaignTitle.trim()}
+                  className="px-6 py-2 rounded-xl bg-success hover:bg-success/90 text-white text-xs font-bold flex items-center gap-2 shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Launch</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

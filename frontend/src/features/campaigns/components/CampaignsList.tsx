@@ -4,6 +4,7 @@
  * REFACTORED: All state logic extracted to useCampaignsList hook.
  * Component is now purely presentational, receiving data and callbacks.
  */
+import { useState } from "react";
 import {
   Layers,
   Search,
@@ -17,6 +18,7 @@ import {
   Download,
   Inbox,
   RotateCcw,
+  AlertTriangle,
 } from "lucide-react";
 import type { Campaign } from "@/features/campaigns/schemas/campaign.schema";
 import type { Session } from "@/features/sessions/schemas/session.schema";
@@ -48,6 +50,11 @@ export function CampaignsList({
   onUnarchiveCampaign,
   onNewCampaignClick,
 }: CampaignsListProps) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [campaignToDelete, setCampaignToDelete] = useState<Campaign | null>(
+    null,
+  );
+
   const {
     viewTab,
     activeCampaigns,
@@ -462,13 +469,8 @@ export function CampaignsList({
                   <button
                     type="button"
                     onClick={() => {
-                      if (
-                        confirm(
-                          `Delete campaign "${selectedCampaign.title}" permanently?`,
-                        )
-                      ) {
-                        onDeleteCampaign(selectedCampaign.id);
-                      }
+                      setCampaignToDelete(selectedCampaign);
+                      setShowDeleteDialog(true);
                     }}
                     className="p-1.5 rounded-lg bg-muted hover:bg-destructive/15 text-destructive text-xs font-semibold border border-border hover:border-destructive/30 transition-colors"
                   >
@@ -673,6 +675,73 @@ export function CampaignsList({
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteDialog && campaignToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-2xl w-full max-w-md mx-4">
+            {/* Icon & Title */}
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-destructive" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-foreground">
+                  Delete Campaign?
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  This action cannot be undone. All campaign data and contacts
+                  will be permanently removed.
+                </p>
+              </div>
+            </div>
+
+            {/* Campaign Details */}
+            <div className="bg-muted/30 border border-border rounded-xl p-3 mb-5">
+              <div className="text-xs">
+                <span className="text-muted-foreground">Campaign:</span>
+                <span className="font-semibold text-foreground ml-1.5">
+                  {campaignToDelete.title}
+                </span>
+              </div>
+              <div className="text-xs mt-1">
+                <span className="text-muted-foreground">Recipients:</span>
+                <span className="font-mono text-foreground ml-1.5">
+                  {campaignToDelete.totalContacts} contacts
+                </span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteDialog(false);
+                  setCampaignToDelete(null);
+                }}
+                className="px-4 py-2 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (campaignToDelete) {
+                    onDeleteCampaign(campaignToDelete.id);
+                  }
+                  setShowDeleteDialog(false);
+                  setCampaignToDelete(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs font-bold flex items-center gap-2 shadow-md transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Permanently</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

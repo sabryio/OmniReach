@@ -111,6 +111,11 @@ export function MessageComposer({
           className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
         />
 
+        {/* Character counter */}
+        <div className="text-xs text-muted-foreground text-right">
+          {templateText.length} / 1,600 characters
+        </div>
+
         {/* Image Upload */}
         <div className="space-y-2">
           <label className="text-xs text-muted-foreground flex items-center gap-2">

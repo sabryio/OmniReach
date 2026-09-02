@@ -505,10 +505,10 @@ export function CampaignsList({
                 </div>
                 <div className="p-2.5 rounded-xl bg-muted/40 border border-border/40">
                   <span className="text-[10px] text-muted-foreground block uppercase font-medium">
-                    Failed
+                    Registered
                   </span>
-                  <span className="font-mono font-bold text-destructive text-sm">
-                    {selectedCampaign.failedCount.toLocaleString()}
+                  <span className="font-mono font-bold text-primary text-sm">
+                    {selectedCampaign.verifiedContacts.toLocaleString()}
                   </span>
                 </div>
               </div>

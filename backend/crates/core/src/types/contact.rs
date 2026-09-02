@@ -38,15 +38,25 @@ pub struct Contact {
 }
 
 /// Input shape for a single contact within `CreateCampaignInput`.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateContactInput {
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub raw_phone: String,
+    #[serde(default)]
     pub formatted_phone: String,
+    #[serde(default)]
     pub normalized_phone: String,
     #[serde(default)]
     pub custom_fields: HashMap<String, String>,
+    /// Verification status from pre-launch check (optional, defaults to unverified)
+    #[serde(default)]
+    pub verification_status: Option<ContactVerificationStatus>,
+    /// WhatsApp JID from verification (optional)
+    #[serde(default)]
+    pub wa_id: Option<String>,
 }
 
 impl ContactVerificationStatus {

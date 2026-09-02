@@ -74,8 +74,11 @@ export const createCampaignInputSchema = z.object({
       formattedPhone: z.string(),
       normalizedPhone: z.string(),
       customFields: z.record(z.string(), z.string()).default({}),
+      verificationStatus: contactVerificationStatusSchema.optional(),
+      waId: z.string().nullable().optional(),
     }),
   ),
+  status: campaignStatusSchema.optional(),
 });
 
 export const retryFailedResponseSchema = z.object({

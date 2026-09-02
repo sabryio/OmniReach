@@ -144,14 +144,41 @@ pub async fn insert(db: &Db, input: CreateCampaignInput) -> Result<Campaign, Sto
     let id = Uuid::new_v4();
     let session_ids_json = serde_json::to_string(&input.session_ids)?;
 
+    // Use provided status or default to draft
+    let status = input.status.unwrap_or(CampaignStatus::Draft);
+
+    // Calculate stats from contacts
+    let total_contacts = input.contacts.len() as i64;
+    let verified_contacts = input
+        .contacts
+        .iter()
+        .filter(|c| {
+            c.verification_status
+                .as_ref()
+                .map(|s| matches!(s, ContactVerificationStatus::Registered))
+                .unwrap_or(false)
+        })
+        .count() as i64;
+    let unregistered_count = input
+        .contacts
+        .iter()
+        .filter(|c| {
+            c.verification_status
+                .as_ref()
+                .map(|s| matches!(s, ContactVerificationStatus::Unregistered))
+                .unwrap_or(false)
+        })
+        .count() as i64;
+
     // Begin transaction
     let mut tx = db.pool().begin().await?;
 
-    // Insert campaign
+    // Insert campaign with calculated stats
     sqlx::query!(
         r#"
-        INSERT INTO campaigns (id, title, template_text, image_url, media_ref, session_ids, status, created_at, total_contacts)
-        VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?)
+        INSERT INTO campaigns (id, title, template_text, image_url, media_ref, session_ids, status, created_at, 
+                              total_contacts, verified_contacts, unregistered_count)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         id.to_string(),
         input.title,
@@ -159,8 +186,11 @@ pub async fn insert(db: &Db, input: CreateCampaignInput) -> Result<Campaign, Sto
         input.image_url,
         input.media_ref,
         session_ids_json,
+        status.as_str(),
         now_ms,
-        input.contacts.len() as i64
+        total_contacts,
+        verified_contacts,
+        unregistered_count
     )
     .execute(&mut *tx)
     .await?;
@@ -170,11 +200,18 @@ pub async fn insert(db: &Db, input: CreateCampaignInput) -> Result<Campaign, Sto
         let contact_id = Uuid::new_v4();
         let custom_fields_json = serde_json::to_string(&contact_input.custom_fields)?;
 
+        // Use provided verification status or default to unverified
+        let verification_status = contact_input
+            .verification_status
+            .as_ref()
+            .map(|s| s.as_str())
+            .unwrap_or("unverified");
+
         sqlx::query!(
             r#"
             INSERT INTO contacts (id, campaign_id, name, raw_phone, formatted_phone, normalized_phone, 
-                                  custom_fields, verification_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'unverified')
+                                  custom_fields, verification_status, wa_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
             contact_id.to_string(),
             id.to_string(),
@@ -182,7 +219,9 @@ pub async fn insert(db: &Db, input: CreateCampaignInput) -> Result<Campaign, Sto
             contact_input.raw_phone,
             contact_input.formatted_phone,
             contact_input.normalized_phone,
-            custom_fields_json
+            custom_fields_json,
+            verification_status,
+            contact_input.wa_id
         )
         .execute(&mut *tx)
         .await?;

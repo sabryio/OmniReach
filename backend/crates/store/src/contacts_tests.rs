@@ -39,6 +39,7 @@ mod tests {
                     formatted_phone: format!("+20 100 000 {:04}", i),
                     normalized_phone: format!("20100000{:04}", i),
                     custom_fields,
+                    ..Default::default()
                 }
             })
             .collect()
@@ -59,6 +60,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: create_test_contacts_input(5),
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -79,6 +81,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: vec![],
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -98,6 +101,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: create_test_contacts_input(3),
+            ..Default::default()
         };
 
         let input2 = CreateCampaignInput {
@@ -107,6 +111,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: create_test_contacts_input(2),
+            ..Default::default()
         };
 
         let campaign1 = campaigns::insert(&db, input1).await.unwrap();
@@ -139,6 +144,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: create_test_contacts_input(3),
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -179,6 +185,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: create_test_contacts_input(1),
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -219,6 +226,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: create_test_contacts_input(1),
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -255,6 +263,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: create_test_contacts_input(1),
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -293,6 +302,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: create_test_contacts_input(5),
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -346,7 +356,10 @@ mod tests {
                 formatted_phone: "+20 123 456 7890".to_string(),
                 normalized_phone: "201234567890".to_string(),
                 custom_fields: custom_fields.clone(),
+                verification_status: None,
+                wa_id: None,
             }],
+            status: None,
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -379,7 +392,10 @@ mod tests {
                 formatted_phone: "+20 100 000 1234".to_string(),
                 normalized_phone: "201000001234".to_string(),
                 custom_fields: HashMap::new(),
+                verification_status: None,
+                wa_id: None,
             }],
+            status: None,
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -406,7 +422,10 @@ mod tests {
                 formatted_phone: "+20 123 456 7890".to_string(),
                 normalized_phone: "201234567890".to_string(),
                 custom_fields: HashMap::new(),
+                verification_status: None,
+                wa_id: None,
             }],
+            status: None,
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -426,6 +445,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: create_test_contacts_input(3),
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();

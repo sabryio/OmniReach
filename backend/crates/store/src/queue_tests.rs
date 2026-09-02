@@ -49,6 +49,8 @@ mod tests {
                 formatted_phone: format!("+20 100 000 {:04}", i),
                 normalized_phone: format!("20100000{:04}", i),
                 custom_fields: HashMap::new(),
+                verification_status: None,
+                wa_id: None,
             })
             .collect();
 
@@ -59,6 +61,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: contacts_input,
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(db, campaign_input)

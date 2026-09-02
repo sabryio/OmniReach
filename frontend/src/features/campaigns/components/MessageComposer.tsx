@@ -36,10 +36,6 @@ export function MessageComposer({
     "{{doctor}}",
     "{{date}}",
   ];
-  const SAMPLE_IMAGES = [
-    "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=300&q=60",
-    "https://images.unsplash.com/photo-1631815589968-fdb09a223b1e?w=300&q=60",
-  ];
 
   // Render preview using first contact's fields
   const preview = contacts[0]
@@ -180,20 +176,6 @@ export function MessageComposer({
             placeholder="https://..."
             className="w-full bg-input border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
-        </div>
-
-        {/* Sample images */}
-        <div className="grid grid-cols-2 gap-2">
-          {SAMPLE_IMAGES.map((src) => (
-            <button
-              key={src}
-              type="button"
-              onClick={() => onImageChange(src, undefined)}
-              className={`rounded overflow-hidden border-2 transition-colors ${imageUrl === src ? "border-primary" : "border-transparent"}`}
-            >
-              <img src={src} alt="" className="w-full h-16 object-cover" />
-            </button>
-          ))}
         </div>
       </div>
 

@@ -17,7 +17,7 @@ import { getSessionQuota } from "@/features/sessions/utils/quota";
 import { useVerificationJob } from "../hooks/useVerificationJob";
 import type { Session } from "@/features/sessions/schemas/session.schema";
 import type { Contact } from "@/features/customers/schemas/customer.schema";
-import type { Campaign } from "../schemas/campaign.schema";
+import type { CreateCampaignInput } from "../schemas/campaign.schema";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
 
 interface CampaignWizardProps {
@@ -25,7 +25,7 @@ interface CampaignWizardProps {
   config: WABridgeConfig;
   initialTemplate?: unknown;
   initialContacts?: Contact[] | null;
-  onLaunchCampaign: (campaign: Campaign) => void;
+  onLaunchCampaign: (input: CreateCampaignInput) => void;
   onCancel: () => void;
 }
 
@@ -117,29 +117,26 @@ export function CampaignWizard({
       return;
     }
 
-    const campaign: Campaign = {
-      id: `camp_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+    // Transform Campaign into CreateCampaignInput for API
+    const campaignInput = {
       title: campaignTitle.trim() || "Untitled Broadcast Campaign",
       templateText: templateText.trim(),
-      imageUrl,
-      mediaRef,
+      imageUrl: imageUrl ?? null,
+      mediaRef: mediaRef ?? null,
       sessionIds: selectedSessionIds,
-      status: "running",
-      createdAt: new Date().toISOString(),
-      startedAt: new Date().toISOString(),
-      totalContacts: contacts.length,
-      verifiedContacts: 0,
-      sentCount: 0,
-      skippedCount: 0,
-      unregisteredCount:
-        verification.progress?.unregistered ??
-        contacts.filter((c) => c.verificationStatus === "unregistered").length,
-      failedCount: 0,
-      contacts: [...contacts],
-      isArchived: false,
+      contacts: contacts.map((c) => ({
+        name: c.name,
+        rawPhone: c.rawPhone,
+        formattedPhone: c.formattedPhone,
+        normalizedPhone: c.normalizedPhone,
+        customFields: c.customFields,
+        verificationStatus: c.verificationStatus,
+        waId: c.waId ?? null,
+      })),
+      status: "running" as const,
     };
 
-    onLaunchCampaign(campaign);
+    onLaunchCampaign(campaignInput);
   };
 
   // Determine available template tags from contacts

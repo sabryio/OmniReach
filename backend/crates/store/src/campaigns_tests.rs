@@ -34,8 +34,26 @@ mod tests {
                 formatted_phone: format!("+20 100 000 {:04}", i),
                 normalized_phone: format!("20100000{:04}", i),
                 custom_fields: HashMap::new(),
+                verification_status: None,
+                wa_id: None,
             })
             .collect()
+    }
+
+    fn create_test_campaign_input(
+        title: &str,
+        template_text: &str,
+        contacts: Vec<CreateContactInput>,
+    ) -> CreateCampaignInput {
+        CreateCampaignInput {
+            title: title.to_string(),
+            template_text: template_text.to_string(),
+            image_url: None,
+            session_ids: vec![],
+            media_ref: None,
+            contacts,
+            status: None,
+        }
     }
 
     // ──────────────────────────────────────────────────────────────────────
@@ -51,8 +69,8 @@ mod tests {
             template_text: "Hello {{name}}".to_string(),
             image_url: Some("https://example.com/image.png".to_string()),
             session_ids: vec![Uuid::new_v4()],
-            media_ref: None,
             contacts: create_test_contacts(3),
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -74,6 +92,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: vec![],
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -98,6 +117,7 @@ mod tests {
                 session_ids: vec![],
                 media_ref: None,
                 contacts: create_test_contacts(2),
+                ..Default::default()
             };
             campaigns::insert(&db, input).await.unwrap();
         }
@@ -121,6 +141,7 @@ mod tests {
                 session_ids: vec![],
                 media_ref: None,
                 contacts: vec![],
+                ..Default::default()
             };
             let campaign = campaigns::insert(&db, input).await.unwrap();
             ids.push(campaign.id);
@@ -150,6 +171,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: create_test_contacts(5),
+            ..Default::default()
         };
 
         let inserted = campaigns::insert(&db, input).await.unwrap();
@@ -189,6 +211,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: vec![],
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -213,6 +236,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: vec![],
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -240,6 +264,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: vec![],
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -266,6 +291,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: vec![],
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -293,6 +319,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: vec![],
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -316,6 +343,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: vec![],
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -349,6 +377,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: vec![],
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -377,6 +406,7 @@ mod tests {
             session_ids: vec![session1, session2],
             media_ref: None,
             contacts: vec![],
+            ..Default::default()
         };
 
         let campaign = campaigns::insert(&db, input).await.unwrap();
@@ -397,6 +427,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: create_test_contacts(3),
+            ..Default::default()
         };
 
         let input2 = CreateCampaignInput {
@@ -406,6 +437,7 @@ mod tests {
             session_ids: vec![],
             media_ref: None,
             contacts: create_test_contacts(5),
+            ..Default::default()
         };
 
         let campaign1 = campaigns::insert(&db, input1).await.unwrap();

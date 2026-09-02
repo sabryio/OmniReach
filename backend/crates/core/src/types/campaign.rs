@@ -50,15 +50,24 @@ pub struct Campaign {
 }
 
 /// Input shape for `POST /api/campaigns`.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateCampaignInput {
+    #[serde(default)]
     pub title: String,
+    #[serde(default)]
     pub template_text: String,
+    #[serde(default)]
     pub image_url: Option<String>,
+    #[serde(default)]
     pub media_ref: Option<String>,
+    #[serde(default)]
     pub session_ids: Vec<Uuid>,
+    #[serde(default)]
     pub contacts: Vec<CreateContactInput>,
+    /// Initial status (optional, defaults to draft)
+    #[serde(default)]
+    pub status: Option<CampaignStatus>,
 }
 
 impl CampaignStatus {

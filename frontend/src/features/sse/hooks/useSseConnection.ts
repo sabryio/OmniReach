@@ -154,6 +154,11 @@ export function useSseConnection(): SseConnectionState {
           },
 
           onerror(err) {
+            // Don't log or retry AbortError - it's intentional cleanup
+            if (err instanceof Error && err.name === "AbortError") {
+              return; // Silent cleanup, don't throw
+            }
+
             setState({ isConnected: false, error: err as Error });
 
             // Exponential backoff: 1s, 2s, 4s, 8s, max 30s

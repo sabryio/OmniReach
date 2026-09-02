@@ -48,6 +48,28 @@ pub async fn create(
             )
             .await?;
 
+            // If contact is unregistered, immediately mark queue item as skipped
+            if contact.verification_status
+                == omnireach_core::types::ContactVerificationStatus::Unregistered
+            {
+                omnireach_store::queue::update_status(
+                    &state.db,
+                    queue_item.id,
+                    omnireach_core::types::QueueItemStatus::SkippedUnregistered,
+                    None, // no session assigned
+                    Some("Contact is not registered on WhatsApp".to_string()),
+                    None, // no response payload
+                )
+                .await?;
+
+                tracing::info!(
+                    "Marked queue item {} for unregistered contact {} ({}) as skipped",
+                    queue_item.id,
+                    contact.name,
+                    contact.normalized_phone
+                );
+            }
+
             // Emit SSE event for queue item creation
             state.sse.send(crate::sse::SseEvent::QueueItemAdded {
                 item_id: queue_item.id.to_string(),

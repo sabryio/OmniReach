@@ -47,8 +47,11 @@ export function useVerificationJob() {
   useEffect(() => {
     const onProgress = (e: Event) => {
       const payload = (e as CustomEvent<VerifyProgressPayload>).detail;
+
       // Only handle events for the current job
-      if (payload.job_id !== jobIdRef.current) return;
+      if (payload.job_id !== jobIdRef.current) {
+        return;
+      }
 
       setState((prev) => ({
         ...prev,
@@ -63,7 +66,10 @@ export function useVerificationJob() {
 
     const onComplete = (e: Event) => {
       const payload = (e as CustomEvent<VerifyCompletePayload>).detail;
-      if (payload.job_id !== jobIdRef.current) return;
+
+      if (payload.job_id !== jobIdRef.current) {
+        return;
+      }
 
       setState((prev) => ({
         ...prev,
@@ -82,31 +88,35 @@ export function useVerificationJob() {
     };
   }, []);
 
-  const startJob = useCallback(
-    async (sessionId: string, phones: string[]) => {
-      setState({
-        jobId: null,
-        isRunning: true,
-        progress: { checked: 0, total: phones.length, registered: 0, unregistered: 0 },
-        results: null,
-        error: null,
-      });
+  const startJob = useCallback(async (sessionId: string, phones: string[]) => {
+    setState({
+      jobId: null,
+      isRunning: true,
+      progress: {
+        checked: 0,
+        total: phones.length,
+        registered: 0,
+        unregistered: 0,
+      },
+      results: null,
+      error: null,
+    });
 
-      try {
-        const { jobId } = await verifyBatch({ sessionId, phones });
-        jobIdRef.current = jobId;
-        setState((prev) => ({ ...prev, jobId }));
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to start verification";
-        setState((prev) => ({
-          ...prev,
-          isRunning: false,
-          error: message,
-        }));
-      }
-    },
-    [],
-  );
+    try {
+      const { jobId } = await verifyBatch({ sessionId, phones });
+      jobIdRef.current = jobId;
+      setState((prev) => ({ ...prev, jobId }));
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to start verification";
+      console.error("🔍 [VERIFY] ❌ Failed to start job:", message, err);
+      setState((prev) => ({
+        ...prev,
+        isRunning: false,
+        error: message,
+      }));
+    }
+  }, []);
 
   const reset = useCallback(() => {
     jobIdRef.current = null;

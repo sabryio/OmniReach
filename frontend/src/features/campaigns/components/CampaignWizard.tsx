@@ -91,9 +91,25 @@ export function CampaignWizard({
       prev.map((c) => {
         const r = resultMap.get(c.normalizedPhone);
         if (!r) return c;
+
+        // If there's an error, mark as unregistered and store the error message
+        if (r.error) {
+          console.warn(
+            `⚠️ Verification error for ${c.normalizedPhone}:`,
+            r.error,
+          );
+          return {
+            ...c,
+            verificationStatus: "unregistered" as const,
+            verificationError: r.error,
+            waId: null,
+          };
+        }
+
         return {
           ...c,
           verificationStatus: r.is_registered ? "registered" : "unregistered",
+          verificationError: null,
           waId: r.wa_id ?? null,
         };
       }),
@@ -565,6 +581,13 @@ export function CampaignWizard({
                       ).length
                     }
                   </div>
+                  {/* Show error count if any contacts have verification errors */}
+                  {contacts.some((c) => c.verificationError) && (
+                    <div className="px-2.5 py-1 rounded-md bg-warning/10 text-warning border border-warning/30 font-medium">
+                      ⚠️ Errors:{" "}
+                      {contacts.filter((c) => c.verificationError).length}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

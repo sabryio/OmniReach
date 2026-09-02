@@ -99,6 +99,15 @@ export function useSseConnection(): SseConnectionState {
                   });
                   break;
 
+                case "queue.item_added":
+                  queryClient.invalidateQueries({
+                    queryKey: QueueQueryKeys.all,
+                  });
+                  queryClient.invalidateQueries({
+                    queryKey: DashboardQueryKeys.all,
+                  });
+                  break;
+
                 case "queue.stats":
                   queryClient.invalidateQueries({
                     queryKey: QueueQueryKeys.all,

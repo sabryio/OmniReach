@@ -49,6 +49,12 @@ export type VerifyBatchParams = {
 export async function verifyBatch(
   params: VerifyBatchParams,
 ): Promise<{ jobId: string }> {
+  console.log("🔍 [VERIFY] Starting batch verification:", {
+    sessionId: params.sessionId,
+    phoneCount: params.phones.length,
+    phones: params.phones,
+  });
+
   const response = await fetch(
     `${config.apiBaseUrl}/api/contacts/verify-batch`,
     {
@@ -64,11 +70,23 @@ export async function verifyBatch(
     },
   );
 
+  console.log(
+    "🔍 [VERIFY] Response status:",
+    response.status,
+    response.statusText,
+  );
+
   if (!response.ok) {
     const body = await response.text().catch(() => response.statusText);
+    console.error("🔍 [VERIFY] ❌ Request failed:", body);
     throw new Error(`Failed to start verification batch: ${body}`);
   }
 
-  const data = verifyBatchResponseSchema.parse(await response.json());
+  const rawData = await response.json();
+  console.log("🔍 [VERIFY] Raw response data:", rawData);
+
+  const data = verifyBatchResponseSchema.parse(rawData);
+  console.log("🔍 [VERIFY] ✅ Job started, job_id:", data.job_id);
+
   return { jobId: data.job_id };
 }

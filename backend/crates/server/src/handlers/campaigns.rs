@@ -33,6 +33,30 @@ pub async fn create(
 ) -> Result<(StatusCode, Json<Campaign>), ApiError> {
     let campaign = omnireach_store::campaigns::insert(&state.db, input).await?;
 
+    // If campaign status is "running", populate queue with all contacts
+    if campaign.status == CampaignStatus::Running {
+        for contact in &campaign.contacts {
+            let queue_item = omnireach_store::queue::create_item(
+                &state.db,
+                campaign.id,
+                &campaign.title,
+                contact.id,
+                &contact.normalized_phone,
+                &contact.name,
+                &campaign.template_text,
+                campaign.image_url.as_deref(),
+            )
+            .await?;
+
+            // Emit SSE event for queue item creation
+            state.sse.send(crate::sse::SseEvent::QueueItemAdded {
+                item_id: queue_item.id.to_string(),
+                campaign_id: campaign.id.to_string(),
+                phone: contact.normalized_phone.clone(),
+            });
+        }
+    }
+
     // Emit SSE event for campaign creation
     state.sse.send(crate::sse::SseEvent::CampaignCreated {
         campaign_id: campaign.id.to_string(),

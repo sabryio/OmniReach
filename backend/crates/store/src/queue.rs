@@ -484,6 +484,44 @@ pub async fn requeue_failed(db: &Db, campaign_id: Uuid) -> Result<i64, StoreErro
     Ok(result.rows_affected() as i64)
 }
 
+/// Create a new queue item for a contact in a campaign.
+pub async fn create_item(
+    db: &Db,
+    campaign_id: Uuid,
+    campaign_title: &str,
+    contact_id: Uuid,
+    phone: &str,
+    recipient_name: &str,
+    rendered_text: &str,
+    image_url: Option<&str>,
+) -> Result<QueueItem, StoreError> {
+    let id = Uuid::new_v4();
+    let now_ms = Utc::now().timestamp_millis();
+
+    sqlx::query!(
+        r#"
+        INSERT INTO queue_items (
+            id, campaign_id, campaign_title, contact_id, phone, recipient_name,
+            rendered_text, image_url, status, attempts, scheduled_for
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?)
+        "#,
+        id.to_string(),
+        campaign_id.to_string(),
+        campaign_title,
+        contact_id.to_string(),
+        phone,
+        recipient_name,
+        rendered_text,
+        image_url,
+        now_ms
+    )
+    .execute(db.pool())
+    .await?;
+
+    get_by_id(db, id).await
+}
+
 /// Aggregated queue status counts.
 #[derive(Debug, Default, serde::Serialize)]
 pub struct QueueStats {

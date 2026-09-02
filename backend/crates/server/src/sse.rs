@@ -30,6 +30,12 @@ pub enum SseEvent {
         new_status: String,
         campaign_id: String,
     },
+    /// A new queue item was added.
+    QueueItemAdded {
+        item_id: String,
+        campaign_id: String,
+        phone: String,
+    },
     /// Aggregate queue counts after a scheduler tick.
     QueueStats {
         pending: i64,
@@ -86,6 +92,18 @@ impl SseEvent {
                     "item_id": item_id,
                     "new_status": new_status,
                     "campaign_id": campaign_id,
+                }),
+            ),
+            SseEvent::QueueItemAdded {
+                item_id,
+                campaign_id,
+                phone,
+            } => (
+                "queue.item_added",
+                json!({
+                    "item_id": item_id,
+                    "campaign_id": campaign_id,
+                    "phone": phone,
                 }),
             ),
             SseEvent::QueueStats {

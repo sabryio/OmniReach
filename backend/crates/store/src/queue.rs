@@ -454,7 +454,9 @@ pub async fn stats(db: &Db) -> Result<QueueStats, StoreError> {
 
 /// POST /api/queue/:id/cancel
 pub async fn cancel(db: &Db, id: Uuid) -> Result<QueueItem, StoreError> {
-    sqlx::query!(
+    tracing::info!("Cancelling queue item: {}", id);
+
+    let result = sqlx::query!(
         r#"
         UPDATE queue_items
         SET status = 'cancelled'
@@ -464,6 +466,12 @@ pub async fn cancel(db: &Db, id: Uuid) -> Result<QueueItem, StoreError> {
     )
     .execute(db.pool())
     .await?;
+
+    tracing::info!(
+        "Cancel UPDATE affected {} rows for item {}",
+        result.rows_affected(),
+        id
+    );
 
     get_by_id(db, id).await
 }

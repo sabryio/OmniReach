@@ -1,13 +1,18 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { QueueQueryKeys, LogQueryKeys } from "../api/queryKeys";
 import { cancelQueueItem, clearLogs } from "../api/queue.api";
+import { toast } from "sonner";
 
 export function useCancelQueueItem() {
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: cancelQueueItem,
     onSuccess: () => {
+      toast.success("Queue item cancelled");
       queryClient.invalidateQueries({ queryKey: QueueQueryKeys.all });
+    },
+    onError: (error) => {
+      toast.error(`Failed to cancel: ${error.message}`);
     },
   });
   return {

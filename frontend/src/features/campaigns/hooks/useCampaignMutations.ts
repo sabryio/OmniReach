@@ -35,6 +35,8 @@ export function useDeleteCampaign() {
     mutationFn: deleteCampaign,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CampaignQueryKeys.all });
+      // Queue items are CASCADE deleted when campaign is deleted
+      queryClient.invalidateQueries({ queryKey: QueueQueryKeys.all });
     },
   });
   return {

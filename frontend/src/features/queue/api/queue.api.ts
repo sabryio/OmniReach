@@ -20,7 +20,9 @@ export async function getQueue(campaignId?: string): Promise<QueueItem[]> {
   });
   if (!response.ok)
     throw new Error(`Failed to fetch queue: ${response.statusText}`);
-  return queueSchema.parse(await response.json());
+
+  const data = await response.json();
+  return queueSchema.parse(data);
 }
 
 export async function getQueueStats(): Promise<QueueStats> {

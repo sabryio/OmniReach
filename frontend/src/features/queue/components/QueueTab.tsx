@@ -40,6 +40,7 @@ const QUEUE_FILTERS = [
   { id: "sent", label: "Sent" },
   { id: "skipped_unregistered", label: "Skipped" },
   { id: "failed", label: "Failed" },
+  { id: "cancelled", label: "Cancelled" },
 ] as const;
 
 function StatusBadge({
@@ -99,6 +100,12 @@ function StatusBadge({
           title={error}
         >
           <AlertCircle className="w-3.5 h-3.5" /> Failed
+        </span>
+      );
+    case "cancelled":
+      return (
+        <span className="inline-flex items-center gap-1 text-muted-foreground font-semibold">
+          <XCircle className="w-3.5 h-3.5" /> Cancelled
         </span>
       );
     default:

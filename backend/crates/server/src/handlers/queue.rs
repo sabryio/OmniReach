@@ -25,7 +25,14 @@ pub async fn list(
     State(state): State<AppState>,
     Query(q): Query<ListQueueQuery>,
 ) -> Result<Json<Vec<QueueItem>>, ApiError> {
+    let start = std::time::Instant::now();
     let items = omnireach_store::queue::list_all(&state.db, q.campaign_id).await?;
+    let elapsed = start.elapsed();
+    tracing::debug!(
+        "GET /api/queue fetched {} entries in {:?}",
+        items.len(),
+        elapsed
+    );
     Ok(Json(items))
 }
 

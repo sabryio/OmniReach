@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 /// GET /api/logs — return most recent `limit` log entries, newest first
 pub async fn list_recent(db: &Db, limit: i64) -> Result<Vec<LogEntry>, StoreError> {
+    let query_start = std::time::Instant::now();
     let rows = sqlx::query!(
         r#"
         SELECT id, timestamp, level, category, message, details
@@ -17,8 +18,11 @@ pub async fn list_recent(db: &Db, limit: i64) -> Result<Vec<LogEntry>, StoreErro
     )
     .fetch_all(db.pool())
     .await?;
+    let query_elapsed = query_start.elapsed();
 
-    rows.into_iter()
+    let parse_start = std::time::Instant::now();
+    let result = rows
+        .into_iter()
         .map(|row| {
             let id_str = row.id.as_deref().unwrap_or("");
             let id = Uuid::parse_str(id_str).map_err(|_| {
@@ -76,7 +80,17 @@ pub async fn list_recent(db: &Db, limit: i64) -> Result<Vec<LogEntry>, StoreErro
                 details,
             })
         })
-        .collect()
+        .collect();
+    let parse_elapsed = parse_start.elapsed();
+
+    tracing::debug!(
+        "logs::list_recent: query={:?}, parse={:?}, total={:?}",
+        query_elapsed,
+        parse_elapsed,
+        query_start.elapsed()
+    );
+
+    result
 }
 
 /// INSERT a single log entry

@@ -32,6 +32,7 @@ function QueueRoute() {
   const { cancelQueueItem } = useCancelQueueItem();
   const [schedulerState] = useState<SchedulerState>(DEFAULT_SCHEDULER);
 
+  // Show loading only if QUEUE is loading (logs can load in background)
   if (queueLoading || logsLoading) {
     return (
       <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">

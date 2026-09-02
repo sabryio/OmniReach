@@ -16,9 +16,9 @@ export const sessionRateQuotaSchema = z.object({
   isHourlyCapped: z.boolean(),
   isDailyCapped: z.boolean(),
   canSend: z.boolean(),
-  nextHourlySlotMs: z.number().nullable().optional(),
-  nextDailySlotMs: z.number().nullable().optional(),
-  reason: z.string().nullable().optional(),
+  nextHourlySlotMs: z.number().nullable(),
+  nextDailySlotMs: z.number().nullable(),
+  reason: z.string().nullable(),
 });
 
 export type SessionRateQuota = z.infer<typeof sessionRateQuotaSchema>;

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import type {
   Template,
   CreateTemplateInput,
@@ -28,6 +28,20 @@ export function useTemplateManager(
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
     initialTemplates[0]?.id ?? "",
   );
+
+  // Sync templates when they load from backend
+  useEffect(() => {
+    if (initialTemplates.length > 0) {
+      setTemplates(initialTemplates);
+      if (
+        !selectedTemplateId ||
+        !initialTemplates.find((t) => t.id === selectedTemplateId)
+      ) {
+        setSelectedTemplateId(initialTemplates[0]?.id ?? "");
+      }
+    }
+  }, [initialTemplates, selectedTemplateId]);
+
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -186,10 +200,13 @@ export function useTemplateManager(
           // Create new template via backend
           const input: CreateTemplateInput = {
             title,
+            titleAr: null,
             category,
+            categoryAr: null,
             text,
-            imageUrl,
-            imageFileName,
+            textAr: null,
+            imageUrl: imageUrl ?? null,
+            imageFileName: imageFileName ?? null,
             suggestedVariables:
               detectedVars.length > 0 ? detectedVars : ["name", "prescription"],
           };
@@ -243,10 +260,13 @@ export function useTemplateManager(
 
       const input: CreateTemplateInput = {
         title: `${tmpl.title} (Copy)`,
+        titleAr: tmpl.titleAr,
         category: tmpl.category,
+        categoryAr: tmpl.categoryAr,
         text: tmpl.text,
-        imageUrl: tmpl.imageUrl ?? undefined,
-        imageFileName: tmpl.imageFileName ?? undefined,
+        textAr: tmpl.textAr,
+        imageUrl: tmpl.imageUrl ?? null,
+        imageFileName: tmpl.imageFileName ?? null,
         suggestedVariables: tmpl.suggestedVariables,
       };
 
@@ -264,13 +284,6 @@ export function useTemplateManager(
     },
     [mutations],
   );
-
-  const handleResetToDefaults = useCallback((defaults: Template[]) => {
-    if (window.confirm("Restore standard default templates?")) {
-      setTemplates(defaults);
-      setSelectedTemplateId(defaults[0]?.id ?? "");
-    }
-  }, []);
 
   return {
     // Template list
@@ -304,6 +317,5 @@ export function useTemplateManager(
     handleSaveTemplate,
     handleDeleteTemplate,
     handleDuplicateTemplate,
-    handleResetToDefaults,
   };
 }

@@ -22,18 +22,18 @@ export const queueItemSchema = z.object({
   campaignTitle: z.string(),
   contactId: z.string().uuid(),
   phone: z.string(),
-  recipientName: z.string().nullable().optional(),
+  recipientName: z.string().nullable(),
   renderedText: z.string(),
-  imageUrl: z.string().nullable().optional(),
+  imageUrl: z.string().nullable(),
   status: queueItemStatusSchema,
-  assignedSessionId: z.string().uuid().nullable().optional(),
+  assignedSessionId: z.string().uuid().nullable(),
   attempts: z.number().int(),
-  lastError: z.string().nullable().optional(),
-  sentAt: z.string().datetime().nullable().optional(),
-  scheduledFor: z.string().datetime().nullable().optional(),
-  rateLimitHoldUntil: z.string().datetime().nullable().optional(),
-  timeWindowHoldUntil: z.string().datetime().nullable().optional(),
-  responsePayload: z.string().nullable().optional(),
+  lastError: z.string().nullable(),
+  sentAt: z.string().datetime().nullable(),
+  scheduledFor: z.string().datetime().nullable(),
+  rateLimitHoldUntil: z.string().datetime().nullable(),
+  timeWindowHoldUntil: z.string().datetime().nullable(),
+  responsePayload: z.string().nullable(),
 });
 
 export const queueSchema = z.array(queueItemSchema);
@@ -63,7 +63,7 @@ export const logEntrySchema = z.object({
   level: logLevelSchema,
   category: logCategorySchema,
   message: z.string(),
-  details: z.record(z.string(), z.unknown()).optional(),
+  details: z.record(z.string(), z.unknown()).nullable(),
 });
 
 export const logsSchema = z.array(logEntrySchema);

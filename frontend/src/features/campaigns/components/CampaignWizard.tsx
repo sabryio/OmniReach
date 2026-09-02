@@ -94,7 +94,7 @@ export function CampaignWizard({
         return {
           ...c,
           verificationStatus: r.is_registered ? "registered" : "unregistered",
-          waId: r.wa_id ?? undefined,
+          waId: r.wa_id ?? null,
         };
       }),
     );

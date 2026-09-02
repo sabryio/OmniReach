@@ -105,9 +105,9 @@ export function useCustomerManager(
                     : "unregistered",
                   waId: isRegistered
                     ? `${contact.normalizedPhone.replace(/\D/g, "")}@s.whatsapp.net`
-                    : undefined,
+                    : null,
                   verificationError: isRegistered
-                    ? undefined
+                    ? null
                     : "Not registered on WhatsApp",
                   verifiedAt: new Date().toISOString(),
                 }
@@ -131,6 +131,7 @@ export function useCustomerManager(
       const clean = newPhone.replace(/\D/g, "");
       const newContact: Contact = {
         id: `cust_${Date.now()}`,
+        campaignId: null,
         name: newName,
         rawPhone: newPhone,
         formattedPhone: clean,
@@ -140,6 +141,9 @@ export function useCustomerManager(
           prescription: newPrescription || "Standard Care",
         },
         verificationStatus: "unverified" as const,
+        verificationError: null,
+        verifiedAt: null,
+        waId: null,
       };
       setContacts((prev) => [newContact, ...prev]);
       setIsAddModalOpen(false);

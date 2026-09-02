@@ -24,7 +24,7 @@ function TemplatesRoute() {
   const { updateTemplateAsync } = useUpdateTemplate();
   const { deleteTemplateAsync } = useDeleteTemplate();
 
-  // UI state layer — pass mutations explicitly
+  // UI state layer — pass templates from query and mutations explicitly
   const templateManager = useTemplateManager(templates, {
     createTemplateAsync,
     updateTemplateAsync,
@@ -46,7 +46,6 @@ function TemplatesRoute() {
   return (
     <TemplatesView
       {...templateManager}
-      defaultTemplates={templates}
       onUseTemplateInCampaign={handleUseTemplateInCampaign}
     />
   );

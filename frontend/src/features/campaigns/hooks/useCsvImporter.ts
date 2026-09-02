@@ -227,8 +227,7 @@ export function useCsvImporter(): UseCsvImporterReturn {
       }
 
       // Extract name
-      const name =
-        row[nameColumn]?.trim() || normalizedPhone.replace("+", "");
+      const name = row[nameColumn]?.trim() || normalizedPhone.replace("+", "");
 
       // Build custom fields (all columns except phone and name)
       const customFields: Record<string, string> = {};
@@ -247,12 +246,16 @@ export function useCsvImporter(): UseCsvImporterReturn {
 
       validContacts.push({
         id: uuidv4(),
+        campaignId: null,
         name,
         rawPhone,
         formattedPhone,
         normalizedPhone,
         customFields,
         verificationStatus: "unverified",
+        verificationError: null,
+        verifiedAt: null,
+        waId: null,
       });
     });
 

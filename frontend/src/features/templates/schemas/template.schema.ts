@@ -13,13 +13,13 @@ import { z } from "zod";
 export const templateSchema = z.object({
   id: z.string().uuid(),
   title: z.string().min(1),
-  titleAr: z.string().nullable().optional(),
+  titleAr: z.string().nullable(),
   category: z.string().min(1),
-  categoryAr: z.string().nullable().optional(),
+  categoryAr: z.string().nullable(),
   text: z.string().min(1),
-  textAr: z.string().nullable().optional(),
-  imageUrl: z.string().url().nullable().optional(),
-  imageFileName: z.string().nullable().optional(),
+  textAr: z.string().nullable(),
+  imageUrl: z.string().url().nullable(),
+  imageFileName: z.string().nullable(),
   suggestedVariables: z.array(z.string()),
   createdAt: z.string().datetime(), // ISO 8601 from Rust DateTime<Utc> — always present
   updatedAt: z.string().datetime(), // ISO 8601 from Rust DateTime<Utc> — always present
@@ -35,13 +35,13 @@ export const templatesSchema = z.array(templateSchema);
  */
 export const createTemplateInputSchema = z.object({
   title: z.string().min(1),
-  titleAr: z.string().nullable().optional(),
+  titleAr: z.string().nullable(),
   category: z.string().min(1),
-  categoryAr: z.string().nullable().optional(),
+  categoryAr: z.string().nullable(),
   text: z.string().min(1),
-  textAr: z.string().nullable().optional(),
-  imageUrl: z.string().url().nullable().optional(),
-  imageFileName: z.string().nullable().optional(),
+  textAr: z.string().nullable(),
+  imageUrl: z.string().url().nullable(),
+  imageFileName: z.string().nullable(),
   suggestedVariables: z.array(z.string()).default([]),
 });
 

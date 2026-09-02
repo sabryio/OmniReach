@@ -1,6 +1,9 @@
 import type { Campaign } from "@/features/campaigns/schemas/campaign.schema";
 import type { SchedulerState } from "@/features/layout/schemas/layout.schema";
-import type { LogEntry, QueueItem } from "@/features/queue/schemas/queue.schema";
+import type {
+  LogEntry,
+  QueueItem,
+} from "@/features/queue/schemas/queue.schema";
 import type { Session } from "@/features/sessions/schemas/session.schema";
 import type { SessionRateQuota } from "../schemas/dashboard.schema";
 
@@ -46,6 +49,9 @@ function getSessionQuota(session: Session): SessionRateQuota {
     isHourlyCapped,
     isDailyCapped,
     canSend,
+    nextHourlySlotMs: null,
+    nextDailySlotMs: null,
+    reason: null,
   };
 }
 

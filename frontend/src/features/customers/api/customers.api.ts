@@ -25,12 +25,16 @@ export async function createContact(
   const clean = params.rawPhone.replace(/\D/g, "");
   const newContact: Contact = {
     id: `cust_${Date.now()}`,
+    campaignId: null,
     name: params.name,
     rawPhone: params.rawPhone,
     formattedPhone: clean,
     normalizedPhone: `+${clean}`,
     customFields: params.customFields ?? {},
     verificationStatus: "unverified",
+    verificationError: null,
+    verifiedAt: null,
+    waId: null,
   };
   return newContact;
 }

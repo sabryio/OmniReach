@@ -1,7 +1,9 @@
 /**
  * QueueTab — Live send queue with status filtering, search, and payload inspector
  * REFACTORED: Now purely presentational, receives all state as props
+ * OPTIMIZED: Memoized to prevent unnecessary re-renders
  */
+import { memo } from "react";
 import {
   Filter,
   Search,
@@ -104,7 +106,7 @@ function StatusBadge({
   }
 }
 
-export function QueueTab({
+export const QueueTab = memo(function QueueTab({
   queueFilter,
   setQueueFilter,
   searchQuery,
@@ -294,4 +296,4 @@ export function QueueTab({
       )}
     </div>
   );
-}
+});

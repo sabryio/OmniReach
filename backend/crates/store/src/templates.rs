@@ -13,7 +13,7 @@ pub async fn list_all(_db: &Db) -> Result<Vec<Template>, StoreError> {
     let now = Utc::now();
     let mock_templates = vec![
         Template {
-            id: Uuid::parse_str("11111111-1111-1111-1111-111111111111").unwrap(),
+            id: Uuid::new_v4(),
             title: "Prescription Ready for Pickup".to_string(),
             title_ar: None,
             category: "Pharmacy".to_string(),
@@ -27,7 +27,7 @@ pub async fn list_all(_db: &Db) -> Result<Vec<Template>, StoreError> {
             updated_at: now - chrono::Duration::days(30),
         },
         Template {
-            id: Uuid::parse_str("22222222-2222-2222-2222-222222222222").unwrap(),
+            id: Uuid::new_v4(),
             title: "Lab Results Available".to_string(),
             title_ar: None,
             category: "Lab Results".to_string(),
@@ -41,7 +41,7 @@ pub async fn list_all(_db: &Db) -> Result<Vec<Template>, StoreError> {
             updated_at: now - chrono::Duration::days(25),
         },
         Template {
-            id: Uuid::parse_str("33333333-3333-3333-3333-333333333333").unwrap(),
+            id: Uuid::new_v4(),
             title: "Flu Vaccine Reminder".to_string(),
             title_ar: None,
             category: "Vaccination".to_string(),
@@ -55,7 +55,7 @@ pub async fn list_all(_db: &Db) -> Result<Vec<Template>, StoreError> {
             updated_at: now - chrono::Duration::days(20),
         },
         Template {
-            id: Uuid::parse_str("44444444-4444-4444-4444-444444444444").unwrap(),
+            id: Uuid::new_v4(),
             title: "VIP Membership Benefits".to_string(),
             title_ar: None,
             category: "VIP Care".to_string(),
@@ -69,7 +69,7 @@ pub async fn list_all(_db: &Db) -> Result<Vec<Template>, StoreError> {
             updated_at: now - chrono::Duration::days(15),
         },
         Template {
-            id: Uuid::parse_str("55555555-5555-5555-5555-555555555555").unwrap(),
+            id: Uuid::new_v4(),
             title: "Refill Reminder".to_string(),
             title_ar: None,
             category: "Refill Reminder".to_string(),

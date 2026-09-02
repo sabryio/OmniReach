@@ -25,7 +25,7 @@ export const sessionSchema = z.object({
   dailyLimit: z.number().int().nonnegative(),
   hourlySentTimestamps: z.array(z.number().int()),
   dailySentTimestamps: z.array(z.number().int()),
-  lastActivityAt: z.string().datetime().nullable().optional(), // ISO 8601 from Rust DateTime<Utc>
+  lastActivityAt: z.string().datetime().nullable(), // ISO 8601 from Rust DateTime<Utc>
 });
 
 /**

@@ -23,31 +23,31 @@ export const contactVerificationStatusSchema = z.enum([
 
 export const contactSchema = z.object({
   id: z.string().uuid(),
-  campaignId: z.string().uuid().nullable().optional(), // nullable for standalone contacts
+  campaignId: z.string().uuid().nullable(), // nullable for standalone contacts
   name: z.string(),
   rawPhone: z.string(),
   formattedPhone: z.string(),
   normalizedPhone: z.string(),
   customFields: z.record(z.string(), z.string()),
   verificationStatus: contactVerificationStatusSchema,
-  verificationError: z.string().nullable().optional(),
-  verifiedAt: z.string().datetime().nullable().optional(),
-  waId: z.string().nullable().optional(),
+  verificationError: z.string().nullable(),
+  verifiedAt: z.string().datetime().nullable(),
+  waId: z.string().nullable(),
 });
 
 export const campaignSchema = z.object({
   id: z.string().uuid(),
   title: z.string(),
   templateText: z.string(),
-  imageUrl: z.string().nullable().optional(),
-  imageFileName: z.string().nullable().optional(),
-  mediaRef: z.string().nullable().optional(), // WABridge media reference from upload
+  imageUrl: z.string().nullable(),
+  imageFileName: z.string().nullable(),
+  mediaRef: z.string().nullable(), // WABridge media reference from upload
   sessionIds: z.array(z.string().uuid()),
   status: campaignStatusSchema,
   createdAt: z.string().datetime(),
-  startedAt: z.string().datetime().nullable().optional(),
-  completedAt: z.string().datetime().nullable().optional(),
-  scheduledFor: z.string().datetime().nullable().optional(),
+  startedAt: z.string().datetime().nullable(),
+  completedAt: z.string().datetime().nullable(),
+  scheduledFor: z.string().datetime().nullable(),
   totalContacts: z.number().int(),
   verifiedContacts: z.number().int(),
   unregisteredCount: z.number().int(),
@@ -55,7 +55,7 @@ export const campaignSchema = z.object({
   skippedCount: z.number().int(),
   failedCount: z.number().int(),
   isArchived: z.boolean(),
-  archivedAt: z.string().datetime().nullable().optional(),
+  archivedAt: z.string().datetime().nullable(),
   contacts: z.array(contactSchema),
 });
 
@@ -64,8 +64,8 @@ export const campaignsSchema = z.array(campaignSchema);
 export const createCampaignInputSchema = z.object({
   title: z.string().min(1),
   templateText: z.string().min(1),
-  imageUrl: z.string().url().nullable().optional(),
-  mediaRef: z.string().nullable().optional(),
+  imageUrl: z.string().url().nullable(),
+  mediaRef: z.string().nullable(),
   sessionIds: z.array(z.string().uuid()),
   contacts: z.array(
     z.object({
@@ -75,7 +75,7 @@ export const createCampaignInputSchema = z.object({
       normalizedPhone: z.string(),
       customFields: z.record(z.string(), z.string()).default({}),
       verificationStatus: contactVerificationStatusSchema.optional(),
-      waId: z.string().nullable().optional(),
+      waId: z.string().nullable(),
     }),
   ),
   status: campaignStatusSchema.optional(),

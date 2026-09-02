@@ -11,7 +11,14 @@ use omnireach_core::types::LogEntry;
 /// GET /api/logs
 /// Returns the most recent 500 log entries, newest first.
 pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<LogEntry>>, ApiError> {
+    let start = std::time::Instant::now();
     let logs = omnireach_store::logs::list_recent(&state.db, 500).await?;
+    let elapsed = start.elapsed();
+    tracing::debug!(
+        "GET /api/logs fetched {} entries in {:?}",
+        logs.len(),
+        elapsed
+    );
     Ok(Json(logs))
 }
 

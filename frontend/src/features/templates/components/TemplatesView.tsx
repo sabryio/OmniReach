@@ -18,7 +18,6 @@ import {
   Search,
   Sparkles,
   Tag,
-  Clock,
   Layers,
 } from "lucide-react";
 import type { Template } from "../schemas/template.schema";
@@ -109,15 +108,9 @@ interface TemplatesViewProps {
   handleInsertVariable: (tag: string) => void;
   handleSaveTemplate: (e: React.FormEvent) => void;
   handleDeleteTemplate: (id: string, e?: React.MouseEvent) => void;
-  handleDuplicateTemplate: (
-    tmpl: Template,
-    e?: React.MouseEvent,
-  ) => void;
-  handleResetToDefaults: (defaults: Template[]) => void;
+  handleDuplicateTemplate: (tmpl: Template, e?: React.MouseEvent) => void;
   // Navigation
   onUseTemplateInCampaign: (template: Template) => void;
-  // Default templates passed from route (for reset)
-  defaultTemplates: Template[];
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -148,9 +141,7 @@ export function TemplatesView({
   handleSaveTemplate,
   handleDeleteTemplate,
   handleDuplicateTemplate,
-  handleResetToDefaults,
   onUseTemplateInCampaign,
-  defaultTemplates,
 }: TemplatesViewProps) {
   return (
     <div className="space-y-4 max-w-full">
@@ -176,15 +167,6 @@ export function TemplatesView({
         </div>
 
         <div className="flex items-center gap-2 self-start md:self-auto">
-          <button
-            type="button"
-            onClick={() => handleResetToDefaults(defaultTemplates)}
-            className="px-2.5 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground text-xs border border-border transition-colors flex items-center gap-1"
-            title="Restore Default Templates"
-          >
-            <Clock className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Reset Defaults</span>
-          </button>
           <button
             type="button"
             id="btn-create-new-template"

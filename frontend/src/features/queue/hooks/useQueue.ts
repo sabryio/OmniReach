@@ -48,35 +48,42 @@ export function useQueueAndLogs(queue: QueueItem[], logs: LogEntry[]) {
     return { pendingCount, heldCount, sentCount };
   }, [queue]);
 
-  // Filtered queue items
+  // Filtered queue items (optimized: normalize search once)
   const filteredQueue = useMemo(() => {
+    const normalizedSearch = queueSearch.toLowerCase();
     return queue.filter((item) => {
       if (queueFilter !== "all" && item.status !== queueFilter) return false;
-      if (queueSearch) {
-        const q = queueSearch.toLowerCase();
+      if (normalizedSearch) {
+        const recipientLower = item.recipientName?.toLowerCase() || "";
+        const campaignLower = item.campaignTitle.toLowerCase();
+        const textLower = item.renderedText.toLowerCase();
         return (
-          item.phone.includes(q) ||
-          (item.recipientName &&
-            item.recipientName.toLowerCase().includes(q)) ||
-          item.campaignTitle.toLowerCase().includes(q) ||
-          item.renderedText.toLowerCase().includes(q)
+          item.phone.includes(normalizedSearch) ||
+          recipientLower.includes(normalizedSearch) ||
+          campaignLower.includes(normalizedSearch) ||
+          textLower.includes(normalizedSearch)
         );
       }
       return true;
     });
   }, [queue, queueFilter, queueSearch]);
 
-  // Filtered logs
+  // Filtered logs (optimized: normalize search once)
   const filteredLogs = useMemo(() => {
+    const normalizedSearch = logSearch.toLowerCase();
     return logs.filter((log) => {
       if (categoryFilter !== "all" && log.category !== categoryFilter)
         return false;
-      if (logSearch) {
-        const q = logSearch.toLowerCase();
+      if (normalizedSearch) {
+        const messageLower = log.message.toLowerCase();
+        const categoryLower = log.category.toLowerCase();
+        const detailsStr = log.details
+          ? JSON.stringify(log.details).toLowerCase()
+          : "";
         return (
-          log.message.toLowerCase().includes(q) ||
-          log.category.toLowerCase().includes(q) ||
-          (log.details && JSON.stringify(log.details).toLowerCase().includes(q))
+          messageLower.includes(normalizedSearch) ||
+          categoryLower.includes(normalizedSearch) ||
+          detailsStr.includes(normalizedSearch)
         );
       }
       return true;

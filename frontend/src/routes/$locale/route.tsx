@@ -45,6 +45,7 @@ export const Route = createFileRoute("/$locale")({
 
 const DEFAULT_SCHEDULER: SchedulerState = {
   isRunning: false,
+  isProcessingTick: false, // NEW: tracks active tick processing
   isWithinTimeWindow: true,
   timeWindowText: "9AM–9PM Active",
   currentLocalTimeStr: new Date().toLocaleTimeString(),
@@ -103,9 +104,25 @@ function SharedLayout() {
   const { settings } = useSettingsQuery();
   const { updateSettingsAsync } = useUpdateSettings();
 
-  // Scheduler state (frontend-only for now — no backend endpoint yet)
-  const [schedulerState, setSchedulerState] =
-    useState<SchedulerState>(DEFAULT_SCHEDULER);
+  // Scheduler state with localStorage persistence
+  const [schedulerState, setSchedulerState] = useState<SchedulerState>(() => {
+    // Restore isRunning from localStorage on mount
+    const savedIsRunning = localStorage.getItem(
+      "omnireach:scheduler:isRunning",
+    );
+    return {
+      ...DEFAULT_SCHEDULER,
+      isRunning: savedIsRunning === "true",
+    };
+  });
+
+  // Persist isRunning to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(
+      "omnireach:scheduler:isRunning",
+      String(schedulerState.isRunning),
+    );
+  }, [schedulerState.isRunning]);
 
   // Derive WABridgeConfig from backend settings; fall back to DEFAULT_CONFIG
   const config: WABridgeConfig = settings ? toConfig(settings) : DEFAULT_CONFIG;
@@ -176,6 +193,12 @@ function SharedLayout() {
     onUpdateQueue: () => {},
     onAppendLogs: () => {},
     onUpdateCampaign: () => {},
+    onSetProcessing: (isProcessing) => {
+      setSchedulerState((prev) => ({
+        ...prev,
+        isProcessingTick: isProcessing,
+      }));
+    },
   });
 
   const compactPadding = layout.compactMode ? "p-3" : "p-5";

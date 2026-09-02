@@ -41,6 +41,7 @@ export type WABridgeConfig = z.infer<typeof waBridgeConfigSchema>;
 
 export const schedulerStateSchema = z.object({
   isRunning: z.boolean(),
+  isProcessingTick: z.boolean(), // NEW: true during active /tick API call
   isWithinTimeWindow: z.boolean(),
   timeWindowText: z.string(),
   currentLocalTimeStr: z.string(),

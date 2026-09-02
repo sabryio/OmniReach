@@ -16,11 +16,19 @@ export function AppFooter({ logs, schedulerState }: AppFooterProps) {
 
   return (
     <footer className="h-6 bg-card border-t border-border px-3 flex items-center justify-between shrink-0 text-[10px] select-none z-30 font-mono text-muted-foreground">
-      {/* Left: latest log entry */}
+      {/* Left: scheduler status + latest log entry */}
       <div className="flex items-center gap-3 overflow-hidden">
         <span className="text-muted-foreground uppercase font-bold tracking-wider shrink-0 text-[9px]">
-          Dispatcher:
+          Scheduler:
         </span>
+        <span
+          className={`font-semibold shrink-0 ${
+            schedulerState.isRunning ? "text-success" : "text-destructive"
+          }`}
+        >
+          {schedulerState.isRunning ? "Running" : "Paused"}
+        </span>
+        <span className="text-border shrink-0">|</span>
         <span className="truncate">
           {latest
             ? `[${new Date(latest.timestamp).toLocaleTimeString()}] ${latest.category}: ${latest.message}`

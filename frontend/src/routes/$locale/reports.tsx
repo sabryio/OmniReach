@@ -6,6 +6,7 @@ import { useState } from "react";
 
 const DEFAULT_SCHEDULER: SchedulerState = {
   isRunning: false,
+  isProcessingTick: false,
   isWithinTimeWindow: true,
   timeWindowText: "9AM–9PM Active",
   currentLocalTimeStr: new Date().toLocaleTimeString(),

@@ -89,12 +89,15 @@ export function WindowsTitleBar({
         {/* Dispatcher toggle */}
         <button
           onClick={onToggleScheduler}
-          className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+          className={`px-2 py-1 rounded text-[11px] font-medium transition-colors flex items-center gap-1 ${
             schedulerState.isRunning
-              ? "bg-success/20 text-success border border-success/30"
+              ? "bg-success/20 text-success border border-success/30 animate-pulse"
               : "bg-destructive/20 text-destructive border border-destructive/30"
           }`}
         >
+          {schedulerState.isProcessingTick && (
+            <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping" />
+          )}
           {schedulerState.isRunning ? "▶ Running" : "⏸ Paused"}
         </button>
       </div>

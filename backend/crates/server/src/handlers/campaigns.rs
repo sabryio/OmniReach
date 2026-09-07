@@ -36,6 +36,9 @@ pub async fn create(
     // If campaign status is "running", populate queue with all contacts
     if campaign.status == CampaignStatus::Running {
         for contact in &campaign.contacts {
+            // Render template with contact data BEFORE creating queue item
+            let rendered_text = omnireach_core::renderer::render(&campaign.template_text, contact);
+
             let queue_item = omnireach_store::queue::create_item(
                 &state.db,
                 campaign.id,
@@ -43,7 +46,7 @@ pub async fn create(
                 contact.id,
                 &contact.normalized_phone,
                 &contact.name,
-                &campaign.template_text,
+                &rendered_text, // Use rendered text, not raw template
                 campaign.image_url.as_deref(),
             )
             .await?;

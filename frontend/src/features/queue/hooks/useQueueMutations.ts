@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { QueueQueryKeys, LogQueryKeys } from "../api/queryKeys";
-import { cancelQueueItem, clearLogs } from "../api/queue.api";
+import { cancelQueueItem, retryQueueItem, clearLogs } from "../api/queue.api";
 import { toast } from "sonner";
 
 export function useCancelQueueItem() {
@@ -18,6 +18,25 @@ export function useCancelQueueItem() {
   return {
     cancelQueueItem: mutation.mutate,
     isCancelling: mutation.isPending,
+    error: mutation.error,
+  };
+}
+
+export function useRetryQueueItem() {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: retryQueueItem,
+    onSuccess: () => {
+      toast.success("Queue item requeued for retry");
+      queryClient.invalidateQueries({ queryKey: QueueQueryKeys.all });
+    },
+    onError: (error) => {
+      toast.error(`Failed to retry: ${error.message}`);
+    },
+  });
+  return {
+    retryQueueItem: mutation.mutate,
+    isRetrying: mutation.isPending,
     error: mutation.error,
   };
 }

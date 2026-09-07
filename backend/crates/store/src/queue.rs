@@ -492,6 +492,23 @@ pub async fn requeue_failed(db: &Db, campaign_id: Uuid) -> Result<i64, StoreErro
     Ok(result.rows_affected() as i64)
 }
 
+/// Requeue a single queue item (change status back to pending for retry).
+/// Works for failed, cancelled, or held items.
+pub async fn requeue_item(db: &Db, item_id: Uuid) -> Result<QueueItem, StoreError> {
+    sqlx::query!(
+        r#"
+        UPDATE queue_items
+        SET status = 'pending', last_error = NULL
+        WHERE id = ?
+        "#,
+        item_id.to_string()
+    )
+    .execute(db.pool())
+    .await?;
+
+    get_by_id(db, item_id).await
+}
+
 /// Create a new queue item for a contact in a campaign.
 pub async fn create_item(
     db: &Db,

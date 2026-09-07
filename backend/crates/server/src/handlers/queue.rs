@@ -1,9 +1,10 @@
 //! Queue handlers.
 //!
 //! Route → Handler mapping:
-//!   GET  /api/queue            → list
-//!   GET  /api/queue/stats      → stats
-//!   POST /api/queue/:id/cancel → cancel
+//!   GET  /api/queue              → list
+//!   GET  /api/queue/stats        → stats
+//!   POST /api/queue/:id/cancel   → cancel
+//!   POST /api/queue/:id/retry    → retry
 
 use crate::{error::ApiError, state::AppState};
 use axum::{
@@ -48,6 +49,24 @@ pub async fn cancel(
     Path(id): Path<Uuid>,
 ) -> Result<Json<QueueItem>, ApiError> {
     let item = omnireach_store::queue::cancel(&state.db, id).await?;
+
+    // Emit SSE event for queue item update
+    state.sse.send(crate::sse::SseEvent::QueueItemUpdated {
+        item_id: item.id.to_string(),
+        new_status: item.status.to_string(),
+        campaign_id: item.campaign_id.to_string(),
+    });
+
+    Ok(Json(item))
+}
+
+/// POST /api/queue/:id/retry
+/// Requeue a single failed/cancelled/held item back to pending status.
+pub async fn retry(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<QueueItem>, ApiError> {
+    let item = omnireach_store::queue::requeue_item(&state.db, id).await?;
 
     // Emit SSE event for queue item update
     state.sse.send(crate::sse::SseEvent::QueueItemUpdated {

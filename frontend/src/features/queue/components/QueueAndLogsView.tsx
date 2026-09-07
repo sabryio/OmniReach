@@ -23,6 +23,7 @@ interface QueueAndLogsViewProps {
   schedulerState: SchedulerState;
   onClearLogs: () => void;
   onCancelItem: (id: string) => void;
+  onRetryItem: (id: string) => void;
 }
 
 export function QueueAndLogsView({
@@ -31,6 +32,7 @@ export function QueueAndLogsView({
   schedulerState,
   onClearLogs,
   onCancelItem,
+  onRetryItem,
 }: QueueAndLogsViewProps) {
   const {
     activeTab,
@@ -100,11 +102,10 @@ export function QueueAndLogsView({
         {/* Scheduler pill + sub-tabs */}
         <div className="flex flex-wrap items-center gap-3">
           <div
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold border ${
-              schedulerState.isRunning
-                ? "bg-success/10 text-success border-success/30"
-                : "bg-muted text-muted-foreground border-border"
-            }`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold border ${schedulerState.isRunning
+              ? "bg-success/10 text-success border-success/30"
+              : "bg-muted text-muted-foreground border-border"
+              }`}
           >
             <span
               className={`w-1.5 h-1.5 rounded-full ${schedulerState.isRunning ? "bg-success animate-pulse" : "bg-muted-foreground"}`}
@@ -120,11 +121,10 @@ export function QueueAndLogsView({
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? "bg-primary text-primary-foreground shadow-sm font-bold"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${activeTab === tab.id
+                  ? "bg-primary text-primary-foreground shadow-sm font-bold"
+                  : "text-muted-foreground hover:text-foreground"
+                  }`}
               >
                 {tab.icon}
                 <span>{tab.label}</span>
@@ -175,6 +175,7 @@ export function QueueAndLogsView({
           setSelectedPayload={setSelectedPayload}
           getQueueCountFor={getQueueCountFor}
           onCancelItem={onCancelItem}
+          onRetryItem={onRetryItem}
         />
       )}
       {activeTab === "events" && (

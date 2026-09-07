@@ -46,6 +46,16 @@ export async function cancelQueueItem(id: string): Promise<QueueItem> {
   return queueItemSchema.parse(await response.json());
 }
 
+export async function retryQueueItem(id: string): Promise<QueueItem> {
+  const response = await fetch(`${config.apiBaseUrl}/api/queue/${id}/retry`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${config.authToken}` },
+  });
+  if (!response.ok)
+    throw new Error(`Failed to retry queue item: ${response.statusText}`);
+  return queueItemSchema.parse(await response.json());
+}
+
 // ─── Log Queries ──────────────────────────────────────────────────────────────
 
 export async function getLogs(): Promise<LogEntry[]> {

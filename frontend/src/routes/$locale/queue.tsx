@@ -4,7 +4,10 @@ import {
   useQueueQuery,
   useLogsQuery,
 } from "@/features/queue/hooks/useQueueQuery";
-import { useCancelQueueItem } from "@/features/queue/hooks/useQueueMutations";
+import {
+  useCancelQueueItem,
+  useRetryQueueItem,
+} from "@/features/queue/hooks/useQueueMutations";
 import type { SchedulerState } from "@/features/layout/schemas/layout.schema";
 import { useState } from "react";
 
@@ -31,6 +34,7 @@ function QueueRoute() {
   const { queue, isLoading: queueLoading } = useQueueQuery();
   const { logs, isLoading: logsLoading } = useLogsQuery();
   const { cancelQueueItem } = useCancelQueueItem();
+  const { retryQueueItem } = useRetryQueueItem();
   const [schedulerState] = useState<SchedulerState>(DEFAULT_SCHEDULER);
 
   // Show loading only if QUEUE is loading (logs can load in background)
@@ -47,8 +51,9 @@ function QueueRoute() {
       queue={queue}
       logs={logs}
       schedulerState={schedulerState}
-      onClearLogs={() => {}}
+      onClearLogs={() => { }}
       onCancelItem={(id) => cancelQueueItem(id)}
+      onRetryItem={(id) => retryQueueItem(id)}
     />
   );
 }

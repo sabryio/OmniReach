@@ -15,6 +15,7 @@ import {
   Code,
   X,
   XCircle,
+  RotateCcw,
 } from "lucide-react";
 import type { QueueItem } from "@/features/queue/schemas/queue.schema";
 
@@ -29,6 +30,7 @@ interface QueueTabProps {
   setSelectedPayload: (payload: { title: string; json: string } | null) => void;
   getQueueCountFor: (filterId: string) => number;
   onCancelItem: (id: string) => void;
+  onRetryItem: (id: string) => void;
 }
 
 const QUEUE_FILTERS = [
@@ -123,6 +125,7 @@ export const QueueTab = memo(function QueueTab({
   setSelectedPayload,
   getQueueCountFor,
   onCancelItem,
+  onRetryItem,
 }: QueueTabProps) {
   return (
     <div className="bg-card border border-border rounded-2xl shadow-md overflow-hidden space-y-4 p-4 sm:p-5">
@@ -137,11 +140,10 @@ export const QueueTab = memo(function QueueTab({
               key={f.id}
               type="button"
               onClick={() => setQueueFilter(f.id)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                queueFilter === f.id
-                  ? "bg-primary text-primary-foreground shadow-sm font-semibold"
-                  : "bg-muted/50 text-muted-foreground hover:text-foreground border border-border"
-              }`}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${queueFilter === f.id
+                ? "bg-primary text-primary-foreground shadow-sm font-semibold"
+                : "bg-muted/50 text-muted-foreground hover:text-foreground border border-border"
+                }`}
             >
               {f.label} ({getQueueCountFor(f.id)})
             </button>
@@ -246,19 +248,32 @@ export const QueueTab = memo(function QueueTab({
                           <Code className="w-3.5 h-3.5" />
                         </button>
                       )}
+                      {(item.status === "failed" ||
+                        item.status === "cancelled" ||
+                        item.status === "held_rate_limit" ||
+                        item.status === "held_time_window") && (
+                          <button
+                            type="button"
+                            onClick={() => onRetryItem(item.id)}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-success hover:bg-success/10 transition-colors"
+                            title="Retry this item (requeue as pending)"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       {(item.status === "pending" ||
                         item.status === "held_rate_limit" ||
                         item.status === "held_time_window" ||
                         item.status === "failed") && (
-                        <button
-                          type="button"
-                          onClick={() => onCancelItem(item.id)}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                          title="Cancel this queue item"
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                          <button
+                            type="button"
+                            onClick={() => onCancelItem(item.id)}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                            title="Cancel this queue item"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                     </div>
                   </td>
                 </tr>

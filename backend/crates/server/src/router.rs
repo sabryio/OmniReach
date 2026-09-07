@@ -34,6 +34,7 @@
 //!   GET    /api/queue
 //!   GET    /api/queue/stats
 //!   POST   /api/queue/{id}/cancel
+//!   POST   /api/queue/{id}/retry
 //!
 //!   GET    /api/logs
 //!   DELETE /api/logs
@@ -111,6 +112,7 @@ pub fn build(state: AppState) -> Router {
         .route("/queue", get(queue::list))
         .route("/queue/stats", get(queue::stats))
         .route("/queue/{id}/cancel", post(queue::cancel))
+        .route("/queue/{id}/retry", post(queue::retry))
         // ── Logs ─────────────────────────────────────────────────────────────
         .route("/logs", get(logs::list).delete(logs::clear))
         // ── Settings ─────────────────────────────────────────────────────────

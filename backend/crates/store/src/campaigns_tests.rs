@@ -40,7 +40,7 @@ mod tests {
             .collect()
     }
 
-    fn create_test_campaign_input(
+    fn _create_test_campaign_input(
         title: &str,
         template_text: &str,
         contacts: Vec<CreateContactInput>,

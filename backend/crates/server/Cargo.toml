@@ -8,6 +8,7 @@ omnireach-core = { workspace = true }
 omnireach-store = { workspace = true }
 omnireach-glue = { workspace = true }
 
+rorpc = { workspace = true }
 tokio = { workspace = true }
 axum = { workspace = true }
 tower = { workspace = true }

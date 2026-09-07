@@ -7,6 +7,9 @@ edition.workspace = true
 name = "omnireach"
 path = "src/main.rs"
 
+[package.metadata.rorpc]
+client_path = "../../../frontend/src/rpc/bindings.ts"
+
 [dependencies]
 omnireach-core = { workspace = true }
 omnireach-store = { workspace = true }
@@ -19,3 +22,5 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 dotenvy = { workspace = true }
+
+rorpc = { workspace = true }

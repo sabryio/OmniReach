@@ -25,7 +25,7 @@ tokio = { version = "1", features = ["full"] }
 # HTTP framework
 axum = { version = "0.8.9", features = ["multipart", "macros"] }
 tower = { version = "0.5.3" }
-tower-http = { version = "0.7.0", features = ["cors", "trace"] }
+tower-http = { version = "0.7.1", features = ["cors", "trace"] }
 
 # HTTP client (for WABridge proxy)
 reqwest = { version = "0.13.4", default-features = false, features = [
@@ -64,6 +64,9 @@ dotenvy = "0.15"
 # Async utilities
 futures = "0.3"
 async-trait = "0.1"
+
+# rorpc — type-safe Rust-TypeScript RPC
+rorpc = "0.1.7"
 
 # Internal crates
 omnireach-core = { path = "crates/core" }

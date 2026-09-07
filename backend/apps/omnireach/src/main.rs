@@ -16,6 +16,7 @@ use omnireach_server::{router, sse::SseBroadcaster, state::AppState};
 use omnireach_store::Db;
 use std::net::SocketAddr;
 
+#[rorpc::contract]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // ── Load .env (silently skip if absent) ───────────────────────────────────

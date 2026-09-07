@@ -11,10 +11,11 @@ use axum::{
 };
 use omnireach_glue::GlueError;
 use omnireach_store::StoreError;
+use rorpc::OrpcError;
 use serde_json::json;
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, OrpcError)]
 pub enum ApiError {
     #[error("not found: {0}")]
     NotFound(String),
@@ -40,25 +41,73 @@ pub enum ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        let (status, message) = match &self {
-            ApiError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
-            ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
-            ApiError::Conflict(msg) => (StatusCode::CONFLICT, msg.clone()),
-            ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "unauthorized".to_string()),
+        let (status, code, message) = match &self {
+            ApiError::NotFound(msg) => (
+                StatusCode::NOT_FOUND,
+                "NOT_FOUND",
+                msg.clone(),
+            ),
+            ApiError::BadRequest(msg) => (
+                StatusCode::BAD_REQUEST,
+                "BAD_REQUEST",
+                msg.clone(),
+            ),
+            ApiError::Conflict(msg) => (
+                StatusCode::CONFLICT,
+                "CONFLICT",
+                msg.clone(),
+            ),
+            ApiError::Unauthorized => (
+                StatusCode::UNAUTHORIZED,
+                "UNAUTHORIZED",
+                "Unauthorized".to_string(),
+            ),
             ApiError::Store(e) => match e {
-                StoreError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
-                _ => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+                StoreError::NotFound(msg) => (
+                    StatusCode::NOT_FOUND,
+                    "NOT_FOUND",
+                    msg.clone(),
+                ),
+                _ => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "INTERNAL_ERROR",
+                    e.to_string(),
+                ),
             },
             ApiError::Glue(e) => match e {
-                GlueError::Unregistered(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg.clone()),
-                GlueError::Unauthorized(msg) => (StatusCode::BAD_GATEWAY, msg.clone()),
-                GlueError::RateLimit(msg) => (StatusCode::TOO_MANY_REQUESTS, msg.clone()),
-                GlueError::Timeout(msg) => (StatusCode::GATEWAY_TIMEOUT, msg.clone()),
-                _ => (StatusCode::BAD_GATEWAY, e.to_string()),
+                GlueError::Unregistered(msg) => (
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "UNREGISTERED",
+                    msg.clone(),
+                ),
+                GlueError::Unauthorized(msg) => (
+                    StatusCode::BAD_GATEWAY,
+                    "WABRIDGE_UNAUTHORIZED",
+                    msg.clone(),
+                ),
+                GlueError::RateLimit(msg) => (
+                    StatusCode::TOO_MANY_REQUESTS,
+                    "RATE_LIMIT",
+                    msg.clone(),
+                ),
+                GlueError::Timeout(msg) => (
+                    StatusCode::GATEWAY_TIMEOUT,
+                    "TIMEOUT",
+                    msg.clone(),
+                ),
+                _ => (
+                    StatusCode::BAD_GATEWAY,
+                    "WABRIDGE_ERROR",
+                    e.to_string(),
+                ),
             },
-            ApiError::Internal(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
+            ApiError::Internal(msg) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "INTERNAL_ERROR",
+                msg.clone(),
+            ),
         };
 
-        (status, Json(json!({ "error": message }))).into_response()
+        (status, Json(json!({ "code": code, "message": message }))).into_response()
     }
 }

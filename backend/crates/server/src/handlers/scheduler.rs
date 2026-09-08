@@ -13,12 +13,12 @@ use omnireach_core::types::LogEntry;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, rorpc::ZodTs)]
 pub struct TickRequest {
     pub item_ids: Vec<Uuid>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, rorpc::ZodTs)]
 pub struct ProcessedItem {
     pub item_id: Uuid,
     pub new_status: String,
@@ -27,7 +27,7 @@ pub struct ProcessedItem {
     pub response_payload: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, rorpc::ZodTs)]
 pub struct TickResponse {
     pub processed: Vec<ProcessedItem>,
     pub new_logs: Vec<LogEntry>,
@@ -46,6 +46,7 @@ pub struct TickResponse {
 ///   7. Insert LogEntry per outcome
 ///   8. Emit SSE: QueueItemUpdated per item, QueueStats once at end
 ///   9. Return TickResponse { processed, new_logs }
+#[rorpc::post("/api/scheduler/tick")]
 pub async fn tick(
     State(state): State<AppState>,
     Json(body): Json<TickRequest>,

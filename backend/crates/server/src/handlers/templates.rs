@@ -11,7 +11,6 @@ use crate::{error::ApiError, state::AppState};
 use axum::{
     Json,
     extract::{Path, State},
-    http::StatusCode,
 };
 use omnireach_core::types::{CreateTemplateInput, Template, UpdateTemplateInput};
 use uuid::Uuid;

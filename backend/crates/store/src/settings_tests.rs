@@ -34,7 +34,7 @@ async fn test_load_returns_defaults_when_empty() {
     // Verify default values from AppSettings::default()
     assert_eq!(settings.scheduler_start_hour, 9);
     assert_eq!(settings.scheduler_end_hour, 21);
-    assert_eq!(settings.scheduler_strict_time_window, true);
+    assert!(settings.scheduler_strict_time_window);
     assert_eq!(settings.wabridge_base_url, "http://localhost:7171");
     assert_eq!(settings.wabridge_timeout_ms, 5000);
 }
@@ -93,7 +93,7 @@ async fn test_load_overrides_with_persisted_values() {
 
     assert_eq!(settings.scheduler_start_hour, 6);
     assert_eq!(settings.scheduler_end_hour, 20);
-    assert_eq!(settings.scheduler_strict_time_window, false);
+    assert!(!settings.scheduler_strict_time_window);
     assert_eq!(settings.wabridge_base_url, "http://custom:8080");
     assert_eq!(settings.wabridge_timeout_ms, 60000);
 }
@@ -172,7 +172,7 @@ async fn test_load_parses_bool_true_variants() {
     .unwrap();
 
     let settings = settings::load(&db).await.unwrap();
-    assert_eq!(settings.scheduler_strict_time_window, true);
+    assert!(settings.scheduler_strict_time_window);
 
     // Test "1"
     sqlx::query!(
@@ -185,7 +185,7 @@ async fn test_load_parses_bool_true_variants() {
     .unwrap();
 
     let settings = settings::load(&db).await.unwrap();
-    assert_eq!(settings.scheduler_strict_time_window, true);
+    assert!(settings.scheduler_strict_time_window);
 }
 
 // ─── Save Tests ──────────────────────────────────────────────────────────────
@@ -208,7 +208,7 @@ async fn test_save_persists_all_fields() {
     let loaded = settings::load(&db).await.unwrap();
     assert_eq!(loaded.scheduler_start_hour, 7);
     assert_eq!(loaded.scheduler_end_hour, 21);
-    assert_eq!(loaded.scheduler_strict_time_window, false);
+    assert!(!loaded.scheduler_strict_time_window);
     assert_eq!(loaded.wabridge_base_url, "http://test:9090");
     assert_eq!(loaded.wabridge_timeout_ms, 45000);
 }
@@ -273,7 +273,7 @@ async fn test_update_merges_partial_input() {
 
     // Updated fields
     assert_eq!(updated.scheduler_start_hour, 10);
-    assert_eq!(updated.scheduler_strict_time_window, true);
+    assert!(updated.scheduler_strict_time_window);
     // Preserved fields
     assert_eq!(updated.scheduler_end_hour, 20);
     assert_eq!(updated.wabridge_base_url, "http://initial:8080");
@@ -344,7 +344,7 @@ async fn test_update_all_fields_at_once() {
 
     assert_eq!(updated.scheduler_start_hour, 5);
     assert_eq!(updated.scheduler_end_hour, 23);
-    assert_eq!(updated.scheduler_strict_time_window, false);
+    assert!(!updated.scheduler_strict_time_window);
     assert_eq!(updated.wabridge_base_url, "http://updated:7777");
     assert_eq!(updated.wabridge_timeout_ms, 50000);
 }

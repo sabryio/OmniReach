@@ -6,13 +6,6 @@ import { oc } from "@orpc/contract";
 import { openapi } from "@orpc/openapi";
 import { asyncIteratorObject } from "@orpc/contract";
 
-export const SessionStatusSchema = z.union([
-  z.literal("connected"),
-  z.literal("disconnected")
-]);
-
-export type SessionStatus = z.infer<typeof SessionStatusSchema>;
-
 export const SseEventSchema = z.union([
   z.object({ campaign_created: z.object({ campaign_id: z.string(), title: z.string() }) }),
   z.object({ campaign_status: z.object({ campaign_id: z.string(), status: z.string() }) }),
@@ -27,15 +20,171 @@ export const SseEventSchema = z.union([
 
 export type SseEvent = z.infer<typeof SseEventSchema>;
 
-export const CreateSessionInputSchema = z.object({
-  name: z.string().min(1).max(100),
-  phone_number: z.string().min(1),
-  api_key: z.string().min(1),
-  hourly_limit: z.number().int().optional(),
-  daily_limit: z.number().int().optional()
+export const ProcessedItemSchema = z.object({
+  item_id: z.uuid(),
+  new_status: z.string(),
+  sent_at: z.number().int().optional(),
+  error: z.string().optional(),
+  response_payload: z.string().optional()
 });
 
-export type CreateSessionInput = z.infer<typeof CreateSessionInputSchema>;
+export type ProcessedItem = z.infer<typeof ProcessedItemSchema>;
+
+export const QueueStatsSchema = z.object({
+  pending: z.number().int(),
+  sending: z.number().int(),
+  sent: z.number().int(),
+  failed: z.number().int(),
+  held: z.number().int()
+});
+
+export type QueueStats = z.infer<typeof QueueStatsSchema>;
+
+export const LogLevelSchema = z.union([
+  z.literal("info"),
+  z.literal("warn"),
+  z.literal("error"),
+  z.literal("success")
+]);
+
+export type LogLevel = z.infer<typeof LogLevelSchema>;
+
+export const LogCategorySchema = z.union([
+  z.literal("verification"),
+  z.literal("send"),
+  z.literal("rate_limit"),
+  z.literal("scheduler"),
+  z.literal("session"),
+  z.literal("system")
+]);
+
+export type LogCategory = z.infer<typeof LogCategorySchema>;
+
+export const LogEntrySchema = z.object({
+  id: z.uuid(),
+  timestamp: z.iso.datetime({ offset: true }),
+  level: LogLevelSchema,
+  category: LogCategorySchema,
+  message: z.string().min(1),
+  details: z.record(z.string(), z.unknown()).optional()
+});
+
+export type LogEntry = z.infer<typeof LogEntrySchema>;
+
+export const TickResponseSchema = z.object({
+  processed: z.array(ProcessedItemSchema),
+  new_logs: z.array(LogEntrySchema)
+});
+
+export type TickResponse = z.infer<typeof TickResponseSchema>;
+
+export const VerifyBatchRequestSchema = z.object({
+  session_id: z.string(),
+  phones: z.array(z.string())
+});
+
+export type VerifyBatchRequest = z.infer<typeof VerifyBatchRequestSchema>;
+
+export const AppSettingsSchema = z.object({
+  scheduler_start_hour: z.number().int().min(0).max(23),
+  scheduler_end_hour: z.number().int().min(0).max(23),
+  scheduler_strict_time_window: z.boolean(),
+  wabridge_base_url: z.string().min(1),
+  wabridge_timeout_ms: z.number().int().min(100).max(60000)
+});
+
+export type AppSettings = z.infer<typeof AppSettingsSchema>;
+
+export const TickRequestSchema = z.object({
+  item_ids: z.array(z.uuid())
+});
+
+export type TickRequest = z.infer<typeof TickRequestSchema>;
+
+export const ContactVerificationStatusSchema = z.union([
+  z.literal("unverified"),
+  z.literal("checking"),
+  z.literal("registered"),
+  z.literal("unregistered"),
+  z.literal("error")
+]);
+
+export type ContactVerificationStatus = z.infer<typeof ContactVerificationStatusSchema>;
+
+export const ContactSchema = z.object({
+  id: z.uuid(),
+  campaign_id: z.uuid(),
+  name: z.string().min(1).max(200),
+  raw_phone: z.string(),
+  formatted_phone: z.string(),
+  normalized_phone: z.string().min(1),
+  custom_fields: z.record(z.string(), z.string()),
+  verification_status: ContactVerificationStatusSchema,
+  verification_error: z.string().optional(),
+  verified_at: z.iso.datetime({ offset: true }).optional(),
+  wa_id: z.string().optional()
+});
+
+export type Contact = z.infer<typeof ContactSchema>;
+
+export const CreateContactInputSchema = z.object({
+  name: z.string().min(1).max(200),
+  raw_phone: z.string(),
+  formatted_phone: z.string(),
+  normalized_phone: z.string().min(1),
+  custom_fields: z.record(z.string(), z.string()),
+  verification_status: ContactVerificationStatusSchema.optional(),
+  wa_id: z.string().optional()
+});
+
+export type CreateContactInput = z.infer<typeof CreateContactInputSchema>;
+
+export const CampaignStatusSchema = z.union([
+  z.literal("draft"),
+  z.literal("scheduled"),
+  z.literal("running"),
+  z.literal("paused"),
+  z.literal("completed"),
+  z.literal("cancelled")
+]);
+
+export type CampaignStatus = z.infer<typeof CampaignStatusSchema>;
+
+export const CreateCampaignInputSchema = z.object({
+  title: z.string().min(1).max(200),
+  template_text: z.string().min(1),
+  image_url: z.string().optional(),
+  media_ref: z.string().optional(),
+  session_ids: z.array(z.uuid()),
+  contacts: z.array(CreateContactInputSchema),
+  status: CampaignStatusSchema.optional()
+});
+
+export type CreateCampaignInput = z.infer<typeof CreateCampaignInputSchema>;
+
+export const SessionStatusSchema = z.union([
+  z.literal("connected"),
+  z.literal("disconnected")
+]);
+
+export type SessionStatus = z.infer<typeof SessionStatusSchema>;
+
+export const TemplateSchema = z.object({
+  id: z.uuid(),
+  title: z.string().min(1).max(200),
+  title_ar: z.string().optional(),
+  category: z.string().min(1).max(100),
+  category_ar: z.string().optional(),
+  text: z.string().min(1),
+  text_ar: z.string().optional(),
+  image_url: z.string().optional(),
+  image_file_name: z.string().optional(),
+  suggested_variables: z.array(z.string()),
+  created_at: z.iso.datetime({ offset: true }),
+  updated_at: z.iso.datetime({ offset: true })
+});
+
+export type Template = z.infer<typeof TemplateSchema>;
 
 export const SendTestRequestSchema = z.object({
   phone: z.string(),
@@ -43,6 +192,28 @@ export const SendTestRequestSchema = z.object({
 });
 
 export type SendTestRequest = z.infer<typeof SendTestRequestSchema>;
+
+export const VerifyBatchResponseSchema = z.object({
+  job_id: z.string()
+});
+
+export type VerifyBatchResponse = z.infer<typeof VerifyBatchResponseSchema>;
+
+export const UpdateSettingsInputSchema = z.object({
+  scheduler_start_hour: z.number().int().optional(),
+  scheduler_end_hour: z.number().int().optional(),
+  scheduler_strict_time_window: z.boolean().optional(),
+  wabridge_base_url: z.string().optional(),
+  wabridge_timeout_ms: z.number().int().optional()
+});
+
+export type UpdateSettingsInput = z.infer<typeof UpdateSettingsInputSchema>;
+
+export const ListQueueQuerySchema = z.object({
+  campaign_id: z.uuid().optional()
+});
+
+export type ListQueueQuery = z.infer<typeof ListQueueQuerySchema>;
 
 export const SessionSchema = z.object({
   id: z.uuid(),
@@ -58,8 +229,558 @@ export const SessionSchema = z.object({
 
 export type Session = z.infer<typeof SessionSchema>;
 
+export const CreateTemplateInputSchema = z.object({
+  title: z.string().min(1).max(200),
+  title_ar: z.string().optional(),
+  category: z.string().min(1).max(100),
+  category_ar: z.string().optional(),
+  text: z.string().min(1),
+  text_ar: z.string().optional(),
+  image_url: z.string().optional(),
+  image_file_name: z.string().optional(),
+  suggested_variables: z.array(z.string())
+});
+
+export type CreateTemplateInput = z.infer<typeof CreateTemplateInputSchema>;
+
+export const CreateSessionInputSchema = z.object({
+  name: z.string().min(1).max(100),
+  phone_number: z.string().min(1),
+  api_key: z.string().min(1),
+  hourly_limit: z.number().int().optional(),
+  daily_limit: z.number().int().optional()
+});
+
+export type CreateSessionInput = z.infer<typeof CreateSessionInputSchema>;
+
+export const QueueItemStatusSchema = z.union([
+  z.literal("pending"),
+  z.literal("verifying"),
+  z.literal("sending"),
+  z.literal("sent"),
+  z.literal("skipped_unregistered"),
+  z.literal("failed"),
+  z.literal("held_rate_limit"),
+  z.literal("held_time_window"),
+  z.literal("cancelled")
+]);
+
+export type QueueItemStatus = z.infer<typeof QueueItemStatusSchema>;
+
+export const QueueItemSchema = z.object({
+  id: z.uuid(),
+  campaign_id: z.uuid(),
+  campaign_title: z.string().min(1).max(200),
+  contact_id: z.uuid(),
+  phone: z.string().min(1),
+  recipient_name: z.string().optional(),
+  rendered_text: z.string(),
+  image_url: z.string().optional(),
+  media_ref: z.string().optional(),
+  status: QueueItemStatusSchema,
+  assigned_session_id: z.uuid().optional(),
+  attempts: z.number().int(),
+  last_error: z.string().optional(),
+  sent_at: z.iso.datetime({ offset: true }).optional(),
+  scheduled_for: z.iso.datetime({ offset: true }).optional(),
+  rate_limit_hold_until: z.iso.datetime({ offset: true }).optional(),
+  time_window_hold_until: z.iso.datetime({ offset: true }).optional(),
+  response_payload: z.string().optional()
+});
+
+export type QueueItem = z.infer<typeof QueueItemSchema>;
+
+export const CampaignSchema = z.object({
+  id: z.uuid(),
+  title: z.string().min(1).max(200),
+  template_text: z.string().min(1),
+  image_url: z.string().optional(),
+  image_file_name: z.string().optional(),
+  media_ref: z.string().optional(),
+  session_ids: z.array(z.uuid()),
+  status: CampaignStatusSchema,
+  created_at: z.iso.datetime({ offset: true }),
+  started_at: z.iso.datetime({ offset: true }).optional(),
+  completed_at: z.iso.datetime({ offset: true }).optional(),
+  scheduled_for: z.iso.datetime({ offset: true }).optional(),
+  total_contacts: z.number().int(),
+  verified_contacts: z.number().int(),
+  unregistered_count: z.number().int(),
+  sent_count: z.number().int(),
+  skipped_count: z.number().int(),
+  failed_count: z.number().int(),
+  is_archived: z.boolean(),
+  archived_at: z.iso.datetime({ offset: true }).optional(),
+  contacts: z.array(ContactSchema)
+});
+
+export type Campaign = z.infer<typeof CampaignSchema>;
+
+export const UpdateTemplateInputSchema = z.object({
+  title: z.string().optional(),
+  title_ar: z.string().optional(),
+  category: z.string().optional(),
+  category_ar: z.string().optional(),
+  text: z.string().optional(),
+  text_ar: z.string().optional(),
+  image_url: z.string().optional(),
+  image_file_name: z.string().optional(),
+  suggested_variables: z.array(z.string()).optional()
+});
+
+export type UpdateTemplateInput = z.infer<typeof UpdateTemplateInputSchema>;
+
+export const UploadResponseSchema = z.object({
+  media_ref: z.string(),
+  expires_at: z.string(),
+  url: z.string()
+});
+
+export type UploadResponse = z.infer<typeof UploadResponseSchema>;
+
 export const contract = {
-  api: {
+  campaigns: {
+    retryFailed: oc
+      .meta(openapi({ method: "POST", path: "/api/campaigns/{id}/retry-failed" }))
+      .input(z.object({ id: z.uuid() }))
+      .output(z.record(z.string(), z.unknown()))
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    unarchive: oc
+      .meta(openapi({ method: "POST", path: "/api/campaigns/{id}/unarchive" }))
+      .input(z.object({ id: z.uuid() }))
+      .output(CampaignSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    archive: oc
+      .meta(openapi({ method: "POST", path: "/api/campaigns/{id}/archive" }))
+      .input(z.object({ id: z.uuid() }))
+      .output(CampaignSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    resume: oc
+      .meta(openapi({ method: "POST", path: "/api/campaigns/{id}/resume" }))
+      .input(z.object({ id: z.uuid() }))
+      .output(CampaignSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    pause: oc
+      .meta(openapi({ method: "POST", path: "/api/campaigns/{id}/pause" }))
+      .input(z.object({ id: z.uuid() }))
+      .output(CampaignSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    destroy: oc
+      .meta(openapi({ method: "DELETE", path: "/api/campaigns/{id}" }))
+      .input(z.object({ id: z.uuid() }))
+      .output(z.void())
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    update: oc
+      .meta(openapi({ method: "PATCH", path: "/api/campaigns/{id}" }))
+      .input(z.object({ id: z.uuid() }))
+      .output(CampaignSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    create: oc
+      .meta(openapi({ method: "POST", path: "/api/campaigns" }))
+      .input(CreateCampaignInputSchema)
+      .output(CampaignSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    list: oc
+      .meta(openapi({ method: "GET", path: "/api/campaigns" }))
+      .input(z.void())
+      .output(z.array(CampaignSchema))
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+  },
+  contacts: {
+    verifyBatch: oc
+      .meta(openapi({ method: "POST", path: "/api/contacts/verify-batch" }))
+      .input(VerifyBatchRequestSchema)
+      .output(VerifyBatchResponseSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+  },
+  events: {
+    events: oc
+      .meta(openapi({ method: "GET", path: "/api/events" }))
+      .input(z.void())
+      .output(asyncIteratorObject(SseEventSchema)),
+  },
+  logs: {
+    clear: oc
+      .meta(openapi({ method: "DELETE", path: "/api/logs" }))
+      .input(z.void())
+      .output(z.void())
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    list: oc
+      .meta(openapi({ method: "GET", path: "/api/logs" }))
+      .input(z.void())
+      .output(z.array(LogEntrySchema))
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+  },
+  queue: {
+    retry: oc
+      .meta(openapi({ method: "POST", path: "/api/queue/{id}/retry" }))
+      .input(z.object({ id: z.uuid() }))
+      .output(QueueItemSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    cancel: oc
+      .meta(openapi({ method: "POST", path: "/api/queue/{id}/cancel" }))
+      .input(z.object({ id: z.uuid() }))
+      .output(QueueItemSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    stats: oc
+      .meta(openapi({ method: "GET", path: "/api/queue/stats" }))
+      .input(z.void())
+      .output(QueueStatsSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    list: oc
+      .meta(openapi({ method: "GET", path: "/api/queue" }))
+      .input(ListQueueQuerySchema)
+      .output(z.array(QueueItemSchema))
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+  },
+  scheduler: {
+    tick: oc
+      .meta(openapi({ method: "POST", path: "/api/scheduler/tick" }))
+      .input(TickRequestSchema)
+      .output(TickResponseSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+  },
+  sessions: {
     sendTest: oc
       .meta(openapi({ method: "POST", path: "/api/sessions/{id}/send-test" }))
       .input(z.object({ id: z.uuid() }).extend(SendTestRequestSchema.shape))
@@ -185,10 +906,6 @@ export const contract = {
           data: z.string()
         }
       }),
-    events: oc
-      .meta(openapi({ method: "GET", path: "/api/events" }))
-      .input(z.void())
-      .output(asyncIteratorObject(SseEventSchema)),
     create: oc
       .meta(openapi({ method: "POST", path: "/api/sessions" }))
       .input(CreateSessionInputSchema)
@@ -243,6 +960,185 @@ export const contract = {
       .meta(openapi({ method: "GET", path: "/api/sessions" }))
       .input(z.void())
       .output(z.array(SessionSchema))
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+  },
+  settings: {
+    update: oc
+      .meta(openapi({ method: "PATCH", path: "/api/settings" }))
+      .input(UpdateSettingsInputSchema)
+      .output(AppSettingsSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    load: oc
+      .meta(openapi({ method: "GET", path: "/api/settings" }))
+      .input(z.void())
+      .output(AppSettingsSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+  },
+  templates: {
+    destroy: oc
+      .meta(openapi({ method: "DELETE", path: "/api/templates/{id}" }))
+      .input(z.object({ id: z.uuid() }))
+      .output(z.void())
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    update: oc
+      .meta(openapi({ method: "PATCH", path: "/api/templates/{id}" }))
+      .input(z.object({ id: z.uuid() }).extend(UpdateTemplateInputSchema.shape))
+      .output(TemplateSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    create: oc
+      .meta(openapi({ method: "POST", path: "/api/templates" }))
+      .input(CreateTemplateInputSchema)
+      .output(TemplateSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    getById: oc
+      .meta(openapi({ method: "GET", path: "/api/templates/{id}" }))
+      .input(z.object({ id: z.uuid() }))
+      .output(TemplateSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    list: oc
+      .meta(openapi({ method: "GET", path: "/api/templates" }))
+      .input(z.void())
+      .output(z.array(TemplateSchema))
       .errors({
         NOT_FOUND: {
           data: z.string()

@@ -42,32 +42,16 @@ pub enum ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, code, message) = match &self {
-            ApiError::NotFound(msg) => (
-                StatusCode::NOT_FOUND,
-                "NOT_FOUND",
-                msg.clone(),
-            ),
-            ApiError::BadRequest(msg) => (
-                StatusCode::BAD_REQUEST,
-                "BAD_REQUEST",
-                msg.clone(),
-            ),
-            ApiError::Conflict(msg) => (
-                StatusCode::CONFLICT,
-                "CONFLICT",
-                msg.clone(),
-            ),
+            ApiError::NotFound(msg) => (StatusCode::NOT_FOUND, "NOT_FOUND", msg.clone()),
+            ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "BAD_REQUEST", msg.clone()),
+            ApiError::Conflict(msg) => (StatusCode::CONFLICT, "CONFLICT", msg.clone()),
             ApiError::Unauthorized => (
                 StatusCode::UNAUTHORIZED,
                 "UNAUTHORIZED",
                 "Unauthorized".to_string(),
             ),
             ApiError::Store(e) => match e {
-                StoreError::NotFound(msg) => (
-                    StatusCode::NOT_FOUND,
-                    "NOT_FOUND",
-                    msg.clone(),
-                ),
+                StoreError::NotFound(msg) => (StatusCode::NOT_FOUND, "NOT_FOUND", msg.clone()),
                 _ => (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "INTERNAL_ERROR",
@@ -85,21 +69,11 @@ impl IntoResponse for ApiError {
                     "WABRIDGE_UNAUTHORIZED",
                     msg.clone(),
                 ),
-                GlueError::RateLimit(msg) => (
-                    StatusCode::TOO_MANY_REQUESTS,
-                    "RATE_LIMIT",
-                    msg.clone(),
-                ),
-                GlueError::Timeout(msg) => (
-                    StatusCode::GATEWAY_TIMEOUT,
-                    "TIMEOUT",
-                    msg.clone(),
-                ),
-                _ => (
-                    StatusCode::BAD_GATEWAY,
-                    "WABRIDGE_ERROR",
-                    e.to_string(),
-                ),
+                GlueError::RateLimit(msg) => {
+                    (StatusCode::TOO_MANY_REQUESTS, "RATE_LIMIT", msg.clone())
+                }
+                GlueError::Timeout(msg) => (StatusCode::GATEWAY_TIMEOUT, "TIMEOUT", msg.clone()),
+                _ => (StatusCode::BAD_GATEWAY, "WABRIDGE_ERROR", e.to_string()),
             },
             ApiError::Internal(msg) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -108,6 +82,14 @@ impl IntoResponse for ApiError {
             ),
         };
 
-        (status, Json(json!({ "code": code, "message": message }))).into_response()
+        (
+            status,
+            Json(json!({
+                "defined": true,
+                "code": code,
+                "message": message
+            })),
+        )
+            .into_response()
     }
 }

@@ -23,7 +23,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Template>>, 
 }
 
 /// GET /api/templates/:id
-pub async fn get(
+pub async fn get_by_id(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Template>, ApiError> {

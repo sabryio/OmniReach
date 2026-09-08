@@ -9,6 +9,7 @@
 //!   data: <json_payload>\n\n
 
 use axum::response::sse::Event;
+use rorpc::ZodTs;
 use serde_json::json;
 use tokio::sync::broadcast::{self, Receiver, Sender};
 
@@ -18,7 +19,8 @@ const CHANNEL_CAPACITY: usize = 256;
 
 /// The named event types emitted over the SSE stream.
 /// Must stay in sync with the TypeScript `openEventStream()` handler in the frontend.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, ZodTs, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "type", content = "data", rename_all = "snake_case")]
 pub enum SseEvent {
     /// A new campaign was created and queued.
     CampaignCreated { campaign_id: String, title: String },

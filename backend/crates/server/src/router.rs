@@ -72,12 +72,12 @@ pub fn build(state: AppState) -> Router {
 
     let api = Router::new()
         // ── SSE stream ──────────────────────────────────────────────────────
-        .route("/events", get(sessions::sse_handler))
+        .route("/events", get(sessions::events))
         // ── Sessions ────────────────────────────────────────────────────────
         .route("/sessions", get(sessions::list).post(sessions::create))
         .route(
             "/sessions/{id}",
-            get(sessions::get)
+            get(sessions::get_by_id)
                 .patch(sessions::update)
                 .delete(sessions::destroy),
         )
@@ -90,7 +90,7 @@ pub fn build(state: AppState) -> Router {
         .route("/templates", get(templates::list).post(templates::create))
         .route(
             "/templates/{id}",
-            get(templates::get)
+            get(templates::get_by_id)
                 .patch(templates::update)
                 .delete(templates::destroy),
         )
@@ -116,7 +116,7 @@ pub fn build(state: AppState) -> Router {
         // ── Logs ─────────────────────────────────────────────────────────────
         .route("/logs", get(logs::list).delete(logs::clear))
         // ── Settings ─────────────────────────────────────────────────────────
-        .route("/settings", get(settings::get).patch(settings::update))
+        .route("/settings", get(settings::load).patch(settings::update))
         // ── Scheduler ────────────────────────────────────────────────────────
         .route("/scheduler/tick", post(scheduler::tick))
         // ── Media ─────────────────────────────────────────────────────────────

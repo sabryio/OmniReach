@@ -13,6 +13,37 @@ export const SessionStatusSchema = z.union([
 
 export type SessionStatus = z.infer<typeof SessionStatusSchema>;
 
+export const SseEventSchema = z.union([
+  z.object({ campaign_created: z.object({ campaign_id: z.string(), title: z.string() }) }),
+  z.object({ campaign_status: z.object({ campaign_id: z.string(), status: z.string() }) }),
+  z.object({ queue_item_updated: z.object({ item_id: z.string(), new_status: z.string(), campaign_id: z.string() }) }),
+  z.object({ queue_item_added: z.object({ item_id: z.string(), campaign_id: z.string(), phone: z.string() }) }),
+  z.object({ queue_stats: z.object({ pending: z.number().int(), sending: z.number().int(), sent: z.number().int(), failed: z.number().int(), held: z.number().int() }) }),
+  z.object({ session_status: z.object({ session_id: z.string(), status: z.string(), qr_code_data: z.string().optional() }) }),
+  z.object({ log_entry: z.record(z.string(), z.unknown()) }),
+  z.object({ contact_verify_progress: z.object({ job_id: z.string(), checked: z.number().int(), total: z.number().int(), registered: z.number().int(), unregistered: z.number().int() }) }),
+  z.object({ contact_verify_complete: z.object({ job_id: z.string(), results: z.record(z.string(), z.unknown()) }) })
+]);
+
+export type SseEvent = z.infer<typeof SseEventSchema>;
+
+export const CreateSessionInputSchema = z.object({
+  name: z.string().min(1).max(100),
+  phone_number: z.string().min(1),
+  api_key: z.string().min(1),
+  hourly_limit: z.number().int().optional(),
+  daily_limit: z.number().int().optional()
+});
+
+export type CreateSessionInput = z.infer<typeof CreateSessionInputSchema>;
+
+export const SendTestRequestSchema = z.object({
+  phone: z.string(),
+  message: z.string()
+});
+
+export type SendTestRequest = z.infer<typeof SendTestRequestSchema>;
+
 export const SessionSchema = z.object({
   id: z.uuid(),
   name: z.string().min(1).max(100),
@@ -27,17 +58,213 @@ export const SessionSchema = z.object({
 
 export type Session = z.infer<typeof SessionSchema>;
 
-export const CreateSessionInputSchema = z.object({
-  name: z.string().min(1).max(100),
-  phone_number: z.string().min(1),
-  api_key: z.string().min(1),
-  hourly_limit: z.number().int().optional(),
-  daily_limit: z.number().int().optional()
-});
-
-export type CreateSessionInput = z.infer<typeof CreateSessionInputSchema>;
-
 export const contract = {
+  api: {
+    sendTest: oc
+      .meta(openapi({ method: "POST", path: "/api/sessions/{id}/send-test" }))
+      .input(z.object({ id: z.uuid() }).extend(SendTestRequestSchema.shape))
+      .output(z.void())
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    resetLimits: oc
+      .meta(openapi({ method: "POST", path: "/api/sessions/{id}/reset-limits" }))
+      .input(z.object({ id: z.uuid() }))
+      .output(SessionSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    sync: oc
+      .meta(openapi({ method: "POST", path: "/api/sessions/{id}/sync" }))
+      .input(z.object({ id: z.uuid() }))
+      .output(SessionSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    destroy: oc
+      .meta(openapi({ method: "DELETE", path: "/api/sessions/{id}" }))
+      .input(z.object({ id: z.uuid() }))
+      .output(z.void())
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    update: oc
+      .meta(openapi({ method: "PATCH", path: "/api/sessions/{id}" }))
+      .input(z.object({ id: z.uuid() }))
+      .output(SessionSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    events: oc
+      .meta(openapi({ method: "GET", path: "/api/events" }))
+      .input(z.void())
+      .output(asyncIteratorObject(SseEventSchema)),
+    create: oc
+      .meta(openapi({ method: "POST", path: "/api/sessions" }))
+      .input(CreateSessionInputSchema)
+      .output(SessionSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    getById: oc
+      .meta(openapi({ method: "GET", path: "/api/sessions/{id}" }))
+      .input(z.object({ id: z.uuid() }))
+      .output(SessionSchema)
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+    list: oc
+      .meta(openapi({ method: "GET", path: "/api/sessions" }))
+      .input(z.void())
+      .output(z.array(SessionSchema))
+      .errors({
+        NOT_FOUND: {
+          data: z.string()
+        },
+        BAD_REQUEST: {
+          data: z.string()
+        },
+        CONFLICT: {
+          data: z.string()
+        },
+        UNAUTHORIZED: {},
+        STORE: {
+          data: z.unknown()
+        },
+        GLUE: {
+          data: z.unknown()
+        },
+        INTERNAL: {
+          data: z.string()
+        }
+      }),
+  },
 } as const;
 
 export type Contract = typeof contract;

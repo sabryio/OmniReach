@@ -10,7 +10,7 @@ use omnireach_core::types::{AppSettings, UpdateSettingsInput};
 
 /// GET /api/settings
 /// Returns all persisted settings, falling back to defaults for missing keys.
-pub async fn get(State(state): State<AppState>) -> Result<Json<AppSettings>, ApiError> {
+pub async fn load(State(state): State<AppState>) -> Result<Json<AppSettings>, ApiError> {
     let settings = omnireach_store::settings::load(&state.db).await?;
     Ok(Json(settings))
 }

@@ -1303,9 +1303,9 @@ dependencies = [
 
 [[package]]
 name = "rorpc"
-version = "0.1.7"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d162be0a14e03cf263fab44e1d976b735857ccdd0869ad7de6ba9076a13217c9"
+checksum = "3fa007a876be2f32ec9769ef8df0bf8778d83c4468fc9b44be6ac345ed7548dd"
 dependencies = [
  "axum",
  "inventory",
@@ -1316,9 +1316,9 @@ dependencies = [
 
 [[package]]
 name = "rorpc-macros"
-version = "0.1.7"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6dbd84e0e6c661da4ee5c892ec985c2bd79fdd98eec5a00882726e10cb76c89"
+checksum = "7e748ceaf9c2621af91cf702d7f5838360baeed135448aedd8eb9c811c332105"
 dependencies = [
  "proc-macro2",
  "rorpc-parse",
@@ -1327,9 +1327,9 @@ dependencies = [
 
 [[package]]
 name = "rorpc-parse"
-version = "0.1.7"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28ba7fc150d336faa9ebb92d4bb9d430f896a1508020f860116349247366b92d"
+checksum = "81655d3e9e2ccdeb6aab8c810c550f359c09c9f4283cd85967810b4615363f72"
 dependencies = [
  "inventory",
  "proc-macro2",

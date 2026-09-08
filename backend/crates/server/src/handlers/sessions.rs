@@ -11,11 +11,10 @@
 //!   POST   /api/sessions/:id/reset-limits   → reset_limits
 //!   POST   /api/sessions/:id/send-test      → send_test
 
-use crate::{error::ApiError, state::AppState};
+use crate::{error::ApiError, sse::SseEvent, state::AppState};
 use axum::{
     Json,
     extract::{Path, State},
-    http::StatusCode,
     response::sse::{Event, KeepAlive, Sse},
 };
 use futures::stream::Stream;
@@ -29,7 +28,8 @@ use uuid::Uuid;
 /// Opens a long-lived SSE connection; streams `SseEvent` frames to the client.
 ///
 /// TODO: implement — subscribe to SseBroadcaster, map to Event, return Sse stream.
-pub async fn sse_handler(
+#[rorpc::get("/api/events", data = "SseEvent")]
+pub async fn events(
     State(state): State<AppState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     use futures::StreamExt;
@@ -46,6 +46,7 @@ pub async fn sse_handler(
 // ── Sessions ──────────────────────────────────────────────────────────────────
 
 /// GET /api/sessions
+#[rorpc::get("/api/sessions")]
 pub async fn list(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<omnireach_core::types::Session>>, ApiError> {
@@ -54,7 +55,8 @@ pub async fn list(
 }
 
 /// GET /api/sessions/:id
-pub async fn get(
+#[rorpc::get("/api/sessions/{id}")]
+pub async fn get_by_id(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<omnireach_core::types::Session>, ApiError> {
@@ -63,17 +65,19 @@ pub async fn get(
 }
 
 /// POST /api/sessions
+#[rorpc::post("/api/sessions")]
 pub async fn create(
     State(state): State<AppState>,
     Json(input): Json<CreateSessionInput>,
-) -> Result<(StatusCode, Json<omnireach_core::types::Session>), ApiError> {
+) -> Result<Json<omnireach_core::types::Session>, ApiError> {
     let session = omnireach_store::sessions::insert(&state.db, input).await?;
     // TODO: emit SSE event for new session
     // state.sse.send(SseEvent::SessionCreated { ... })?;
-    Ok((StatusCode::CREATED, Json(session)))
+    Ok(Json(session))
 }
 
 /// PATCH /api/sessions/:id
+#[rorpc::patch("/api/sessions/{id}")]
 pub async fn update(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -98,17 +102,19 @@ pub async fn update(
 }
 
 /// DELETE /api/sessions/:id
+#[rorpc::delete("/api/sessions/{id}")]
 pub async fn destroy(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<Json<()>, ApiError> {
     omnireach_store::sessions::delete(&state.db, id).await?;
     // TODO: emit SSE event
     // state.sse.send(SseEvent::SessionDeleted { id })?;
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(()))
 }
 
 /// POST /api/sessions/:id/sync
+#[rorpc::post("/api/sessions/{id}/sync")]
 pub async fn sync(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -129,6 +135,7 @@ pub async fn sync(
 }
 
 /// POST /api/sessions/:id/reset-limits
+#[rorpc::post("/api/sessions/{id}/reset-limits")]
 pub async fn reset_limits(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -139,18 +146,19 @@ pub async fn reset_limits(
     Ok(Json(session))
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, rorpc::ZodTs)]
 pub struct SendTestRequest {
     pub phone: String,
     pub message: String,
 }
 
 /// POST /api/sessions/:id/send-test
+#[rorpc::post("/api/sessions/{id}/send-test")]
 pub async fn send_test(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
     Json(body): Json<SendTestRequest>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<Json<()>, ApiError> {
     let now_ms = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -175,7 +183,7 @@ pub async fn send_test(
     let jid = format!("{}@s.whatsapp.net", normalized_phone);
 
     // Send the message FIRST (if this fails, quota is not consumed)
-    state
+    let _message_receipt = state
         .wa
         .send_text(&jid, &body.message, &session.api_key)
         .await?;
@@ -197,5 +205,5 @@ pub async fn send_test(
     };
     omnireach_store::logs::insert(&state.db, log_entry).await?;
 
-    Ok(StatusCode::OK)
+    Ok(Json(()))
 }

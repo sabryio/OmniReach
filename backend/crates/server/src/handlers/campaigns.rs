@@ -15,22 +15,23 @@ use crate::{error::ApiError, state::AppState};
 use axum::{
     Json,
     extract::{Path, State},
-    http::StatusCode,
 };
 use omnireach_core::types::{Campaign, CampaignStatus, CreateCampaignInput};
 use uuid::Uuid;
 
 /// GET /api/campaigns
+#[rorpc::get("/api/campaigns")]
 pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Campaign>>, ApiError> {
     let campaigns = omnireach_store::campaigns::list_all(&state.db).await?;
     Ok(Json(campaigns))
 }
 
 /// POST /api/campaigns
+#[rorpc::post("/api/campaigns")]
 pub async fn create(
     State(state): State<AppState>,
     Json(input): Json<CreateCampaignInput>,
-) -> Result<(StatusCode, Json<Campaign>), ApiError> {
+) -> Result<Json<Campaign>, ApiError> {
     let campaign = omnireach_store::campaigns::insert(&state.db, input).await?;
 
     // If campaign status is "running", populate queue with all contacts
@@ -88,10 +89,11 @@ pub async fn create(
         title: campaign.title.clone(),
     });
 
-    Ok((StatusCode::CREATED, Json(campaign)))
+    Ok(Json(campaign))
 }
 
 /// PATCH /api/campaigns/:id
+#[rorpc::patch("/api/campaigns/{id}")]
 pub async fn update(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -126,16 +128,18 @@ pub async fn update(
 }
 
 /// DELETE /api/campaigns/:id
+#[rorpc::delete("/api/campaigns/{id}")]
 pub async fn destroy(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
-) -> Result<StatusCode, ApiError> {
+) -> Result<Json<()>, ApiError> {
     omnireach_store::campaigns::delete(&state.db, id).await?;
     // TODO: emit SSE event
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(()))
 }
 
 /// POST /api/campaigns/:id/pause
+#[rorpc::post("/api/campaigns/{id}/pause")]
 pub async fn pause(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -153,6 +157,7 @@ pub async fn pause(
 }
 
 /// POST /api/campaigns/:id/resume
+#[rorpc::post("/api/campaigns/{id}/resume")]
 pub async fn resume(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -170,6 +175,7 @@ pub async fn resume(
 }
 
 /// POST /api/campaigns/:id/archive
+#[rorpc::post("/api/campaigns/{id}/archive")]
 pub async fn archive(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -179,6 +185,7 @@ pub async fn archive(
 }
 
 /// POST /api/campaigns/:id/unarchive
+#[rorpc::post("/api/campaigns/{id}/unarchive")]
 pub async fn unarchive(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -188,6 +195,7 @@ pub async fn unarchive(
 }
 
 /// POST /api/campaigns/:id/retry-failed
+#[rorpc::post("/api/campaigns/{id}/retry-failed")]
 pub async fn retry_failed(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,

@@ -47,15 +47,13 @@
 //!   POST   /api/media/upload
 
 use crate::{
-    handlers::{
-        campaigns, contacts, health, logs, media, queue, scheduler, sessions, settings, templates,
-    },
+    handlers::{health, media},
     middleware::auth_middleware,
     state::AppState,
 };
 use axum::{
     Router, middleware,
-    routing::{get, patch, post},
+    routing::{get, post},
 };
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -70,68 +68,26 @@ pub fn build(state: AppState) -> Router {
         .allow_headers(Any)
         .allow_methods(Any);
 
+    // rorpc-generated router (mounts handlers with #[rorpc] attributes)
+    let rorpc_routes = rorpc::router!(state.clone());
+
     let api = Router::new()
-        // ── SSE stream ──────────────────────────────────────────────────────
-        .route("/events", get(sessions::events))
-        // ── Sessions ────────────────────────────────────────────────────────
-        .route("/sessions", get(sessions::list).post(sessions::create))
-        .route(
-            "/sessions/{id}",
-            get(sessions::get_by_id)
-                .patch(sessions::update)
-                .delete(sessions::destroy),
-        )
-        .route("/sessions/{id}/sync", post(sessions::sync))
-        .route("/sessions/{id}/reset-limits", post(sessions::reset_limits))
-        .route("/sessions/{id}/send-test", post(sessions::send_test))
-        // ── Contacts ────────────────────────────────────────────────────────
-        .route("/contacts/verify-batch", post(contacts::verify_batch))
-        // ── Templates ───────────────────────────────────────────────────────
-        .route("/templates", get(templates::list).post(templates::create))
-        .route(
-            "/templates/{id}",
-            get(templates::get_by_id)
-                .patch(templates::update)
-                .delete(templates::destroy),
-        )
-        // ── Campaigns ───────────────────────────────────────────────────────
-        .route("/campaigns", get(campaigns::list).post(campaigns::create))
-        .route(
-            "/campaigns/{id}",
-            patch(campaigns::update).delete(campaigns::destroy),
-        )
-        .route("/campaigns/{id}/pause", post(campaigns::pause))
-        .route("/campaigns/{id}/resume", post(campaigns::resume))
-        .route("/campaigns/{id}/archive", post(campaigns::archive))
-        .route("/campaigns/{id}/unarchive", post(campaigns::unarchive))
-        .route(
-            "/campaigns/{id}/retry-failed",
-            post(campaigns::retry_failed),
-        )
-        // ── Queue ────────────────────────────────────────────────────────────
-        .route("/queue", get(queue::list))
-        .route("/queue/stats", get(queue::stats))
-        .route("/queue/{id}/cancel", post(queue::cancel))
-        .route("/queue/{id}/retry", post(queue::retry))
-        // ── Logs ─────────────────────────────────────────────────────────────
-        .route("/logs", get(logs::list).delete(logs::clear))
-        // ── Settings ─────────────────────────────────────────────────────────
-        .route("/settings", get(settings::load).patch(settings::update))
-        // ── Scheduler ────────────────────────────────────────────────────────
-        .route("/scheduler/tick", post(scheduler::tick))
         // ── Media ─────────────────────────────────────────────────────────────
+        // Keep manual route until rorpc supports multipart/form-data
         .route("/media/upload", post(media::upload))
+        .with_state(state.clone())
+        // ── Merge rorpc routes ───────────────────────────────────────────────
+        .merge(rorpc_routes)
         // ── Auth middleware on all /api routes ────────────────────────────────
         .layer(middleware::from_fn_with_state(
             state.clone(),
             auth_middleware,
-        ))
-        .with_state(state.clone());
+        ));
 
     Router::new()
         .route("/health", get(health::health_check))
+        .with_state(state.clone())
         .nest("/api", api)
         .layer(cors)
         .layer(TraceLayer::new_for_http())
-        .with_state(state)
 }

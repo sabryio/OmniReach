@@ -10,6 +10,7 @@ use omnireach_core::types::{AppSettings, UpdateSettingsInput};
 
 /// GET /api/settings
 /// Returns all persisted settings, falling back to defaults for missing keys.
+#[rorpc::get("/api/settings")]
 pub async fn load(State(state): State<AppState>) -> Result<Json<AppSettings>, ApiError> {
     let settings = omnireach_store::settings::load(&state.db).await?;
     Ok(Json(settings))
@@ -17,6 +18,7 @@ pub async fn load(State(state): State<AppState>) -> Result<Json<AppSettings>, Ap
 
 /// PATCH /api/settings
 /// Merges provided fields into stored settings and persists.
+#[rorpc::patch("/api/settings")]
 pub async fn update(
     State(state): State<AppState>,
     Json(patch): Json<UpdateSettingsInput>,

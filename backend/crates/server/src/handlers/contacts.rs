@@ -4,18 +4,18 @@
 //!   POST /api/contacts/verify-batch → verify_batch
 
 use crate::{error::ApiError, sse::SseEvent, state::AppState};
-use axum::{Json, extract::State, http::StatusCode};
+use axum::{Json, extract::State};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, rorpc::ZodTs)]
 pub struct VerifyBatchRequest {
     pub session_id: String,
     pub phones: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, rorpc::ZodTs)]
 pub struct VerifyBatchResponse {
     pub job_id: String,
 }
@@ -27,10 +27,11 @@ pub struct VerifyBatchResponse {
 /// Progress and results are streamed via SSE:
 ///   event: contact.verify_progress  — after each batch of 100
 ///   event: contact.verify_complete  — when all phones checked
+#[rorpc::post("/api/contacts/verify-batch")]
 pub async fn verify_batch(
     State(state): State<AppState>,
     Json(body): Json<VerifyBatchRequest>,
-) -> Result<(StatusCode, Json<VerifyBatchResponse>), ApiError> {
+) -> Result<Json<VerifyBatchResponse>, ApiError> {
     if body.phones.is_empty() {
         return Err(ApiError::BadRequest("phones list is empty".to_string()));
     }
@@ -168,5 +169,5 @@ pub async fn verify_batch(
         let _ = omnireach_store::logs::insert(&db, log_entry).await;
     });
 
-    Ok((StatusCode::ACCEPTED, Json(VerifyBatchResponse { job_id })))
+    Ok(Json(VerifyBatchResponse { job_id }))
 }

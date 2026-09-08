@@ -1,6 +1,7 @@
 //! Message template domain type.
 
 use chrono::{DateTime, Utc};
+use rorpc::ZodTs;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -8,14 +9,17 @@ use uuid::Uuid;
 ///
 /// Templates support merge tags like `{{name}}` and `{{prescription}}` that are
 /// replaced at send time with contact-specific values.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ZodTs)]
 #[serde(rename_all = "camelCase")]
 pub struct Template {
     pub id: Uuid,
+    #[zod(min_length(1), max_length(200))]
     pub title: String,
     pub title_ar: Option<String>,
+    #[zod(min_length(1), max_length(100))]
     pub category: String,
     pub category_ar: Option<String>,
+    #[zod(min_length(1))]
     pub text: String,
     pub text_ar: Option<String>,
     pub image_url: Option<String>,
@@ -27,13 +31,16 @@ pub struct Template {
 }
 
 /// Input shape for `POST /api/templates`.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, ZodTs)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateTemplateInput {
+    #[zod(min_length(1), max_length(200))]
     pub title: String,
     pub title_ar: Option<String>,
+    #[zod(min_length(1), max_length(100))]
     pub category: String,
     pub category_ar: Option<String>,
+    #[zod(min_length(1))]
     pub text: String,
     pub text_ar: Option<String>,
     pub image_url: Option<String>,
@@ -43,7 +50,7 @@ pub struct CreateTemplateInput {
 }
 
 /// Input shape for `PATCH /api/templates/:id`.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, ZodTs)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateTemplateInput {
     pub title: Option<String>,

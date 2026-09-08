@@ -17,28 +17,32 @@ use axum::{
     extract::{Path, State},
     response::sse::{Event, KeepAlive, Sse},
 };
-use futures::stream::Stream;
+use futures::{StreamExt, stream::Stream};
 use omnireach_core::types::CreateSessionInput;
 use std::convert::Infallible;
+use tokio_stream::wrappers::BroadcastStream;
 use uuid::Uuid;
 
 // ── SSE ───────────────────────────────────────────────────────────────────────
 
 /// GET /api/events
 /// Opens a long-lived SSE connection; streams `SseEvent` frames to the client.
-///
-/// TODO: implement — subscribe to SseBroadcaster, map to Event, return Sse stream.
 #[rorpc::get("/api/events", data = "SseEvent")]
 pub async fn events(
     State(state): State<AppState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    use futures::StreamExt;
-    use tokio_stream::wrappers::BroadcastStream;
-
     let rx = state.sse.subscribe();
-    let stream = BroadcastStream::new(rx)
+
+    // Send initial comment, then broadcast events, then close event
+    let initial = futures::stream::once(async { Ok(Event::default().comment("")) });
+
+    let broadcast = BroadcastStream::new(rx)
         .filter_map(|r| async move { r.ok() })
         .map(|ev| Ok(ev.into_axum_event()));
+
+    let close = futures::stream::once(async { Ok(Event::default().event("close").data("")) });
+
+    let stream = initial.chain(broadcast).chain(close);
 
     Sse::new(stream).keep_alive(KeepAlive::default())
 }

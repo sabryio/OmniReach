@@ -16,12 +16,13 @@ use omnireach_store::queue::QueueStats;
 use serde::Deserialize;
 use uuid::Uuid;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, rorpc::ZodTs)]
 pub struct ListQueueQuery {
     pub campaign_id: Option<Uuid>,
 }
 
 /// GET /api/queue?campaign_id=<uuid>
+#[rorpc::get("/api/queue")]
 pub async fn list(
     State(state): State<AppState>,
     Query(q): Query<ListQueueQuery>,
@@ -38,12 +39,14 @@ pub async fn list(
 }
 
 /// GET /api/queue/stats
+#[rorpc::get("/api/queue/stats")]
 pub async fn stats(State(state): State<AppState>) -> Result<Json<QueueStats>, ApiError> {
     let s = omnireach_store::queue::stats(&state.db).await?;
     Ok(Json(s))
 }
 
 /// POST /api/queue/:id/cancel
+#[rorpc::post("/api/queue/{id}/cancel")]
 pub async fn cancel(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
@@ -62,6 +65,7 @@ pub async fn cancel(
 
 /// POST /api/queue/:id/retry
 /// Requeue a single failed/cancelled/held item back to pending status.
+#[rorpc::post("/api/queue/{id}/retry")]
 pub async fn retry(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,

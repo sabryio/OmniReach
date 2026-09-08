@@ -1,12 +1,13 @@
 //! Contact domain type.
 
 use chrono::{DateTime, Utc};
+use rorpc::ZodTs;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
 /// WhatsApp registration status of a contact.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ZodTs, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum ContactVerificationStatus {
@@ -20,14 +21,16 @@ pub enum ContactVerificationStatus {
 /// Contact domain object.
 /// `custom_fields` holds arbitrary key-value pairs from CSV columns
 /// (e.g. prescription, doctor, date) used for merge-tag substitution.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ZodTs)]
 #[serde(rename_all = "camelCase")]
 pub struct Contact {
     pub id: Uuid,
     pub campaign_id: Uuid,
+    #[zod(min_length(1), max_length(200))]
     pub name: String,
     pub raw_phone: String,
     pub formatted_phone: String,
+    #[zod(min_length(1))]
     pub normalized_phone: String,
     pub custom_fields: HashMap<String, String>,
     pub verification_status: ContactVerificationStatus,
@@ -38,16 +41,18 @@ pub struct Contact {
 }
 
 /// Input shape for a single contact within `CreateCampaignInput`.
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize, Default, ZodTs)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateContactInput {
     #[serde(default)]
+    #[zod(min_length(1), max_length(200))]
     pub name: String,
     #[serde(default)]
     pub raw_phone: String,
     #[serde(default)]
     pub formatted_phone: String,
     #[serde(default)]
+    #[zod(min_length(1))]
     pub normalized_phone: String,
     #[serde(default)]
     pub custom_fields: HashMap<String, String>,

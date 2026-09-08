@@ -1,12 +1,13 @@
 //! Queue item domain type.
 
 use chrono::{DateTime, Utc};
+use rorpc::ZodTs;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use uuid::Uuid;
 
 /// Lifecycle status of a single message dispatch unit.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ZodTs, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum QueueItemStatus {
@@ -38,14 +39,16 @@ impl fmt::Display for QueueItemStatus {
 }
 
 /// A single message dispatch unit — one per contact per campaign.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ZodTs)]
 #[serde(rename_all = "camelCase")]
 pub struct QueueItem {
     pub id: Uuid,
     pub campaign_id: Uuid,
     /// Denormalised title so the queue view doesn't need a join.
+    #[zod(min_length(1), max_length(200))]
     pub campaign_title: String,
     pub contact_id: Uuid,
+    #[zod(min_length(1))]
     pub phone: String,
     pub recipient_name: Option<String>,
     /// Message with merge tags already substituted at campaign creation time.

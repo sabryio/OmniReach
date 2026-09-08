@@ -548,7 +548,7 @@ pub async fn create_item(
 }
 
 /// Aggregated queue status counts.
-#[derive(Debug, Default, serde::Serialize)]
+#[derive(Debug, Default, serde::Serialize, rorpc::ZodTs)]
 pub struct QueueStats {
     pub pending: i64,
     pub sending: i64,

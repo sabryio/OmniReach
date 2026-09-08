@@ -1130,6 +1130,7 @@ dependencies = [
  "chrono",
  "futures",
  "omnireach-core",
+ "rorpc",
  "serde",
  "serde_json",
  "sqlx",

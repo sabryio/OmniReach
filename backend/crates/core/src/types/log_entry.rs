@@ -1,11 +1,12 @@
 //! Log entry domain type.
 
 use chrono::{DateTime, Utc};
+use rorpc::ZodTs;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ZodTs, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum LogLevel {
@@ -15,7 +16,7 @@ pub enum LogLevel {
     Success,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ZodTs, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum LogCategory {
@@ -27,13 +28,14 @@ pub enum LogCategory {
     System,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ZodTs)]
 #[serde(rename_all = "camelCase")]
 pub struct LogEntry {
     pub id: Uuid,
     pub timestamp: DateTime<Utc>,
     pub level: LogLevel,
     pub category: LogCategory,
+    #[zod(min_length(1))]
     pub message: String,
     /// Optional structured metadata — free-form JSON object.
     pub details: Option<Value>,

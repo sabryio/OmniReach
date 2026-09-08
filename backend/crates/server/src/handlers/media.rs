@@ -13,7 +13,7 @@ use axum::{
 };
 use serde::Serialize;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, rorpc::ZodTs)]
 pub struct UploadResponse {
     /// WABridge media reference — opaque token valid for ~2 hours.
     pub media_ref: String,
@@ -30,6 +30,8 @@ pub struct UploadResponse {
 ///   - `media_type`: "image", "video", or "document"
 ///
 /// Returns `{ media_ref, expires_at, url }` where `media_ref` is valid for ~2 hours.
+///
+/// TODO: Add #[rorpc::post("/api/media/upload")] when rorpc supports multipart/form-data
 pub async fn upload(
     State(state): State<AppState>,
     mut multipart: Multipart,

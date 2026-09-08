@@ -2,11 +2,12 @@
 
 use super::contact::{Contact, CreateContactInput};
 use chrono::{DateTime, Utc};
+use rorpc::ZodTs;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Lifecycle status of a broadcast campaign.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ZodTs, sqlx::Type)]
 #[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum CampaignStatus {
@@ -19,11 +20,13 @@ pub enum CampaignStatus {
 }
 
 /// Full campaign domain object — returned by the API and stored in SQLite.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ZodTs)]
 #[serde(rename_all = "camelCase")]
 pub struct Campaign {
     pub id: Uuid,
+    #[zod(min_length(1), max_length(200))]
     pub title: String,
+    #[zod(min_length(1))]
     pub template_text: String,
     pub image_url: Option<String>,
     pub image_file_name: Option<String>,
@@ -50,12 +53,14 @@ pub struct Campaign {
 }
 
 /// Input shape for `POST /api/campaigns`.
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize, Default, ZodTs)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateCampaignInput {
     #[serde(default)]
+    #[zod(min_length(1), max_length(200))]
     pub title: String,
     #[serde(default)]
+    #[zod(min_length(1))]
     pub template_text: String,
     #[serde(default)]
     pub image_url: Option<String>,

@@ -5,11 +5,12 @@
 //!   DELETE /api/logs → clear
 
 use crate::{error::ApiError, state::AppState};
-use axum::{Json, extract::State, http::StatusCode};
+use axum::{Json, extract::State};
 use omnireach_core::types::LogEntry;
 
 /// GET /api/logs
 /// Returns the most recent 500 log entries, newest first.
+#[rorpc::get("/api/logs")]
 pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<LogEntry>>, ApiError> {
     let start = std::time::Instant::now();
     let logs = omnireach_store::logs::list_recent(&state.db, 500).await?;
@@ -24,7 +25,8 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<LogEntry>>, 
 
 /// DELETE /api/logs
 /// Clears all log entries. Returns 204 No Content.
-pub async fn clear(State(state): State<AppState>) -> Result<StatusCode, ApiError> {
+#[rorpc::delete("/api/logs")]
+pub async fn clear(State(state): State<AppState>) -> Result<Json<()>, ApiError> {
     omnireach_store::logs::clear_all(&state.db).await?;
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(()))
 }

@@ -51,9 +51,9 @@ function QueueRoute() {
       queue={queue}
       logs={logs}
       schedulerState={schedulerState}
-      onClearLogs={() => { }}
-      onCancelItem={(id) => cancelQueueItem(id)}
-      onRetryItem={(id) => retryQueueItem(id)}
+      onClearLogs={() => {}}
+      onCancelItem={(id) => cancelQueueItem({ id })}
+      onRetryItem={(id) => retryQueueItem({ id })}
     />
   );
 }

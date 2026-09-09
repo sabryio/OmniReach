@@ -1,22 +1,16 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SessionQueryKeys } from "../api/queryKeys";
-import {
-  createSession,
-  deleteSession,
-  updateSession,
-  sendTestMessage,
-  syncSession,
-  resetSessionLimits,
-} from "../api/sessions.api";
+import { orpc } from "@/rpc";
 
 export function useCreateSession() {
   const queryClient = useQueryClient();
-  const mutation = useMutation({
-    mutationFn: createSession,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SessionQueryKeys.all });
-    },
-  });
+  const mutation = useMutation(
+    orpc.sessions.create.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries(orpc.sessions.list.queryOptions());
+      },
+    }),
+  );
+
   return {
     createSession: mutation.mutate,
     createSessionAsync: mutation.mutateAsync,
@@ -28,12 +22,14 @@ export function useCreateSession() {
 
 export function useDeleteSession() {
   const queryClient = useQueryClient();
-  const mutation = useMutation({
-    mutationFn: deleteSession,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SessionQueryKeys.all });
-    },
-  });
+  const mutation = useMutation(
+    orpc.sessions.destroy.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries(orpc.sessions.list.queryOptions());
+      },
+    }),
+  );
+
   return {
     deleteSession: mutation.mutate,
     deleteSessionAsync: mutation.mutateAsync,
@@ -44,12 +40,19 @@ export function useDeleteSession() {
 
 export function useSyncSession() {
   const queryClient = useQueryClient();
-  const mutation = useMutation({
-    mutationFn: syncSession,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SessionQueryKeys.all });
-    },
-  });
+  const mutation = useMutation(
+    orpc.sessions.sync.mutationOptions({
+      onSuccess: (_, variables) => {
+        // Invalidate specific session detail
+        queryClient.invalidateQueries(
+          orpc.sessions.getById.queryOptions({ input: { id: variables.id } }),
+        );
+        // Invalidate sessions list
+        queryClient.invalidateQueries(orpc.sessions.list.queryOptions());
+      },
+    }),
+  );
+
   return {
     syncSession: mutation.mutate,
     syncSessionAsync: mutation.mutateAsync,
@@ -61,12 +64,19 @@ export function useSyncSession() {
 
 export function useResetSessionLimits() {
   const queryClient = useQueryClient();
-  const mutation = useMutation({
-    mutationFn: resetSessionLimits,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SessionQueryKeys.all });
-    },
-  });
+  const mutation = useMutation(
+    orpc.sessions.resetLimits.mutationOptions({
+      onSuccess: (_, variables) => {
+        // Invalidate specific session detail
+        queryClient.invalidateQueries(
+          orpc.sessions.getById.queryOptions({ input: { id: variables.id } }),
+        );
+        // Invalidate sessions list
+        queryClient.invalidateQueries(orpc.sessions.list.queryOptions());
+      },
+    }),
+  );
+
   return {
     resetLimits: mutation.mutate,
     resetLimitsAsync: mutation.mutateAsync,
@@ -77,12 +87,15 @@ export function useResetSessionLimits() {
 
 export function useSendTestMessage() {
   const queryClient = useQueryClient();
-  const mutation = useMutation({
-    mutationFn: sendTestMessage,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SessionQueryKeys.all });
-    },
-  });
+  const mutation = useMutation(
+    orpc.sessions.sendTest.mutationOptions({
+      onSuccess: () => {
+        // Test message doesn't modify session state, but refresh list anyway
+        queryClient.invalidateQueries(orpc.sessions.list.queryOptions());
+      },
+    }),
+  );
+
   return {
     sendTestMessage: mutation.mutate,
     sendTestMessageAsync: mutation.mutateAsync,
@@ -94,12 +107,19 @@ export function useSendTestMessage() {
 
 export function useUpdateSession() {
   const queryClient = useQueryClient();
-  const mutation = useMutation({
-    mutationFn: updateSession,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SessionQueryKeys.all });
-    },
-  });
+  const mutation = useMutation(
+    orpc.sessions.update.mutationOptions({
+      onSuccess: (_, variables) => {
+        // Invalidate specific session detail
+        queryClient.invalidateQueries(
+          orpc.sessions.getById.queryOptions({ input: { id: variables.id } }),
+        );
+        // Invalidate sessions list
+        queryClient.invalidateQueries(orpc.sessions.list.queryOptions());
+      },
+    }),
+  );
+
   return {
     updateSession: mutation.mutate,
     updateSessionAsync: mutation.mutateAsync,

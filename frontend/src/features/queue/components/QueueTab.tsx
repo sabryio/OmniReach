@@ -17,7 +17,7 @@ import {
   XCircle,
   RotateCcw,
 } from "lucide-react";
-import type { QueueItem } from "@/features/queue/schemas/queue.schema";
+import type { QueueItem } from "@/rpc/bindings";
 
 interface QueueTabProps {
   queue: QueueItem[];
@@ -157,7 +157,7 @@ export const QueueTab = memo(function QueueTab({
             placeholder="Search phone or name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-48 pl-8 pr-3 py-1.5 rounded-lg border border-border bg-muted/30 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+            className="w-48 pl-8 pr-3 py-1.5 rounded-lg border border-border bg-muted/30 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
           />
         </div>
       </div>
@@ -208,10 +208,10 @@ export const QueueTab = memo(function QueueTab({
                     {idx + 1}
                   </td>
                   <td className="px-3 py-2.5 font-medium text-foreground truncate max-w-35">
-                    {item.campaignTitle}
+                    {item.campaign_title}
                   </td>
                   <td className="px-3 py-2.5 font-medium text-foreground">
-                    {item.recipientName || "Customer"}
+                    {item.recipient_name || "Customer"}
                   </td>
                   <td className="px-3 py-2.5 font-mono text-muted-foreground">
                     {item.phone}
@@ -219,27 +219,27 @@ export const QueueTab = memo(function QueueTab({
                   <td className="px-3 py-2.5">
                     <StatusBadge
                       status={item.status}
-                      error={item.lastError ?? undefined}
+                      error={item.last_error ?? undefined}
                     />
                   </td>
                   <td className="px-3 py-2.5 font-mono text-[10px] text-muted-foreground">
-                    {item.assignedSessionId || "Auto-balance"}
+                    {item.assigned_session_id || "Auto-balance"}
                   </td>
                   <td
                     className="px-3 py-2.5 text-muted-foreground truncate max-w-45"
-                    title={item.renderedText}
+                    title={item.rendered_text}
                   >
-                    {item.renderedText}
+                    {item.rendered_text}
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center justify-center gap-1">
-                      {item.responsePayload && (
+                      {item.response_payload && (
                         <button
                           type="button"
                           onClick={() =>
                             setSelectedPayload({
                               title: `Payload — ${item.phone}`,
-                              json: item.responsePayload || "{}",
+                              json: item.response_payload || "{}",
                             })
                           }
                           className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"

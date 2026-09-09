@@ -9,9 +9,9 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
-import type { Session } from "@/features/sessions/schemas/session.schema";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
 import { useQuickVerifier } from "../hooks/useModals";
+import type { Session } from "@/rpc/bindings";
 
 interface QuickVerifierModalProps {
   isOpen: boolean;
@@ -103,7 +103,7 @@ export function QuickVerifierModal({
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="e.g. +966501234567 or +14155550122"
-              className="w-full px-3 py-2 rounded-lg bg-muted border border-border text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              className="w-full px-3 py-2 rounded-lg bg-muted border border-border text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-ring"
             />
             <p className="text-[10px] text-muted-foreground mt-1">
               In simulation mode: numbers ending in '4' simulate non-WhatsApp

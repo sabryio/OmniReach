@@ -3,7 +3,7 @@
  * Placeholder: app icon + name + status pills + theme/lang controls + window buttons
  */
 
-import type { Session } from "@/features/sessions/schemas/session.schema";
+import type { Session } from "@/rpc/bindings";
 import type {
   SchedulerState,
   ThemeColor,

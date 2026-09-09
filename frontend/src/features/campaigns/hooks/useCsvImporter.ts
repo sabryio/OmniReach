@@ -15,7 +15,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Papa from "papaparse";
 import { v4 as uuidv4 } from "uuid";
-import type { Contact } from "../schemas/campaign.schema";
+import type { Contact } from "@/rpc/bindings";
 
 // ─── Phone Normalization Utilities ───────────────────────────────────────────
 
@@ -246,16 +246,13 @@ export function useCsvImporter(): UseCsvImporterReturn {
 
       validContacts.push({
         id: uuidv4(),
-        campaignId: null,
+        campaign_id: "",
         name,
-        rawPhone,
-        formattedPhone,
-        normalizedPhone,
-        customFields,
-        verificationStatus: "unverified",
-        verificationError: null,
-        verifiedAt: null,
-        waId: null,
+        raw_phone: rawPhone,
+        formatted_phone: formattedPhone,
+        normalized_phone: normalizedPhone,
+        custom_fields: customFields,
+        verification_status: "unverified",
       });
     });
 

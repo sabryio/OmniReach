@@ -3,7 +3,7 @@
  * Placeholder: log tail on left + queue count + version on right
  */
 
-import type { LogEntry } from "@/features/queue/schemas/queue.schema";
+import type { LogEntry } from "@/rpc/bindings";
 import type { SchedulerState } from "../schemas/layout.schema";
 
 interface AppFooterProps {

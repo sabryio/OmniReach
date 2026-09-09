@@ -3,7 +3,7 @@
  * Shared helpers for rate-limit calculations
  */
 
-import type { Session } from '../schemas/session.schema'
+import type { Session } from "@/rpc/bindings"
 
 /**
  * Helper to format duration in ms to human-readable string
@@ -27,11 +27,11 @@ export function getSessionQuota(session: Session, now: number) {
   const hourAgo = now - 60 * 60 * 1000
   const dayAgo = now - 24 * 60 * 60 * 1000
 
-  const hourlyUsed = session.hourlySentTimestamps.filter((t) => t > hourAgo).length
-  const dailyUsed = session.dailySentTimestamps.filter((t) => t > dayAgo).length
+  const hourlyUsed = session.hourly_sent_timestamps.filter((t) => t > hourAgo).length
+  const dailyUsed = session.daily_sent_timestamps.filter((t) => t > dayAgo).length
 
-  const hourlyLimit = session.hourlyLimit || 5
-  const dailyLimit = session.dailyLimit || 30
+  const hourlyLimit = session.hourly_limit || 5
+  const dailyLimit = session.daily_limit || 30
 
   const isHourlyCapped = hourlyUsed >= hourlyLimit
   const isDailyCapped = dailyUsed >= dailyLimit
@@ -40,16 +40,16 @@ export function getSessionQuota(session: Session, now: number) {
   const dailyRemaining = Math.max(0, dailyLimit - dailyUsed)
 
   let nextHourlySlotMs: number | null = null
-  if (isHourlyCapped && session.hourlySentTimestamps.length > 0) {
-    const oldest = session.hourlySentTimestamps.filter((t) => t > hourAgo).sort((a, b) => a - b)[0]
+  if (isHourlyCapped && session.hourly_sent_timestamps.length > 0) {
+    const oldest = session.hourly_sent_timestamps.filter((t) => t > hourAgo).sort((a, b) => a - b)[0]
     if (oldest) {
       nextHourlySlotMs = oldest + 60 * 60 * 1000 - now
     }
   }
 
   let nextDailySlotMs: number | null = null
-  if (isDailyCapped && session.dailySentTimestamps.length > 0) {
-    const oldest = session.dailySentTimestamps.filter((t) => t > dayAgo).sort((a, b) => a - b)[0]
+  if (isDailyCapped && session.daily_sent_timestamps.length > 0) {
+    const oldest = session.daily_sent_timestamps.filter((t) => t > dayAgo).sort((a, b) => a - b)[0]
     if (oldest) {
       nextDailySlotMs = oldest + 24 * 60 * 60 * 1000 - now
     }

@@ -3,8 +3,8 @@
  * Eliminates duplicate category lists, filter UIs, and detail modals
  * that were previously copy-pasted across EventStreamTab and LogsTab.
  */
+import type { LogEntry } from "@/rpc/bindings";
 import { X } from "lucide-react";
-import type { LogEntry } from "@/features/queue/schemas/queue.schema";
 
 // ─── Shared category list ─────────────────────────────────────────────────────
 

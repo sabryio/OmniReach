@@ -40,7 +40,6 @@ impl SessionStatus {
 /// QR code pairing is handled entirely by WABridge — OmniReach doesn't store
 /// or display QR codes. Use WABridge console for pairing.
 #[derive(Debug, Clone, Serialize, Deserialize, ZodTs)]
-#[serde(rename_all = "camelCase")]
 pub struct Session {
     pub id: Uuid,
     #[zod(min_length(1), max_length(100))]
@@ -64,7 +63,6 @@ pub struct Session {
 
 /// Input shape for `POST /api/sessions`.
 #[derive(Debug, Clone, Deserialize, ZodTs)]
-#[serde(rename_all = "camelCase")]
 pub struct CreateSessionInput {
     #[zod(min_length(1), max_length(100))]
     pub name: String,
@@ -72,6 +70,16 @@ pub struct CreateSessionInput {
     pub phone_number: String,
     #[zod(min_length(1))]
     pub api_key: String,
+    pub hourly_limit: Option<u32>,
+    pub daily_limit: Option<u32>,
+}
+
+/// Input shape for `PATCH /api/sessions/:id`.
+/// All fields are optional — only provided fields are updated.
+#[derive(Debug, Clone, Deserialize, ZodTs)]
+pub struct UpdateSessionInput {
+    pub name: Option<String>,
+    pub api_key: Option<String>,
     pub hourly_limit: Option<u32>,
     pub daily_limit: Option<u32>,
 }

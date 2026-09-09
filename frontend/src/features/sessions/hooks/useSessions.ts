@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
-import type { Session } from "../schemas/session.schema";
 import { getSessionQuota, formatDuration } from "../utils/quota";
+import type { Session } from "@/rpc/bindings";
 
 /**
  * Comprehensive hook for SessionsDashboard component

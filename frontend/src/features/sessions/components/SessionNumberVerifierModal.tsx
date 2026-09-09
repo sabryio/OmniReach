@@ -10,7 +10,7 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
-import type { Session } from "../schemas/session.schema";
+import type { Session } from "@/rpc/bindings";
 
 interface SessionNumberVerifierModalProps {
   isOpen: boolean;
@@ -88,7 +88,7 @@ export function SessionNumberVerifierModal({
                 Verify Phone Number
               </h3>
               <p className="text-[11px] text-muted-foreground">
-                Using session: {session.name} ({session.phoneNumber})
+                Using session: {session.name} ({session.phone_number})
               </p>
             </div>
           </div>
@@ -113,7 +113,7 @@ export function SessionNumberVerifierModal({
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="e.g. +201234567890"
-              className="w-full px-3 py-2 rounded-lg bg-muted border border-border text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+              className="w-full px-3 py-2 rounded-lg bg-muted border border-border text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-primary transition-all"
               autoFocus
             />
             <p className="text-[10px] text-muted-foreground mt-1.5">

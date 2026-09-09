@@ -69,20 +69,24 @@ function SessionsRoute() {
     phone: string,
     message: string,
   ): Promise<void> => {
-    await sendTestMessageAsync({ sessionId, phone, message });
+    await sendTestMessageAsync({ id: sessionId, phone, message });
   };
 
   const handleDeleteSession = (sessionId: string) => {
-    deleteSession(sessionId, {
-      onSuccess: () => {
-        toast.success("Session deleted successfully");
+    deleteSession(
+      { id: sessionId },
+      {
+        onSuccess: () => {
+          toast.success("Session deleted successfully");
+        },
+        onError: (error) => {
+          toast.error("Failed to delete session", {
+            description:
+              error instanceof Error ? error.message : "Unknown error",
+          });
+        },
       },
-      onError: (error) => {
-        toast.error("Failed to delete session", {
-          description: error instanceof Error ? error.message : "Unknown error",
-        });
-      },
-    });
+    );
   };
 
   if (isLoading) {
@@ -106,10 +110,10 @@ function SessionsRoute() {
       <SessionsDashboard
         sessions={sessions}
         config={DEFAULT_CONFIG}
-        onResetSessionLimits={(id) => resetLimits(id)}
+        onResetSessionLimits={(id) => resetLimits({ id })}
         onUpdateSessions={() => {}}
         onAddSession={() => setIsAddModalOpen(true)}
-        onSyncSession={(id) => syncSession(id)}
+        onSyncSession={(id) => syncSession({ id })}
         onVerifyNumber={handleVerifyNumber}
         onSendTest={handleSendTest}
         onEditSession={(id) => setEditSessionId(id)}

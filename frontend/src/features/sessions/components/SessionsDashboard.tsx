@@ -33,10 +33,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
-import type { Session } from "../schemas/session.schema";
 import { getSessionQuota, formatDuration } from "../utils/quota";
 import { SessionNumberVerifierModal } from "./SessionNumberVerifierModal";
 import { SessionTestMessageModal } from "./SessionTestMessageModal";
+import type { Session } from "@/rpc/bindings";
 
 interface SessionsDashboardProps {
   sessions: Session[];
@@ -160,7 +160,7 @@ export function SessionsDashboard({
                           {session.name}
                         </h3>
                         <p className="text-[10px] text-muted-foreground font-mono">
-                          {session.phoneNumber || session.id}
+                          {session.phone_number || session.id}
                         </p>
                       </div>
                     </div>
@@ -205,7 +205,7 @@ export function SessionsDashboard({
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => handleDeleteClick(session.id)}
-                            className="cursor-pointer text-destructive focus:text-destructive"
+                            className="cursor-pointer text-destructive"
                           >
                             <Trash2 className="w-3.5 h-3.5 mr-2" />
                             Delete Session

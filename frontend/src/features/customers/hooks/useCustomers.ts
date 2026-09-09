@@ -1,8 +1,4 @@
-import type {
-  Contact,
-  ContactVerificationStatus,
-} from "@/features/campaigns/schemas/campaign.schema";
-import type { Session } from "@/features/sessions/schemas/session.schema";
+import type { Contact, ContactVerificationStatus, Session } from "@/rpc/bindings";
 import { useState, useCallback, useMemo } from "react";
 
 /**
@@ -42,7 +38,7 @@ export function useCustomerManager(
   const categories = useMemo(
     () =>
       Array.from(
-        new Set(contacts.map((c) => c.customFields?.category || "General")),
+        new Set(contacts.map((c) => c.custom_fields?.category || "General")),
       ),
     [contacts],
   );
@@ -53,17 +49,17 @@ export function useCustomerManager(
       contacts.filter((c) => {
         const matchesSearch =
           c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.rawPhone.includes(searchQuery) ||
-          c.formattedPhone.includes(searchQuery) ||
-          (c.customFields?.prescription &&
-            c.customFields.prescription
+          c.raw_phone.includes(searchQuery) ||
+          c.formatted_phone.includes(searchQuery) ||
+          (c.custom_fields?.prescription &&
+            c.custom_fields.prescription
               .toLowerCase()
               .includes(searchQuery.toLowerCase()));
         const matchesStatus =
-          statusFilter === "all" || c.verificationStatus === statusFilter;
+          statusFilter === "all" || c.verification_status === statusFilter;
         const matchesCategory =
           categoryFilter === "all" ||
-          c.customFields?.category === categoryFilter;
+          c.custom_fields?.category === categoryFilter;
         return matchesSearch && matchesStatus && matchesCategory;
       }),
     [contacts, searchQuery, statusFilter, categoryFilter],
@@ -104,7 +100,7 @@ export function useCustomerManager(
                     ? "registered"
                     : "unregistered",
                   waId: isRegistered
-                    ? `${contact.normalizedPhone.replace(/\D/g, "")}@s.whatsapp.net`
+                    ? `${contact.normalized_phone.replace(/\D/g, "")}@s.whatsapp.net`
                     : null,
                   verificationError: isRegistered
                     ? null
@@ -131,19 +127,16 @@ export function useCustomerManager(
       const clean = newPhone.replace(/\D/g, "");
       const newContact: Contact = {
         id: `cust_${Date.now()}`,
-        campaignId: null,
+        campaign_id: "",
         name: newName,
-        rawPhone: newPhone,
-        formattedPhone: clean,
-        normalizedPhone: `+${clean}`,
-        customFields: {
+        raw_phone: newPhone,
+        formatted_phone: clean,
+        normalized_phone: `+${clean}`,
+        custom_fields: {
           category: newCategory,
           prescription: newPrescription || "Standard Care",
         },
-        verificationStatus: "unverified" as const,
-        verificationError: null,
-        verifiedAt: null,
-        waId: null,
+        verification_status: "unverified",
       };
       setContacts((prev) => [newContact, ...prev]);
       setIsAddModalOpen(false);
@@ -159,13 +152,13 @@ export function useCustomerManager(
     const rows = filteredContacts.map((c, i) => ({
       Index: i + 1,
       Name: c.name,
-      Phone: c.rawPhone,
-      FormattedPhone: c.formattedPhone,
-      VerificationStatus: c.verificationStatus,
-      WhatsAppJID: c.waId || "",
-      Category: c.customFields?.category || "",
-      Prescription: c.customFields?.prescription || "",
-      Doctor: c.customFields?.doctor || "",
+      Phone: c.raw_phone,
+      FormattedPhone: c.formatted_phone,
+      VerificationStatus: c.verification_status,
+      WhatsAppJID: c.wa_id || "",
+      Category: c.custom_fields?.category || "",
+      Prescription: c.custom_fields?.prescription || "",
+      Doctor: c.custom_fields?.doctor || "",
     }));
     const headers = Object.keys(rows[0] || {}).join(",");
     const csvContent =
@@ -240,12 +233,12 @@ export function useCustomers(contacts: Contact[]) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const filtered = contacts.filter((c) => {
-    if (statusFilter !== "all" && c.verificationStatus !== statusFilter)
+    if (statusFilter !== "all" && c.verification_status !== statusFilter)
       return false;
     if (
       search &&
       !c.name.toLowerCase().includes(search.toLowerCase()) &&
-      !c.rawPhone.includes(search)
+      !c.raw_phone.includes(search)
     )
       return false;
     return true;

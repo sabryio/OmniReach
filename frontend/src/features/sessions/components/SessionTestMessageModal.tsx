@@ -10,7 +10,7 @@ import {
   MessageSquare,
   X,
 } from "lucide-react";
-import type { Session } from "../schemas/session.schema";
+import type { Session } from "@/rpc/bindings";
 
 interface SessionTestMessageModalProps {
   isOpen: boolean;
@@ -88,7 +88,7 @@ export function SessionTestMessageModal({
                 Send Test Message
               </h3>
               <p className="text-[11px] text-muted-foreground">
-                Using session: {session.name} ({session.phoneNumber})
+                Using session: {session.name} ({session.phone_number})
               </p>
             </div>
           </div>

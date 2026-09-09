@@ -18,11 +18,9 @@ import {
   FileText,
 } from "lucide-react";
 import { useDashboard } from "../hooks/useDashboard";
-import type { Campaign } from "@/features/campaigns/schemas/campaign.schema";
-import type { LogEntry, QueueItem } from "@/features/queue/schemas/queue.schema";
 import type { SchedulerState } from "@/features/layout/schemas/layout.schema";
-import type { Session } from "@/features/sessions/schemas/session.schema";
 import type { SessionRateQuota } from "../schemas/dashboard.schema";
+import type { Campaign, LogEntry, QueueItem, Session } from "@/rpc/bindings";
 
 interface DashboardViewProps {
   campaigns: Campaign[];
@@ -266,10 +264,10 @@ export function DashboardView({
                     <tbody className="divide-y divide-border/40 text-foreground bg-card">
                       {campaigns.slice(0, 5).map((c) => {
                         const processed =
-                          c.sentCount + c.unregisteredCount + c.failedCount;
+                          c.sent_count + c.unregistered_count + c.failed_count;
                         const pct =
-                          c.totalContacts > 0
-                            ? Math.round((processed / c.totalContacts) * 100)
+                          c.total_contacts > 0
+                            ? Math.round((processed / c.total_contacts) * 100)
                             : 0;
                         return (
                           <tr
@@ -310,13 +308,13 @@ export function DashboardView({
                             </td>
                             <td className="px-4 py-3 text-right font-mono tabular-nums">
                               <span className="text-success font-bold">
-                                {c.sentCount.toLocaleString()}
+                                {c.sent_count.toLocaleString()}
                               </span>
                               <span className="text-muted-foreground mx-1">
                                 /
                               </span>
                               <span className="text-muted-foreground">
-                                {c.totalContacts.toLocaleString()}
+                                {c.total_contacts.toLocaleString()}
                               </span>
                             </td>
                           </tr>
@@ -361,7 +359,7 @@ export function DashboardView({
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-foreground font-medium truncate max-w-35">
-                        {item.recipientName ?? "Customer"}
+                        {item.recipient_name ?? "Customer"}
                       </span>
                       <span className="text-muted-foreground text-[11px]">
                         {item.phone}
@@ -416,8 +414,8 @@ export function DashboardView({
                     SessionRateQuota,
                     "hourlyUsed" | "dailyUsed"
                   > = sessionQuotas[session.id] ?? {
-                    hourlyUsed: session.hourlySentTimestamps.length,
-                    dailyUsed: session.dailySentTimestamps.length,
+                    hourlyUsed: session.hourly_sent_timestamps.length,
+                    dailyUsed: session.daily_sent_timestamps.length,
                   };
                   return (
                     <div
@@ -429,8 +427,8 @@ export function DashboardView({
                           {session.name}
                         </span>
                         <span className="text-[10px] text-success font-mono font-medium">
-                          {quota.hourlyUsed}/{session.hourlyLimit} hr •{" "}
-                          {quota.dailyUsed}/{session.dailyLimit} day
+                          {quota.hourlyUsed}/{session.hourly_limit} hr •{" "}
+                          {quota.dailyUsed}/{session.daily_limit} day
                         </span>
                       </div>
                       {/* 5-slot hourly grid */}

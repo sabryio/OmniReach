@@ -1,9 +1,6 @@
 // Schemas (Single Source of Truth)
-export * from "./schemas/session.schema";
 // Utilities
 export * from "./utils/quota";
-// API
-export * from "./api/queryKeys";
 // Query hooks
 export * from "./hooks/useSessionsQuery";
 export * from "./hooks/useSessionMutations";

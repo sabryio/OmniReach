@@ -20,11 +20,9 @@ import {
   RotateCcw,
   AlertTriangle,
 } from "lucide-react";
-import type { Campaign } from "@/features/campaigns/schemas/campaign.schema";
-import type { Session } from "@/features/sessions/schemas/session.schema";
 import { useCampaignsList } from "../hooks/useCampaigns";
-import type { QueueItem } from "@/features/queue/schemas/queue.schema";
 import { exportCampaignCsv } from "../lib/export";
+import type { Campaign, QueueItem, Session } from "@/rpc/bindings";
 
 interface CampaignsListProps {
   campaigns: Campaign[];
@@ -179,7 +177,7 @@ export function CampaignsList({
                 value={campaignSearch}
                 onChange={(e) => setCampaignSearch(e.target.value)}
                 placeholder="Search campaigns by title or ID..."
-                className="w-full pl-8 pr-8 py-1.5 rounded-lg bg-muted/50 border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full pl-8 pr-8 py-1.5 rounded-lg bg-muted/50 border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
               {campaignSearch && (
                 <button
@@ -246,8 +244,8 @@ export function CampaignsList({
             ) : (
               filteredCampaigns.map((c) => {
                 const isSelected = selectedCampaign?.id === c.id;
-                const total = c.totalContacts || 1;
-                const sent = c.sentCount || 0;
+                const total = c.total_contacts || 1;
+                const sent = c.sent_count || 0;
                 const percent = Math.round((sent / total) * 100);
 
                 return (
@@ -265,7 +263,7 @@ export function CampaignsList({
                         <h3 className="text-xs font-bold text-foreground truncate">
                           {c.title}
                         </h3>
-                        {c.isArchived && (
+                        {c.is_archived && (
                           <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-warning/10 text-warning border border-warning/20 font-semibold shrink-0">
                             Archived
                           </span>
@@ -300,11 +298,11 @@ export function CampaignsList({
                           className="bg-success h-full transition-all duration-300"
                           style={{ width: `${percent}%` }}
                         />
-                        {c.unregisteredCount > 0 && (
+                        {c.unregistered_count > 0 && (
                           <div
                             className="bg-warning h-full"
                             style={{
-                              width: `${(c.unregisteredCount / total) * 100}%`,
+                              width: `${(c.unregistered_count / total) * 100}%`,
                             }}
                           />
                         )}
@@ -313,13 +311,13 @@ export function CampaignsList({
 
                     <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/30">
                       <span className="font-mono">
-                        {new Date(c.createdAt).toLocaleTimeString([], {
+                        {new Date(c.created_at).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
                       </span>
                       <div className="flex items-center gap-1.5">
-                        {c.isArchived ? (
+                        {c.is_archived ? (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -378,7 +376,7 @@ export function CampaignsList({
                       {selectedCampaign.status}
                     </span>
 
-                    {selectedCampaign.isArchived && (
+                    {selectedCampaign.is_archived && (
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-warning/15 text-warning border border-warning/30 flex items-center gap-1">
                         <Archive className="w-3 h-3" />
                         <span>Archived</span>
@@ -390,12 +388,12 @@ export function CampaignsList({
                     <code className="font-mono text-primary">
                       {selectedCampaign.id}
                     </code>{" "}
-                    • {new Date(selectedCampaign.createdAt).toLocaleString()}
-                    {selectedCampaign.archivedAt && (
+                    • {new Date(selectedCampaign.created_at).toLocaleString()}
+                    {selectedCampaign.archived_at && (
                       <span className="ml-2 text-muted-foreground">
                         (Archived at:{" "}
                         {new Date(
-                          selectedCampaign.archivedAt,
+                          selectedCampaign.archived_at,
                         ).toLocaleDateString()}
                         )
                       </span>
@@ -425,19 +423,19 @@ export function CampaignsList({
                     </button>
                   ) : null}
 
-                  {selectedCampaign.failedCount > 0 && (
+                  {selectedCampaign.failed_count > 0 && (
                     <button
                       type="button"
                       onClick={() => onRetryFailed(selectedCampaign.id)}
                       className="px-2.5 py-1.5 rounded-lg bg-muted hover:bg-muted/80 text-primary text-xs font-semibold border border-border flex items-center gap-1 transition-colors"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Retry ({selectedCampaign.failedCount})</span>
+                      <span>Retry ({selectedCampaign.failed_count})</span>
                     </button>
                   )}
 
                   {/* Archive / Unarchive Action */}
-                  {selectedCampaign.isArchived ? (
+                  {selectedCampaign.is_archived ? (
                     <button
                       type="button"
                       onClick={() => onUnarchiveCampaign(selectedCampaign.id)}
@@ -486,7 +484,7 @@ export function CampaignsList({
                     Total Recipients
                   </span>
                   <span className="font-mono font-bold text-foreground text-sm">
-                    {selectedCampaign.totalContacts.toLocaleString()}
+                    {selectedCampaign.total_contacts.toLocaleString()}
                   </span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-muted/40 border border-border/40">
@@ -494,7 +492,7 @@ export function CampaignsList({
                     Sent Success
                   </span>
                   <span className="font-mono font-bold text-success text-sm">
-                    {selectedCampaign.sentCount.toLocaleString()}
+                    {selectedCampaign.sent_count.toLocaleString()}
                   </span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-muted/40 border border-border/40">
@@ -502,7 +500,7 @@ export function CampaignsList({
                     Unregistered
                   </span>
                   <span className="font-mono font-bold text-warning text-sm">
-                    {selectedCampaign.unregisteredCount.toLocaleString()}
+                    {selectedCampaign.unregistered_count.toLocaleString()}
                   </span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-muted/40 border border-border/40">
@@ -510,7 +508,7 @@ export function CampaignsList({
                     Registered
                   </span>
                   <span className="font-mono font-bold text-primary text-sm">
-                    {selectedCampaign.verifiedContacts.toLocaleString()}
+                    {selectedCampaign.verified_contacts.toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -521,22 +519,22 @@ export function CampaignsList({
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     Message & Image Template
                   </span>
-                  {selectedCampaign.imageUrl && (
+                  {selectedCampaign.image_url && (
                     <span className="text-[10px] text-emerald-500 flex items-center gap-1 font-medium">
                       ✓ Photo Attached
                     </span>
                   )}
                 </div>
                 <div className="p-3 rounded-xl bg-muted/50 border border-border text-foreground font-sans leading-relaxed flex gap-3 shadow-sm">
-                  {selectedCampaign.imageUrl && (
+                  {selectedCampaign.image_url && (
                     <img
-                      src={selectedCampaign.imageUrl}
+                      src={selectedCampaign.image_url}
                       alt=""
                       className="w-16 h-16 rounded-lg object-cover border border-border/50 shrink-0 shadow-sm"
                     />
                   )}
                   <p className="flex-1 text-xs whitespace-pre-wrap text-foreground/90 leading-[1.6]">
-                    {selectedCampaign.templateText}
+                    {selectedCampaign.template_text}
                   </p>
                 </div>
               </div>
@@ -573,7 +571,7 @@ export function CampaignsList({
                       value={contactSearchQuery}
                       onChange={(e) => setContactSearchQuery(e.target.value)}
                       placeholder="Search recipients..."
-                      className="px-2 py-1 rounded-lg bg-muted/50 border border-border text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 w-36"
+                      className="px-2 py-1 rounded-lg bg-muted/50 border border-border text-[11px] text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 w-36"
                     />
                   </div>
                 </div>
@@ -607,7 +605,7 @@ export function CampaignsList({
                       <tbody className="divide-y divide-border/40 bg-card">
                         {filteredContacts.map((c) => {
                           const qItem = selectedCampaignQueue.find(
-                            (q) => q.contactId === c.id,
+                            (q) => q.contact_id === c.id,
                           );
                           return (
                             <tr
@@ -618,19 +616,19 @@ export function CampaignsList({
                                 {c.name}
                               </td>
                               <td className="px-4 py-3 text-muted-foreground font-mono">
-                                {c.rawPhone}
+                                {c.raw_phone}
                               </td>
                               <td className="px-4 py-3">
                                 <span
                                   className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] capitalize font-semibold border ${
-                                    c.verificationStatus === "registered"
+                                    c.verification_status === "registered"
                                       ? "bg-success/10 text-success border-success/30"
-                                      : c.verificationStatus === "unregistered"
+                                      : c.verification_status === "unregistered"
                                         ? "bg-destructive/10 text-destructive border-destructive/30"
                                         : "bg-muted text-muted-foreground border-border"
                                   }`}
                                 >
-                                  {c.verificationStatus}
+                                  {c.verification_status}
                                 </span>
                               </td>
                               <td className="px-4 py-3">
@@ -707,7 +705,7 @@ export function CampaignsList({
               <div className="text-xs mt-1">
                 <span className="text-muted-foreground">Recipients:</span>
                 <span className="font-mono text-foreground ml-1.5">
-                  {campaignToDelete.totalContacts} contacts
+                  {campaignToDelete.total_contacts} contacts
                 </span>
               </div>
             </div>

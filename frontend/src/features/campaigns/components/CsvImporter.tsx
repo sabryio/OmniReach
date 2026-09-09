@@ -17,7 +17,7 @@ import { useRef, useState } from "react";
 import { Upload, ChevronDown, ChevronRight, AlertCircle } from "lucide-react";
 import { useCsvImporter } from "../hooks/useCsvImporter";
 import { sampleCsvToFile } from "../sample-pharmacy-csv";
-import type { Contact } from "../schemas/campaign.schema";
+import type { Contact } from "@/rpc/bindings";
 
 interface CsvImporterProps {
   onContactsParsed: (contacts: Contact[]) => void;
@@ -236,7 +236,7 @@ export function CsvImporter({ onContactsParsed, onProceed }: CsvImporterProps) {
                     <th className="text-left px-4 py-2 font-semibold text-muted-foreground">
                       Phone
                     </th>
-                    {Object.keys(contacts[0]?.customFields || {})
+                    {Object.keys(contacts[0]?.custom_fields || {})
                       .slice(0, 3)
                       .map((field) => (
                         <th
@@ -261,16 +261,16 @@ export function CsvImporter({ onContactsParsed, onProceed }: CsvImporterProps) {
                         {contact.name}
                       </td>
                       <td className="px-4 py-2 text-foreground font-mono">
-                        {contact.formattedPhone}
+                        {contact.formatted_phone}
                       </td>
-                      {Object.keys(contact.customFields)
+                      {Object.keys(contact.custom_fields)
                         .slice(0, 3)
                         .map((field) => (
                           <td
                             key={field}
                             className="px-4 py-2 text-muted-foreground"
                           >
-                            {contact.customFields[field]}
+                            {contact.custom_fields[field]}
                           </td>
                         ))}
                     </tr>

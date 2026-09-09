@@ -5,8 +5,8 @@
 
 import { useState, useRef } from "react";
 import { Upload, X } from "lucide-react";
-import type { Contact } from "@/features/customers/schemas/customer.schema";
 import { useMediaUpload } from "@/features/media";
+import type { Contact } from "@/rpc/bindings";
 
 interface MessageComposerProps {
   templateText: string;
@@ -41,10 +41,10 @@ export function MessageComposer({
   const preview = contacts[0]
     ? templateText
         .replace(/{{name}}/g, contacts[0].name)
-        .replace(/{{phone}}/g, contacts[0].rawPhone)
+        .replace(/{{phone}}/g, contacts[0].raw_phone)
         .replace(
           /\{\{(\w+)\}\}/g,
-          (_, k) => contacts[0]?.customFields[k] ?? `{{${k}}}`,
+          (_, k) => contacts[0]?.custom_fields[k] ?? `{{${k}}}`,
         )
     : templateText;
 
@@ -108,7 +108,7 @@ export function MessageComposer({
           onChange={(e) => onTemplateChange(e.target.value)}
           rows={6}
           placeholder="Write your message here. Use {{name}} for personalization."
-          className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+          className="w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
         />
 
         {/* Character counter */}
@@ -179,7 +179,7 @@ export function MessageComposer({
             value={imageUrl ?? ""}
             onChange={(e) => onImageChange(e.target.value, undefined)}
             placeholder="https://..."
-            className="w-full bg-input border border-border rounded-md px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full bg-input border border-border rounded-md px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
       </div>

@@ -1,5 +1,4 @@
 // API
-export * from './api/queryKeys'
 // Aggregate hook
 export * from './hooks/useDashboardData'
 // UI state hooks

@@ -5,7 +5,7 @@ import type {
   ThemeColor,
   SchedulerState,
 } from "@/features/layout/schemas/layout.schema";
-import type { Session } from "@/features/sessions/schemas/session.schema";
+import type { Session } from "@/rpc/bindings";
 
 /**
  * Modal visibility management hook

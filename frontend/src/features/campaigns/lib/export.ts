@@ -1,4 +1,4 @@
-import type { Campaign } from "../schemas/campaign.schema";
+import type { Campaign } from "@/rpc/bindings";
 
 /**
  * Exports a campaign's recipient list to CSV with delivery statuses.
@@ -21,11 +21,11 @@ export function exportCampaignCsv(campaign: Campaign): void {
     // Export verification status and basic contact info
     return [
       contact.name,
-      contact.formattedPhone,
-      contact.verificationStatus,
+      contact.formatted_phone,
+      contact.verification_status,
       "pending", // Queue status requires separate query - simplified for MVP
       "",
-      contact.verificationError || "",
+      contact.verification_error || "",
     ];
   });
 

@@ -30,22 +30,22 @@ interface AddSessionModalProps {
 // Create: all fields required
 const createSchema = z.object({
   name: z.string().min(1, "Session name is required"),
-  phoneNumber: z
+  phone_number: z
     .string()
     .min(10, "Phone must be at least 10 digits")
     .regex(/^\+?\d{10,15}$/, "Invalid phone number format (10-15 digits)"),
-  apiKey: z.string().min(1, "API key is required"),
-  hourlyLimit: z.number().int().positive("Must be a positive number"),
-  dailyLimit: z.number().int().positive("Must be a positive number"),
+  api_key: z.string().min(1, "API key is required"),
+  hourly_limit: z.number().int().positive("Must be a positive number"),
+  daily_limit: z.number().int().positive("Must be a positive number"),
 });
 
 // Edit: phoneNumber read-only (not validated), apiKey optional (empty = keep current)
 const editSchema = z.object({
   name: z.string().min(1, "Session name is required"),
-  phoneNumber: z.string(),
-  apiKey: z.string(),
-  hourlyLimit: z.number().int().positive("Must be a positive number"),
-  dailyLimit: z.number().int().positive("Must be a positive number"),
+  phone_number: z.string(),
+  api_key: z.string(),
+  hourly_limit: z.number().int().positive("Must be a positive number"),
+  daily_limit: z.number().int().positive("Must be a positive number"),
 });
 
 export function AddSessionModal({
@@ -77,10 +77,10 @@ export function AddSessionModal({
   const form = useForm({
     defaultValues: {
       name: "",
-      phoneNumber: "",
-      apiKey: "",
-      hourlyLimit: 1000,
-      dailyLimit: 10000,
+      phone_number: "",
+      api_key: "",
+      hourly_limit: 1000,
+      daily_limit: 10000,
     },
     validators: {
       onSubmit: isEditMode ? editSchema : createSchema,
@@ -91,18 +91,18 @@ export function AddSessionModal({
           await updateSessionAsync({
             id: sessionId,
             name: value.name,
-            // Only send apiKey if user typed a new one
-            apiKey: value.apiKey.trim() || undefined,
-            hourlyLimit: value.hourlyLimit,
-            dailyLimit: value.dailyLimit,
+            // Only send api_key if user typed a new one
+            api_key: value.api_key.trim() || undefined,
+            hourly_limit: value.hourly_limit,
+            daily_limit: value.daily_limit,
           });
         } else {
           await createSessionAsync({
             name: value.name,
-            phoneNumber: value.phoneNumber,
-            apiKey: value.apiKey,
-            hourlyLimit: value.hourlyLimit,
-            dailyLimit: value.dailyLimit,
+            phone_number: value.phone_number,
+            api_key: value.api_key,
+            hourly_limit: value.hourly_limit,
+            daily_limit: value.daily_limit,
           });
         }
         form.reset();
@@ -120,9 +120,9 @@ export function AddSessionModal({
   useEffect(() => {
     if (isEditMode && existingSession) {
       form.setFieldValue("name", existingSession.name);
-      form.setFieldValue("phoneNumber", existingSession.phoneNumber);
-      form.setFieldValue("hourlyLimit", existingSession.hourlyLimit);
-      form.setFieldValue("dailyLimit", existingSession.dailyLimit);
+      form.setFieldValue("phone_number", existingSession.phone_number);
+      form.setFieldValue("hourly_limit", existingSession.hourly_limit);
+      form.setFieldValue("daily_limit", existingSession.daily_limit);
       // apiKey is write-only — leave blank (placeholder explains)
     }
   }, [isEditMode, existingSession]);
@@ -223,7 +223,7 @@ export function AddSessionModal({
 
           {/* Phone Number — read-only in edit mode */}
           <form.Field
-            name="phoneNumber"
+            name="phone_number"
             children={(field) => {
               const isInvalid =
                 !isEditMode &&
@@ -257,7 +257,7 @@ export function AddSessionModal({
 
           {/* API Key — required on create, optional on edit */}
           <form.Field
-            name="apiKey"
+            name="api_key"
             children={(field) => {
               const isInvalid =
                 !isEditMode &&
@@ -302,7 +302,7 @@ export function AddSessionModal({
           {/* Rate Limits */}
           <div className="grid grid-cols-2 gap-3">
             <form.Field
-              name="hourlyLimit"
+              name="hourly_limit"
               children={(field) => {
                 const isInvalid =
                   field.state.meta.isTouched && !field.state.meta.isValid;
@@ -333,7 +333,7 @@ export function AddSessionModal({
             />
 
             <form.Field
-              name="dailyLimit"
+              name="daily_limit"
               children={(field) => {
                 const isInvalid =
                   field.state.meta.isTouched && !field.state.meta.isValid;

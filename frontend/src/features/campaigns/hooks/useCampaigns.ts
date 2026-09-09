@@ -1,10 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
-import type {
-  Campaign,
-  Contact,
-} from "@/features/campaigns/schemas/campaign.schema";
 import type { Template } from "@/features/templates";
-import type { QueueItem } from "@/features/queue/schemas/queue.schema";
+import type { Campaign, Contact, QueueItem } from "@/rpc/bindings";
 
 /**
  * Comprehensive hook for CampaignsList component
@@ -27,11 +23,11 @@ export function useCampaignsList(campaigns: Campaign[], queue: QueueItem[]) {
 
   // Partition campaigns
   const activeCampaigns = useMemo(
-    () => campaigns.filter((c) => !c.isArchived),
+    () => campaigns.filter((c) => !c.is_archived),
     [campaigns],
   );
   const archivedCampaigns = useMemo(
-    () => campaigns.filter((c) => !!c.isArchived),
+    () => campaigns.filter((c) => !!c.is_archived),
     [campaigns],
   );
 
@@ -74,7 +70,7 @@ export function useCampaignsList(campaigns: Campaign[], queue: QueueItem[]) {
   // Queue items for selected campaign
   const selectedCampaignQueue = useMemo(() => {
     return selectedCampaign
-      ? queue.filter((q) => q.campaignId === selectedCampaign.id)
+      ? queue.filter((q) => q.campaign_id === selectedCampaign.id)
       : [];
   }, [selectedCampaign, queue]);
 
@@ -83,10 +79,10 @@ export function useCampaignsList(campaigns: Campaign[], queue: QueueItem[]) {
     if (!selectedCampaign) return [];
 
     return (selectedCampaign.contacts ?? []).filter((c) => {
-      const qItem = selectedCampaignQueue.find((q) => q.contactId === c.id);
+      const qItem = selectedCampaignQueue.find((q) => q.contact_id === c.id);
       const matchesSearch =
         c.name.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
-        c.rawPhone.includes(contactSearchQuery);
+        c.raw_phone.includes(contactSearchQuery);
 
       if (recipientStatusFilter === "all") return matchesSearch;
       if (recipientStatusFilter === "sent")
@@ -94,7 +90,7 @@ export function useCampaignsList(campaigns: Campaign[], queue: QueueItem[]) {
       if (recipientStatusFilter === "skipped")
         return (
           matchesSearch &&
-          (c.verificationStatus === "unregistered" ||
+          (c.verification_status === "unregistered" ||
             qItem?.status === "skipped_unregistered")
         );
       if (recipientStatusFilter === "pending")
@@ -177,7 +173,7 @@ export function useCampaigns(campaigns: Campaign[]) {
   const selected = campaigns.find((c) => c.id === selectedId) ?? null;
 
   const filtered = campaigns.filter((c) => {
-    if (c.isArchived !== showArchived) return false;
+    if (c.is_archived !== showArchived) return false;
     if (statusFilter !== "all" && c.status !== statusFilter) return false;
     if (search && !c.title.toLowerCase().includes(search.toLowerCase()))
       return false;

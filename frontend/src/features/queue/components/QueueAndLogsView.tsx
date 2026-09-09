@@ -6,16 +6,13 @@
  * Component is now purely presentational, receiving data and callbacks.
  */
 import { Activity, Radio, BarChart2, Terminal } from "lucide-react";
-import type {
-  QueueItem,
-  LogEntry,
-} from "@/features/queue/schemas/queue.schema";
 import type { SchedulerState } from "@/features/layout/schemas/layout.schema";
 import { useQueueAndLogs } from "../hooks/useQueue";
 import { QueueTab } from "./QueueTab";
 import { EventStreamTab } from "./EventStreamTab";
 import { AnalyticsTab } from "./AnalyticsTab";
 import { LogsTab } from "./LogsTab";
+import type { LogEntry, QueueItem } from "@/rpc/bindings";
 
 interface QueueAndLogsViewProps {
   queue: QueueItem[];

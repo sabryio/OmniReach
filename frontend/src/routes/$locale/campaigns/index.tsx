@@ -47,12 +47,12 @@ function CampaignsRoute() {
       campaigns={campaigns}
       queue={queue}
       sessions={sessions}
-      onPauseCampaign={(id) => pauseCampaign(id)}
-      onResumeCampaign={(id) => resumeCampaign(id)}
-      onRetryFailed={(id) => retryFailedCampaign(id)}
-      onDeleteCampaign={(id) => deleteCampaign(id)}
-      onArchiveCampaign={(id) => archiveCampaign(id)}
-      onUnarchiveCampaign={(id) => unarchiveCampaign(id)}
+      onPauseCampaign={(id) => pauseCampaign({ id })}
+      onResumeCampaign={(id) => resumeCampaign({ id })}
+      onRetryFailed={(id) => retryFailedCampaign({ id })}
+      onDeleteCampaign={(id) => deleteCampaign({ id })}
+      onArchiveCampaign={(id) => archiveCampaign({ id })}
+      onUnarchiveCampaign={(id) => unarchiveCampaign({ id })}
       onNewCampaignClick={() =>
         navigate({ to: "/$locale/campaigns/new", params: { locale } })
       }

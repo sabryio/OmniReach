@@ -1,12 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { QueueQueryKeys, LogQueryKeys } from "../api/queryKeys";
-import { getQueue, getLogs } from "../api/queue.api";
+import { orpc } from "@/rpc";
 
 export function useQueueQuery() {
-  const query = useQuery({
-    queryKey: QueueQueryKeys.list(),
-    queryFn: () => getQueue(),
-  });
+  const query = useQuery(orpc.queue.list.queryOptions({ input: {} }));
   return {
     queue: query.data ?? [],
     isLoading: query.isLoading,
@@ -17,10 +13,7 @@ export function useQueueQuery() {
 }
 
 export function useLogsQuery() {
-  const query = useQuery({
-    queryKey: LogQueryKeys.list(),
-    queryFn: getLogs,
-  });
+  const query = useQuery(orpc.logs.list.queryOptions());
   return {
     logs: query.data ?? [],
     isLoading: query.isLoading,

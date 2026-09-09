@@ -26,6 +26,16 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Campaign>>, 
     Ok(Json(campaigns))
 }
 
+/// GET /api/campaigns/:id
+#[rorpc::get("/api/campaigns/{id}")]
+pub async fn get_by_id(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<Campaign>, ApiError> {
+    let campaign = omnireach_store::campaigns::get_by_id(&state.db, id).await?;
+    Ok(Json(campaign))
+}
+
 /// POST /api/campaigns
 #[rorpc::post("/api/campaigns")]
 pub async fn create(

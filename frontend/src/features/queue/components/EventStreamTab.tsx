@@ -14,12 +14,12 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import type { LogEntry } from "@/features/queue/schemas/queue.schema";
 import {
   CategoryFilterBar,
   LogDetailModal,
   severityBadgeClass,
 } from "./logShared";
+import type { LogEntry } from "@/rpc/bindings";
 
 interface EventStreamTabProps {
   logs: LogEntry[];

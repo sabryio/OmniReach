@@ -2,9 +2,8 @@
  * CustomersView — purely presentational
  * All state and handlers come from useCustomerManager via the route component.
  */
-import type { Contact } from "@/features/campaigns/schemas/campaign.schema";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
-import type { Session } from "@/features/sessions/schemas/session.schema";
+import type { Contact, Session } from "@/rpc/bindings";
 import {
   Users,
   Search,
@@ -208,7 +207,7 @@ export function CustomersView({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by name, phone, or prescription..."
-            className="w-64 pl-8 pr-3 py-1.5 rounded-lg border border-border bg-muted/30 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+            className="w-64 pl-8 pr-3 py-1.5 rounded-lg border border-border bg-muted/30 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
           />
         </div>
       </div>
@@ -284,23 +283,23 @@ export function CustomersView({
                         {contact.name}
                       </td>
                       <td className="px-3 py-2 font-mono text-muted-foreground">
-                        {contact.rawPhone}
+                        {contact.raw_phone}
                       </td>
                       <td className="px-3 py-2">
-                        {contact.verificationStatus === "registered" && (
+                        {contact.verification_status === "registered" && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-success/10 text-success border border-success/30">
                             <CheckCircle2 className="w-3 h-3" /> Valid
                           </span>
                         )}
-                        {contact.verificationStatus === "unregistered" && (
+                        {contact.verification_status === "unregistered" && (
                           <span
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-warning/10 text-warning border border-warning/30"
-                            title={contact.verificationError ?? undefined}
+                            title={contact.verification_error ?? undefined}
                           >
                             <AlertCircle className="w-3 h-3" /> Unregistered
                           </span>
                         )}
-                        {contact.verificationStatus === "unverified" && (
+                        {contact.verification_status === "unverified" && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border border-border">
                             <Clock className="w-3 h-3" /> Unverified
                           </span>
@@ -308,11 +307,11 @@ export function CustomersView({
                       </td>
                       <td className="px-3 py-2 text-foreground">
                         <span className="px-2 py-0.5 rounded bg-muted border border-border text-[11px] text-muted-foreground">
-                          {contact.customFields?.category || "General"}
+                          {contact.custom_fields?.category || "General"}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-muted-foreground font-mono text-[11px]">
-                        {contact.customFields?.prescription || "None specified"}
+                        {contact.custom_fields?.prescription || "None specified"}
                       </td>
                       <td className="px-3 py-2 text-end">
                         <button

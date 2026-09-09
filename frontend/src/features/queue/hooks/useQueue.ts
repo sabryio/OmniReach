@@ -1,9 +1,8 @@
 import { useState, useMemo } from "react";
 import type {
-  QueueItem,
   QueueItemStatus,
-  LogEntry,
 } from "../schemas/queue.schema";
+import type { LogEntry, QueueItem } from "@/rpc/bindings";
 
 type LogLevel = "all" | "info" | "warn" | "error" | "success";
 type QueueFilter = QueueItemStatus | "all";
@@ -54,9 +53,9 @@ export function useQueueAndLogs(queue: QueueItem[], logs: LogEntry[]) {
     return queue.filter((item) => {
       if (queueFilter !== "all" && item.status !== queueFilter) return false;
       if (normalizedSearch) {
-        const recipientLower = item.recipientName?.toLowerCase() || "";
-        const campaignLower = item.campaignTitle.toLowerCase();
-        const textLower = item.renderedText.toLowerCase();
+        const recipientLower = item.recipient_name?.toLowerCase() || "";
+        const campaignLower = item.campaign_title.toLowerCase();
+        const textLower = item.rendered_text.toLowerCase();
         return (
           item.phone.includes(normalizedSearch) ||
           recipientLower.includes(normalizedSearch) ||
@@ -149,7 +148,7 @@ export function useQueue(queue: QueueItem[], logs: LogEntry[]) {
     if (
       queueSearch &&
       !q.phone.includes(queueSearch) &&
-      !(q.recipientName ?? "").toLowerCase().includes(queueSearch.toLowerCase())
+      !(q.recipient_name ?? "").toLowerCase().includes(queueSearch.toLowerCase())
     )
       return false;
     return true;

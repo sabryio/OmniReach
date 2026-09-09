@@ -16,10 +16,8 @@ import { MessageComposer } from "./MessageComposer";
 import { getSessionQuota } from "@/features/sessions/utils/quota";
 import { useVerificationJob } from "../hooks/useVerificationJob";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { Session } from "@/features/sessions/schemas/session.schema";
-import type { Contact } from "@/features/customers/schemas/customer.schema";
-import type { CreateCampaignInput } from "../schemas/campaign.schema";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
+import type { Contact, CreateCampaignInput, Session } from "@/rpc/bindings";
 
 interface CampaignWizardProps {
   sessions: Session[];
@@ -93,13 +91,13 @@ export function CampaignWizard({
 
     setContacts((prev) =>
       prev.map((c) => {
-        const r = resultMap.get(c.normalizedPhone);
+        const r = resultMap.get(c.normalized_phone);
         if (!r) return c;
 
         // If there's an error, mark as unregistered and store the error message
         if (r.error) {
           console.warn(
-            `⚠️ Verification error for ${c.normalizedPhone}:`,
+            `⚠️ Verification error for ${c.normalized_phone}:`,
             r.error,
           );
           return {
@@ -123,7 +121,7 @@ export function CampaignWizard({
   const runPreVerification = () => {
     if (contacts.length === 0 || selectedSessionIds.length === 0) return;
     const sessionId = selectedSessionIds[0]!;
-    const phones = contacts.map((c) => c.normalizedPhone);
+    const phones = contacts.map((c) => c.normalized_phone);
     verification.startJob(sessionId, phones);
   };
 
@@ -165,21 +163,23 @@ export function CampaignWizard({
     }
 
     // Transform Campaign into CreateCampaignInput for API
-    const campaignInput = {
+    const campaignInput: CreateCampaignInput = {
       title: campaignTitle.trim() || "Untitled Broadcast Campaign",
-      templateText: templateText.trim(),
-      imageUrl: imageUrl ?? null,
-      mediaRef: mediaRef ?? null,
-      sessionIds: selectedSessionIds,
-      contacts: contacts.map((c) => ({
-        name: c.name,
-        rawPhone: c.rawPhone,
-        formattedPhone: c.formattedPhone,
-        normalizedPhone: c.normalizedPhone,
-        customFields: c.customFields,
-        verificationStatus: c.verificationStatus,
-        waId: c.waId ?? null,
-      })),
+      template_text: templateText.trim(),
+      image_url: imageUrl,
+      media_ref: mediaRef,
+      session_ids: selectedSessionIds,
+      contacts: contacts.map((c) => {
+        return {
+          name: c.name,
+          raw_phone: c.raw_phone,
+          formatted_phone: c.formatted_phone,
+          normalized_phone: c.normalized_phone,
+          custom_fields: c.custom_fields,
+          verification_status: c.verification_status,
+          wa_id: c.wa_id,
+        };
+      }),
       status: "running" as const,
     };
 
@@ -594,7 +594,7 @@ export function CampaignWizard({
                       🟢 Valid:{" "}
                       {
                         contacts.filter(
-                          (c) => c.verificationStatus === "registered",
+                          (c) => c.verification_status === "registered",
                         ).length
                       }
                     </div>
@@ -602,7 +602,7 @@ export function CampaignWizard({
                       🔴 Unregistered:{" "}
                       {
                         contacts.filter(
-                          (c) => c.verificationStatus === "unregistered",
+                          (c) => c.verification_status === "unregistered",
                         ).length
                       }
                     </div>
@@ -610,15 +610,15 @@ export function CampaignWizard({
                       ⚪ Unverified:{" "}
                       {
                         contacts.filter(
-                          (c) => c.verificationStatus === "unverified",
+                          (c) => c.verification_status === "unverified",
                         ).length
                       }
                     </div>
                     {/* Show error count if any contacts have verification errors */}
-                    {contacts.some((c) => c.verificationError) && (
+                    {contacts.some((c) => c.verification_error) && (
                       <div className="px-2.5 py-1 rounded-md bg-warning/10 text-warning border border-warning/30 font-medium">
                         ⚠️ Errors:{" "}
-                        {contacts.filter((c) => c.verificationError).length}
+                        {contacts.filter((c) => c.verification_error).length}
                       </div>
                     )}
                   </div>

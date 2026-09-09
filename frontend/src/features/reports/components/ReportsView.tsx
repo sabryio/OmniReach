@@ -14,12 +14,9 @@ import {
   TrendingUp,
   AlertTriangle,
 } from "lucide-react";
-import type {
-  Campaign,
-} from "@/features/campaigns/schemas/campaign.schema";
-import type { Session } from "@/features/sessions/schemas/session.schema";
-import type { LogEntry, QueueItem } from "@/features/queue/schemas/queue.schema";
+
 import type { SchedulerState } from "@/features/layout/schemas/layout.schema";
+import type { Campaign, LogEntry, QueueItem, Session } from "@/rpc/bindings";
 
 interface ReportsViewProps {
   campaigns: Campaign[];
@@ -39,15 +36,15 @@ function exportQueueCsv(queue: QueueItem[]) {
 
   const rows = queue.map((q, i) => ({
     Index: i + 1,
-    CampaignId: q.campaignId,
-    CampaignTitle: q.campaignTitle,
+    CampaignId: q.campaign_id,
+    CampaignTitle: q.campaign_title,
     RecipientPhone: q.phone,
-    RecipientName: q.recipientName || "",
+    RecipientName: q.recipient_name || "",
     Status: q.status,
-    AssignedSession: q.assignedSessionId || "None",
+    AssignedSession: q.assigned_session_id || "None",
     Attempts: q.attempts,
-    SentTimestamp: q.sentAt ? new Date(q.sentAt).toISOString() : "",
-    LastError: q.lastError || "",
+    SentTimestamp: q.sent_at ? new Date(q.sent_at).toISOString() : "",
+    LastError: q.last_error || "",
     ComplianceRule: "Strict 5/hr, 30/day, 9AM–9PM",
   }));
 
@@ -119,13 +116,13 @@ export function ReportsView({
   logs = [],
 }: ReportsViewProps) {
   // Aggregate stats
-  const totalAudience = campaigns.reduce((a, c) => a + c.totalContacts, 0);
-  const totalSent = campaigns.reduce((a, c) => a + c.sentCount, 0);
+  const totalAudience = campaigns.reduce((a, c) => a + c.total_contacts, 0);
+  const totalSent = campaigns.reduce((a, c) => a + c.sent_count, 0);
   const totalUnregistered = campaigns.reduce(
-    (a, c) => a + c.unregisteredCount,
+    (a, c) => a + c.unregistered_count,
     0,
   );
-  const totalFailed = campaigns.reduce((a, c) => a + c.failedCount, 0);
+  const totalFailed = campaigns.reduce((a, c) => a + c.failed_count, 0);
 
   const deliveryRate =
     totalAudience > 0 ? Math.round((totalSent / totalAudience) * 100) : 0;
@@ -299,10 +296,10 @@ export function ReportsView({
                 </tr>
               ) : (
                 sessions.map((s) => {
-                  const hourUsed = s.hourlySentTimestamps.length;
-                  const dayUsed = s.dailySentTimestamps.length;
-                  const hourCapped = hourUsed >= s.hourlyLimit;
-                  const dayCapped = dayUsed >= s.dailyLimit;
+                  const hourUsed = s.hourly_sent_timestamps.length;
+                  const dayUsed = s.daily_sent_timestamps.length;
+                  const hourCapped = hourUsed >= s.hourly_limit;
+                  const dayCapped = dayUsed >= s.daily_limit;
 
                   return (
                     <tr
@@ -331,7 +328,7 @@ export function ReportsView({
                               : "text-foreground"
                           }
                         >
-                          {hourUsed} / {s.hourlyLimit}
+                          {hourUsed} / {s.hourly_limit}
                         </span>
                       </td>
                       <td className="px-3 py-2.5 font-mono">
@@ -342,7 +339,7 @@ export function ReportsView({
                               : "text-foreground"
                           }
                         >
-                          {dayUsed} / {s.dailyLimit}
+                          {dayUsed} / {s.daily_limit}
                         </span>
                       </td>
                       <td className="px-3 py-2.5 text-muted-foreground text-[11px]">
@@ -407,8 +404,8 @@ export function ReportsView({
               <tbody className="divide-y divide-border text-foreground">
                 {campaigns.map((c) => {
                   const rate =
-                    c.totalContacts > 0
-                      ? Math.round((c.sentCount / c.totalContacts) * 100)
+                    c.total_contacts > 0
+                      ? Math.round((c.sent_count / c.total_contacts) * 100)
                       : 0;
 
                   return (
@@ -420,23 +417,23 @@ export function ReportsView({
                         {c.title}
                       </td>
                       <td className="px-3 py-2.5 text-muted-foreground font-mono text-[11px]">
-                        {new Date(c.createdAt).toLocaleDateString("en-US", {
+                        {new Date(c.created_at).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
                           year: "numeric",
                         })}
                       </td>
                       <td className="px-3 py-2.5 font-mono">
-                        {c.totalContacts}
+                        {c.total_contacts}
                       </td>
                       <td className="px-3 py-2.5 font-mono text-success font-semibold">
-                        {c.sentCount}
+                        {c.sent_count}
                       </td>
                       <td className="px-3 py-2.5 font-mono text-warning">
-                        {c.unregisteredCount}
+                        {c.unregistered_count}
                       </td>
                       <td className="px-3 py-2.5 font-mono text-destructive">
-                        {c.failedCount}
+                        {c.failed_count}
                       </td>
                       <td className="px-3 py-2.5">
                         <span

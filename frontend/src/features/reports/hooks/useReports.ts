@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import type { Campaign } from "@/features/campaigns/schemas/campaign.schema";
-import type { QueueItem } from "@/features/queue/schemas/queue.schema";
+import type { Campaign, QueueItem } from "@/rpc/bindings";
 
 /**
  * Comprehensive hook for ReportsView component
@@ -20,13 +19,13 @@ export function useReportsManager(campaigns: Campaign[], queue: QueueItem[]) {
 
   // Calculate totals
   const totals = useMemo(() => {
-    const totalAudience = campaigns.reduce((a, c) => a + c.totalContacts, 0);
-    const totalDelivered = campaigns.reduce((a, c) => a + c.sentCount, 0);
+    const totalAudience = campaigns.reduce((a, c) => a + c.total_contacts, 0);
+    const totalDelivered = campaigns.reduce((a, c) => a + c.sent_count, 0);
     const totalUnregistered = campaigns.reduce(
-      (a, c) => a + c.unregisteredCount,
+      (a, c) => a + c.unregistered_count,
       0,
     );
-    const totalFailed = campaigns.reduce((a, c) => a + c.failedCount, 0);
+    const totalFailed = campaigns.reduce((a, c) => a + c.failed_count, 0);
 
     const deliveryRate =
       totalAudience > 0
@@ -41,8 +40,8 @@ export function useReportsManager(campaigns: Campaign[], queue: QueueItem[]) {
     const sentToday = queue.filter(
       (q) =>
         q.status === "sent" &&
-        q.sentAt &&
-        new Date(q.sentAt).getTime() >= today,
+        q.sent_at &&
+        new Date(q.sent_at).getTime() >= today,
     ).length;
 
     const totalCampaigns = campaigns.length;
@@ -66,7 +65,7 @@ export function useReportsManager(campaigns: Campaign[], queue: QueueItem[]) {
     if (!dateRange.start && !dateRange.end) return campaigns;
 
     return campaigns.filter((c) => {
-      const createdAt = new Date(c.createdAt).getTime();
+      const createdAt = new Date(c.created_at).getTime();
       if (dateRange.start && createdAt < dateRange.start.getTime())
         return false;
       if (dateRange.end && createdAt > dateRange.end.getTime()) return false;
@@ -80,9 +79,9 @@ export function useReportsManager(campaigns: Campaign[], queue: QueueItem[]) {
       ["Name", "Phone", "WA Status", "waId"],
       ...(campaign.contacts ?? []).map((c) => [
         c.name,
-        c.rawPhone,
-        c.verificationStatus,
-        c.waId ?? "",
+        c.raw_phone,
+        c.verification_status,
+        c.wa_id ?? "",
       ]),
     ];
     const csv = rows.map((r) => r.join(",")).join("\n");
@@ -108,12 +107,12 @@ export function useReportsManager(campaigns: Campaign[], queue: QueueItem[]) {
         "ComplianceRuleHonored",
       ],
       ...queue.map((q) => [
-        q.campaignId,
-        q.campaignTitle,
+        q.campaign_id,
+        q.campaign_title,
         q.phone,
-        q.recipientName ?? "",
+        q.recipient_name ?? "",
         q.status,
-        q.sentAt ? new Date(q.sentAt).toISOString() : "",
+        q.sent_at ? new Date(q.sent_at).toISOString() : "",
         "true",
       ]),
     ];
@@ -176,10 +175,10 @@ export function useReportsManager(campaigns: Campaign[], queue: QueueItem[]) {
  * @deprecated Use useReportsManager instead
  */
 export function useReports(campaigns: Campaign[], queue: QueueItem[]) {
-  const totalAudience = campaigns.reduce((a, c) => a + c.totalContacts, 0);
-  const totalDelivered = campaigns.reduce((a, c) => a + c.sentCount, 0);
+  const totalAudience = campaigns.reduce((a, c) => a + c.total_contacts, 0);
+  const totalDelivered = campaigns.reduce((a, c) => a + c.sent_count, 0);
   const totalUnregistered = campaigns.reduce(
-    (a, c) => a + c.unregisteredCount,
+    (a, c) => a + c.unregistered_count,
     0,
   );
   const deliveryRate =
@@ -192,7 +191,7 @@ export function useReports(campaigns: Campaign[], queue: QueueItem[]) {
   const today = new Date().setHours(0, 0, 0, 0);
   const sentToday = queue.filter(
     (q) =>
-      q.status === "sent" && q.sentAt && new Date(q.sentAt).getTime() >= today,
+      q.status === "sent" && q.sent_at && new Date(q.sent_at).getTime() >= today,
   ).length;
 
   const exportCampaignCsv = useCallback((campaign: Campaign) => {
@@ -200,9 +199,9 @@ export function useReports(campaigns: Campaign[], queue: QueueItem[]) {
       ["Name", "Phone", "WA Status", "waId"],
       ...(campaign.contacts ?? []).map((c) => [
         c.name,
-        c.rawPhone,
-        c.verificationStatus,
-        c.waId ?? "",
+        c.raw_phone,
+        c.verification_status,
+        c.wa_id ?? "",
       ]),
     ];
     const csv = rows.map((r) => r.join(",")).join("\n");
@@ -227,12 +226,12 @@ export function useReports(campaigns: Campaign[], queue: QueueItem[]) {
         "ComplianceRuleHonored",
       ],
       ...queue.map((q) => [
-        q.campaignId,
-        q.campaignTitle,
+        q.campaign_id,
+        q.campaign_title,
         q.phone,
-        q.recipientName ?? "",
+        q.recipient_name ?? "",
         q.status,
-        q.sentAt ? new Date(q.sentAt).toISOString() : "",
+        q.sent_at ? new Date(q.sent_at).toISOString() : "",
         "true",
       ]),
     ];

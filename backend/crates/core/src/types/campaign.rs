@@ -21,7 +21,6 @@ pub enum CampaignStatus {
 
 /// Full campaign domain object — returned by the API and stored in SQLite.
 #[derive(Debug, Clone, Serialize, Deserialize, ZodTs)]
-#[serde(rename_all = "camelCase")]
 pub struct Campaign {
     pub id: Uuid,
     #[zod(min_length(1), max_length(200))]
@@ -54,7 +53,6 @@ pub struct Campaign {
 
 /// Input shape for `POST /api/campaigns`.
 #[derive(Debug, Clone, Deserialize, Default, ZodTs)]
-#[serde(rename_all = "camelCase")]
 pub struct CreateCampaignInput {
     #[serde(default)]
     #[zod(min_length(1), max_length(200))]

@@ -69,15 +69,16 @@ pub fn build(state: AppState) -> Router {
         .allow_methods(Any);
 
     // rorpc-generated router (mounts handlers with #[rorpc] attributes)
-    let rorpc_routes = rorpc::router!(state.clone());
+    let rorpc_routes = rorpc::router!(state.clone()).layer(middleware::from_fn_with_state(
+        state.clone(),
+        auth_middleware,
+    ));
 
     let api = Router::new()
         // ── Media ─────────────────────────────────────────────────────────────
         // Keep manual route until rorpc supports multipart/form-data
         .route("/media/upload", post(media::upload))
         .with_state(state.clone())
-        // ── Merge rorpc routes ───────────────────────────────────────────────
-        .merge(rorpc_routes)
         // ── Auth middleware on all /api routes ────────────────────────────────
         .layer(middleware::from_fn_with_state(
             state.clone(),
@@ -88,6 +89,8 @@ pub fn build(state: AppState) -> Router {
         .route("/health", get(health::health_check))
         .with_state(state.clone())
         .nest("/api", api)
+        // ── Merge rorpc routes at /rpc ───────────────────────────────────────
+        .nest("/rpc", rorpc_routes)
         .layer(cors)
         .layer(TraceLayer::new_for_http())
 }

@@ -6,8 +6,8 @@ import {
 import { CampaignWizard } from "@/features/campaigns";
 import { useSessions } from "@/features/sessions/hooks/useSessionsQuery";
 import { useCreateCampaign } from "@/features/campaigns/hooks/useCampaignMutations";
-import type { CreateCampaignInput } from "@/features/campaigns/schemas/campaign.schema";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
+import type { CreateCampaignInput } from "@/rpc/bindings";
 
 const DEFAULT_CONFIG: WABridgeConfig = {
   baseUrl: "http://127.0.0.1:7171",

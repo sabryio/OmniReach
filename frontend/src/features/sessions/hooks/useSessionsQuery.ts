@@ -1,31 +1,23 @@
-import { useQuery } from '@tanstack/react-query'
-import { SessionQueryKeys } from '../api/queryKeys'
-import { getSessions, getSession } from '../api/sessions.api'
+import { useQuery } from "@tanstack/react-query";
+import { orpc } from "@/rpc";
 
 export function useSessions() {
-  const query = useQuery({
-    queryKey: SessionQueryKeys.list(),
-    queryFn: getSessions,
-  })
+  const query = useQuery(orpc.sessions.list.queryOptions());
   return {
     sessions: query.data ?? [],
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error,
     refetch: query.refetch,
-  }
+  };
 }
 
 export function useSession(id: string) {
-  const query = useQuery({
-    queryKey: SessionQueryKeys.detail(id),
-    queryFn: () => getSession(id),
-    enabled: !!id,
-  })
+  const query = useQuery(orpc.sessions.getById.queryOptions({ input: { id } }));
   return {
     session: query.data,
     isLoading: query.isLoading,
     error: query.error,
     refetch: query.refetch,
-  }
+  };
 }

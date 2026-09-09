@@ -1,11 +1,6 @@
-import type { Campaign } from "@/features/campaigns/schemas/campaign.schema";
 import type { SchedulerState } from "@/features/layout/schemas/layout.schema";
-import type {
-  LogEntry,
-  QueueItem,
-} from "@/features/queue/schemas/queue.schema";
-import type { Session } from "@/features/sessions/schemas/session.schema";
 import type { SessionRateQuota } from "../schemas/dashboard.schema";
+import type { Campaign, LogEntry, QueueItem, Session } from "@/rpc/bindings";
 
 interface UseDashboardProps {
   campaigns: Campaign[];
@@ -24,15 +19,15 @@ function getSessionQuota(session: Session): SessionRateQuota {
   const oneHourAgo = now - 60 * 60 * 1000;
   const oneDayAgo = now - 24 * 60 * 60 * 1000;
 
-  const hourlyUsed = session.hourlySentTimestamps.filter(
+  const hourlyUsed = session.hourly_sent_timestamps.filter(
     (t) => t > oneHourAgo,
   ).length;
-  const dailyUsed = session.dailySentTimestamps.filter(
+  const dailyUsed = session.daily_sent_timestamps.filter(
     (t) => t > oneDayAgo,
   ).length;
 
-  const hourlyRemaining = Math.max(0, session.hourlyLimit - hourlyUsed);
-  const dailyRemaining = Math.max(0, session.dailyLimit - dailyUsed);
+  const hourlyRemaining = Math.max(0, session.hourly_limit - hourlyUsed);
+  const dailyRemaining = Math.max(0, session.daily_limit - dailyUsed);
   const isHourlyCapped = hourlyRemaining === 0;
   const isDailyCapped = dailyRemaining === 0;
   const canSend = !isHourlyCapped && !isDailyCapped;
@@ -41,10 +36,10 @@ function getSessionQuota(session: Session): SessionRateQuota {
     sessionId: session.id,
     sessionName: session.name,
     hourlyUsed,
-    hourlyLimit: session.hourlyLimit,
+    hourlyLimit: session.hourly_limit,
     hourlyRemaining,
     dailyUsed,
-    dailyLimit: session.dailyLimit,
+    dailyLimit: session.daily_limit,
     dailyRemaining,
     isHourlyCapped,
     isDailyCapped,
@@ -67,13 +62,13 @@ export function useDashboard({
     sessionQuotas[s.id] = getSessionQuota(s);
   }
 
-  const totalAudience = campaigns.reduce((acc, c) => acc + c.totalContacts, 0);
-  const totalDelivered = campaigns.reduce((acc, c) => acc + c.sentCount, 0);
+  const totalAudience = campaigns.reduce((acc, c) => acc + c.total_contacts, 0);
+  const totalDelivered = campaigns.reduce((acc, c) => acc + c.sent_count, 0);
   const totalUnregistered = campaigns.reduce(
-    (acc, c) => acc + c.unregisteredCount,
+    (acc, c) => acc + c.unregistered_count,
     0,
   );
-  const totalFailed = campaigns.reduce((acc, c) => acc + c.failedCount, 0);
+  const totalFailed = campaigns.reduce((acc, c) => acc + c.failed_count, 0);
   const deliveryRate =
     totalAudience > 0 ? Math.round((totalDelivered / totalAudience) * 100) : 0;
 
@@ -92,7 +87,7 @@ export function useDashboard({
     0,
   );
   const totalHourlyLimit = sessions.reduce(
-    (acc, s) => acc + (s.hourlyLimit || 5),
+    (acc, s) => acc + (s.hourly_limit || 5),
     0,
   );
 

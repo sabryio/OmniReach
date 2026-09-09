@@ -8,12 +8,8 @@
 import { useEffect, useRef } from "react";
 import { config } from "@/lib/config";
 import { isWithinTimeWindow } from "@/lib/time-window";
-import type {
-  QueueItem,
-  LogEntry,
-} from "@/features/queue/schemas/queue.schema";
 import type { SchedulerState } from "@/features/layout/schemas/layout.schema";
-import type { Campaign } from "@/features/campaigns/schemas/campaign.schema";
+import type { Campaign, LogEntry, QueueItem } from "@/rpc/bindings";
 
 export interface ProcessedItem {
   item_id: string;
@@ -222,7 +218,7 @@ function checkCampaignsCompletion(
 
   for (const campaign of runningCampaigns) {
     const campaignItems = Array.from(queueMap.values()).filter(
-      (item) => item.campaignId === campaign.id,
+      (item) => item.campaign_id === campaign.id,
     );
 
     if (campaignItems.length === 0) {
@@ -242,7 +238,7 @@ function checkCampaignsCompletion(
     if (allTerminal) {
       onUpdateCampaign(campaign.id, {
         status: "completed",
-        completedAt: new Date().toISOString(),
+        created_at: new Date().toISOString(),
       });
     }
   }

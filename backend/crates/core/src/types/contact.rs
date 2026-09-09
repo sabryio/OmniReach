@@ -22,7 +22,6 @@ pub enum ContactVerificationStatus {
 /// `custom_fields` holds arbitrary key-value pairs from CSV columns
 /// (e.g. prescription, doctor, date) used for merge-tag substitution.
 #[derive(Debug, Clone, Serialize, Deserialize, ZodTs)]
-#[serde(rename_all = "camelCase")]
 pub struct Contact {
     pub id: Uuid,
     pub campaign_id: Uuid,
@@ -42,7 +41,6 @@ pub struct Contact {
 
 /// Input shape for a single contact within `CreateCampaignInput`.
 #[derive(Debug, Clone, Deserialize, Default, ZodTs)]
-#[serde(rename_all = "camelCase")]
 pub struct CreateContactInput {
     #[serde(default)]
     #[zod(min_length(1), max_length(200))]

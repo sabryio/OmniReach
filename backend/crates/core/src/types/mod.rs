@@ -17,6 +17,6 @@ pub use campaign::{Campaign, CampaignStatus, CreateCampaignInput};
 pub use contact::{Contact, ContactVerificationStatus, CreateContactInput};
 pub use log_entry::{LogCategory, LogEntry, LogLevel};
 pub use queue_item::{QueueItem, QueueItemStatus};
-pub use session::{CreateSessionInput, Session, SessionStatus};
+pub use session::{CreateSessionInput, Session, SessionStatus, UpdateSessionInput};
 pub use settings::{AppSettings, UpdateSettingsInput};
 pub use template::{CreateTemplateInput, Template, UpdateTemplateInput};

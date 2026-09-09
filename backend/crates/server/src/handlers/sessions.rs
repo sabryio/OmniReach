@@ -85,22 +85,17 @@ pub async fn create(
 pub async fn update(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
-    Json(patch): Json<serde_json::Value>,
+    Json(input): Json<omnireach_core::types::UpdateSessionInput>,
 ) -> Result<Json<omnireach_core::types::Session>, ApiError> {
-    let name = patch.get("name").and_then(|v| v.as_str());
-    let api_key = patch.get("apiKey").and_then(|v| v.as_str());
-    let hourly_limit = patch
-        .get("hourlyLimit")
-        .and_then(|v| v.as_u64())
-        .map(|v| v as u32);
-    let daily_limit = patch
-        .get("dailyLimit")
-        .and_then(|v| v.as_u64())
-        .map(|v| v as u32);
-
-    let session =
-        omnireach_store::sessions::update(&state.db, id, name, api_key, hourly_limit, daily_limit)
-            .await?;
+    let session = omnireach_store::sessions::update(
+        &state.db,
+        id,
+        input.name.as_deref(),
+        input.api_key.as_deref(),
+        input.hourly_limit,
+        input.daily_limit,
+    )
+    .await?;
 
     Ok(Json(session))
 }

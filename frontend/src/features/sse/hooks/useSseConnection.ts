@@ -44,8 +44,6 @@ export function useSseConnection(): SseConnectionState {
     }),
   );
 
-  console.log({ latestEvent });
-
   // Handle individual events as they arrive
   useEffect(() => {
     if (!latestEvent) return;

@@ -19,9 +19,32 @@ use axum::{
 };
 use futures::{StreamExt, stream::Stream};
 use omnireach_core::types::CreateSessionInput;
-use std::convert::Infallible;
-use tokio_stream::wrappers::BroadcastStream;
+use std::{convert::Infallible, time::Duration};
+use tokio_stream::{iter, wrappers::BroadcastStream};
 use uuid::Uuid;
+
+// ── SSE helpers ───────────────────────────────────────────────────────────────
+
+fn sse_flush() -> Result<Event, Infallible> {
+    Ok(Event::default().comment(""))
+}
+
+fn sse_close() -> Result<Event, Infallible> {
+    Ok(Event::default().event("close").data(""))
+}
+
+fn sse_message<T: serde::Serialize>(payload: &T) -> Result<Event, Infallible> {
+    let data = serde_json::to_string(payload).unwrap_or_default();
+    Ok(Event::default().event("message").data(data))
+}
+
+/// Wraps an inner stream with a flush header and close trailer.
+fn sse_stream<S>(inner: S) -> impl Stream<Item = Result<Event, Infallible>> + Send + 'static
+where
+    S: Stream<Item = Result<Event, Infallible>> + Send + 'static,
+{
+    iter([sse_flush()]).chain(inner).chain(iter([sse_close()]))
+}
 
 // ── SSE ───────────────────────────────────────────────────────────────────────
 
@@ -33,22 +56,13 @@ pub async fn events(
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     let rx = state.sse.subscribe();
 
-    // Send initial comment, then broadcast events, then close event
-    let initial = futures::stream::once(async { Ok(Event::default().comment("")) });
-
     let broadcast = BroadcastStream::new(rx)
         .filter_map(|r| async move { r.ok() })
-        .map(|ev| {
-            // Serialize the entire SseEvent enum with its tagged union structure
-            let json_str = serde_json::to_string(&ev).unwrap_or_else(|_| "{}".to_string());
-            Ok(Event::default().event("message").data(json_str))
-        });
+        .enumerate()
+        .map(|(_id, ev)| sse_message(&ev));
 
-    let close = futures::stream::once(async { Ok(Event::default().event("close").data("")) });
-
-    let stream = initial.chain(broadcast).chain(close);
-
-    Sse::new(stream).keep_alive(KeepAlive::default())
+    Sse::new(sse_stream(broadcast))
+        .keep_alive(KeepAlive::new().interval(Duration::from_secs(15)).text(""))
 }
 
 // ── Sessions ──────────────────────────────────────────────────────────────────

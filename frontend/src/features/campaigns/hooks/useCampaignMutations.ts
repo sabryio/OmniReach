@@ -8,7 +8,7 @@ export function useCreateCampaign() {
       onSuccess: () => {
         queryClient.invalidateQueries(orpc.campaigns.list.queryOptions());
         queryClient.invalidateQueries(
-          orpc.queue.list.queryOptions({ input: {} }),
+          orpc.queue.list.queryOptions({ input: { campaign_id: null } }),
         );
       },
     }),
@@ -31,7 +31,7 @@ export function useDeleteCampaign() {
         queryClient.invalidateQueries(orpc.campaigns.list.queryOptions());
         // Queue items are CASCADE deleted when campaign is deleted
         queryClient.invalidateQueries(
-          orpc.queue.list.queryOptions({ input: {} }),
+          orpc.queue.list.queryOptions({ input: { campaign_id: null } }),
         );
       },
     }),
@@ -134,7 +134,7 @@ export function useRetryFailedCampaign() {
       onSuccess: () => {
         queryClient.invalidateQueries(orpc.campaigns.list.queryOptions());
         queryClient.invalidateQueries(
-          orpc.queue.list.queryOptions({ input: {} }),
+          orpc.queue.list.queryOptions({ input: { campaign_id: null } }),
         );
       },
     }),

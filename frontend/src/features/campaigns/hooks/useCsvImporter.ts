@@ -253,6 +253,9 @@ export function useCsvImporter(): UseCsvImporterReturn {
         normalized_phone: normalizedPhone,
         custom_fields: customFields,
         verification_status: "unverified",
+        verification_error: null,
+        verified_at: null,
+        wa_id: null
       });
     });
 

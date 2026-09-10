@@ -166,8 +166,8 @@ export function CampaignWizard({
     const campaignInput: CreateCampaignInput = {
       title: campaignTitle.trim() || "Untitled Broadcast Campaign",
       template_text: templateText.trim(),
-      image_url: imageUrl,
-      media_ref: mediaRef,
+      image_url: imageUrl || null,
+      media_ref: mediaRef || null,
       session_ids: selectedSessionIds,
       contacts: contacts.map((c) => {
         return {

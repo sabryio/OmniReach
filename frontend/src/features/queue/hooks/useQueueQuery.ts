@@ -2,7 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { orpc } from "@/rpc";
 
 export function useQueueQuery() {
-  const query = useQuery(orpc.queue.list.queryOptions({ input: {} }));
+  const query = useQuery(
+    orpc.queue.list.queryOptions({ input: { campaign_id: null } }),
+  );
   return {
     queue: query.data ?? [],
     isLoading: query.isLoading,

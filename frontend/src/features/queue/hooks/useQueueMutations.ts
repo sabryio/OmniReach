@@ -9,7 +9,7 @@ export function useCancelQueueItem() {
       onSuccess: () => {
         toast.success("Queue item cancelled");
         queryClient.invalidateQueries(
-          orpc.queue.list.queryOptions({ input: {} }),
+          orpc.queue.list.queryOptions({ input: { campaign_id: null } }),
         );
         queryClient.invalidateQueries(orpc.queue.stats.queryOptions());
       },
@@ -34,7 +34,7 @@ export function useRetryQueueItem() {
       onSuccess: () => {
         toast.success("Queue item requeued for retry");
         queryClient.invalidateQueries(
-          orpc.queue.list.queryOptions({ input: {} }),
+          orpc.queue.list.queryOptions({ input: { campaign_id: null } }),
         );
         queryClient.invalidateQueries(orpc.queue.stats.queryOptions());
       },

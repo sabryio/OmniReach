@@ -92,7 +92,7 @@ export function AddSessionModal({
             id: sessionId,
             name: value.name,
             // Only send api_key if user typed a new one
-            api_key: value.api_key.trim() || undefined,
+            api_key: value.api_key.trim() || null,
             hourly_limit: value.hourly_limit,
             daily_limit: value.daily_limit,
           });

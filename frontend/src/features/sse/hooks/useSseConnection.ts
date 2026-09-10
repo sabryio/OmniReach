@@ -65,7 +65,7 @@ export function useSseConnection(): SseConnectionState {
         case "queue_item_added":
         case "queue_stats":
           queryClient.invalidateQueries(
-            orpc.queue.list.queryOptions({ input: {} }),
+            orpc.queue.list.queryOptions({ input: { campaign_id: null } }),
           );
           queryClient.invalidateQueries(orpc.queue.stats.queryOptions());
           // queryClient.invalidateQueries({

@@ -1,4 +1,8 @@
-import type { Contact, ContactVerificationStatus, Session } from "@/rpc/bindings";
+import type {
+  Contact,
+  ContactVerificationStatus,
+  Session,
+} from "@/rpc/bindings";
 import { useState, useCallback, useMemo } from "react";
 
 /**
@@ -137,6 +141,9 @@ export function useCustomerManager(
           prescription: newPrescription || "Standard Care",
         },
         verification_status: "unverified",
+        verification_error: null,
+        verified_at: null,
+        wa_id: null,
       };
       setContacts((prev) => [newContact, ...prev]);
       setIsAddModalOpen(false);

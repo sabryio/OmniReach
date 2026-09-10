@@ -1,6 +1,30 @@
 import type { SchedulerState } from "@/features/layout/schemas/layout.schema";
-import type { SessionRateQuota } from "../schemas/dashboard.schema";
 import type { Campaign, LogEntry, QueueItem, Session } from "@/rpc/bindings";
+
+// ============================================================================
+// Computed Types (not from server)
+// ============================================================================
+
+/**
+ * Computed rate quota information for a single session.
+ * Derived from Session.hourly_sent_timestamps and Session.daily_sent_timestamps.
+ */
+export interface SessionRateQuota {
+  sessionId: string;
+  sessionName: string;
+  hourlyUsed: number;
+  hourlyLimit: number;
+  hourlyRemaining: number;
+  dailyUsed: number;
+  dailyLimit: number;
+  dailyRemaining: number;
+  isHourlyCapped: boolean;
+  isDailyCapped: boolean;
+  canSend: boolean;
+  nextHourlySlotMs: number | null;
+  nextDailySlotMs: number | null;
+  reason: string | null;
+}
 
 interface UseDashboardProps {
   campaigns: Campaign[];

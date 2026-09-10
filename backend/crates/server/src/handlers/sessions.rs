@@ -38,7 +38,11 @@ pub async fn events(
 
     let broadcast = BroadcastStream::new(rx)
         .filter_map(|r| async move { r.ok() })
-        .map(|ev| Ok(ev.into_axum_event()));
+        .map(|ev| {
+            // Serialize the entire SseEvent enum with its tagged union structure
+            let json_str = serde_json::to_string(&ev).unwrap_or_else(|_| "{}".to_string());
+            Ok(Event::default().event("message").data(json_str))
+        });
 
     let close = futures::stream::once(async { Ok(Event::default().event("close").data("")) });
 

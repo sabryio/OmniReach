@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useDashboard } from "../hooks/useDashboard";
 import type { SchedulerState } from "@/features/layout/schemas/layout.schema";
-import type { SessionRateQuota } from "../schemas/dashboard.schema";
+import type { SessionRateQuota } from "../hooks/useDashboard";
 import type { Campaign, LogEntry, QueueItem, Session } from "@/rpc/bindings";
 
 interface DashboardViewProps {

@@ -25,8 +25,8 @@ pub struct VerifyBatchResponse {
 /// Accepts a session ID and list of phone numbers.
 /// Returns 202 Accepted immediately with a job_id.
 /// Progress and results are streamed via SSE:
-///   event: contact.verify_progress  — after each batch of 100
-///   event: contact.verify_complete  — when all phones checked
+///   event: contact_verify_progress  — after each batch of 100
+///   event: contact_verify_complete  — when all phones checked
 #[rorpc::post("/api/contacts/verify-batch")]
 pub async fn verify_batch(
     State(state): State<AppState>,

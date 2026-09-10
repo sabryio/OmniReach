@@ -169,80 +169,118 @@ URL strategy reads from `window.location` automatically — no manual
 
 ## Types
 
-### Rule: Use Zod schemas as single source of truth
+### Rule: Use RPC-generated types for backend data, Zod only for UI-specific types
 
-**Never define TypeScript types manually.** All domain types must be defined as **Zod schemas** and TypeScript types inferred from them.
+**Backend types come from Rust via RPC bindings** — never manually define TypeScript types for data that exists in the backend.
 
-#### Structure
+#### Backend Types (From RPC Bindings)
 
-Every feature must have a `schemas/` folder:
+All types representing backend data are automatically generated in `frontend/src/rpc/bindings.ts`:
+
+```typescript
+// ✅ CORRECT — Import from RPC bindings
+import type {
+  Campaign,
+  Session,
+  Template,
+  Contact,
+  QueueItem,
+} from "@/rpc/bindings";
+
+// These types mirror Rust structs exactly — you NEVER write them manually
+```
+
+**How backend types are generated:**
+
+1. Rust defines types in `backend/crates/core/src/types/`
+2. Types are used in `#[rorpc]` handler signatures
+3. Build generates TypeScript equivalents in `frontend/src/rpc/bindings.ts`
+4. Frontend imports and uses them
+
+#### UI-Only Types (Zod Schemas)
+
+**Only use Zod schemas for types that DON'T exist in the backend:**
 
 ```
 features/<feature>/
   schemas/
-    <feature>.schema.ts   ← Zod schemas + inferred types
+    <feature>.schema.ts   ← UI-only types (theme, UI state, computed values)
 ```
 
-#### Pattern
+**Examples of UI-only types:**
 
 ```typescript
-// ✅ CORRECT — Zod schema with inferred type
+// features/layout/schemas/layout.schema.ts
 import { z } from "zod";
 
-export const sessionSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(1),
-  status: z.enum(["connected", "disconnected", "qr_required", "connecting"]),
-  hourlyLimit: z.number().int().nonnegative(),
-  hourlySentTimestamps: z.array(z.number().int()),
+// ThemeMode — UI preference, not stored in backend
+export const themeModeSchema = z.enum(["light", "dark", "system"]);
+export type ThemeMode = z.infer<typeof themeModeSchema>;
+
+// SchedulerState — runtime scheduler state, not persisted
+export const schedulerStateSchema = z.object({
+  isRunning: z.boolean(),
+  isProcessingTick: z.boolean(),
+  isWithinTimeWindow: z.boolean(),
+  timeWindowText: z.string(),
+  currentLocalTimeStr: z.string(),
+  activeSendingCount: z.number(),
+  totalQueuePending: z.number(),
+  totalQueueHeld: z.number(),
+  strictTimeWindow: z.boolean(),
+  customWindowStartHour: z.number(),
+  customWindowEndHour: z.number(),
+  simulatedHourOffset: z.number(),
 });
+export type SchedulerState = z.infer<typeof schedulerStateSchema>;
 
-// Infer TypeScript type from schema
-export type Session = z.infer<typeof sessionSchema>;
-
-// ❌ WRONG — Manual TypeScript interface
-export interface Session {
-  id: string;
-  name: string;
-  status: "connected" | "disconnected" | "qr_required" | "connecting";
-  hourlyLimit: number;
-  hourlySentTimestamps: number[];
-}
+// CSVParseResult — frontend-only CSV parsing result
+export const csvParseResultSchema = z.object({
+  contacts: z.array(
+    z.object({
+      phone: z.string(),
+      name: z.string().optional(),
+      // ...
+    }),
+  ),
+  errors: z.array(z.string()),
+});
+export type CSVParseResult = z.infer<typeof csvParseResultSchema>;
 ```
 
-#### Runtime Validation in API Calls
+#### Computed Types (Inline Definitions)
 
-**Always parse API responses with Zod schemas:**
+**Computed types derived from backend data** should be defined inline where they're computed:
 
 ```typescript
-// ✅ CORRECT — Runtime validation
-export async function getSessions(): Promise<Session[]> {
-  const response = await fetch(`${config.apiBaseUrl}/api/sessions`);
-  if (!response.ok) throw new Error(response.statusText);
+// features/dashboard/hooks/useDashboard.ts
 
-  const data = await response.json();
-
-  // Throws ZodError if response shape doesn't match schema
-  return sessionsSchema.parse(data);
+// ✅ CORRECT — Computed type lives with its computation logic
+export interface SessionRateQuota {
+  hourlyUsed: number;
+  dailyUsed: number;
+  // Computed from Session.hourly_sent_timestamps and Session.daily_sent_timestamps
 }
 
-// ❌ WRONG — No validation, assumes correct shape
-export async function getSessions(): Promise<Session[]> {
-  const response = await fetch(`${config.apiBaseUrl}/api/sessions`);
-  return response.json();
+export function useDashboard({ sessions, ... }: Props) {
+  const sessionQuotas: Record<string, SessionRateQuota> = useMemo(() => {
+    const result: Record<string, SessionRateQuota> = {};
+    for (const session of sessions) {
+      const now = Date.now();
+      const oneHourAgo = now - 3600_000;
+      const oneDayAgo = now - 86400_000;
+
+      result[session.id] = {
+        hourlyUsed: session.hourly_sent_timestamps.filter(t => t >= oneHourAgo).length,
+        dailyUsed: session.daily_sent_timestamps.filter(t => t >= oneDayAgo).length,
+      };
+    }
+    return result;
+  }, [sessions]);
+
+  return { sessionQuotas, ... };
 }
 ```
-
-#### Benefits
-
-- **Runtime type safety** — Catches backend/frontend type mismatches immediately
-- **Single source of truth** — No manual sync between Rust types and TypeScript types
-- **Better error messages** — Zod provides detailed validation errors
-- **Input validation** — Validate request bodies before sending to backend
-
-#### Shared Types
-
-For types used across multiple features (e.g., `ThemeMode`, `Language`), keep them in `@/types.ts` but consider migrating to shared Zod schemas over time.
 
 ---
 
@@ -493,148 +531,89 @@ Current variables: `OMNIREACH_ADDR`, `OMNIREACH_TOKEN`, `DATABASE_URL`,
 
 ## Frontend API Layer & Data Fetching
 
-### Rule: TanStack Query + File-Based Routing Architecture
+### Rule: RORPC Type-Safe RPC + TanStack Query Architecture
 
-The frontend uses **TanStack Query** for server state management and **TanStack Router** for file-based routing. Each feature follows a strict three-layer pattern: API functions → Query/Mutation hooks → Route components.
+The frontend uses **RORPC** for type-safe RPC communication with the Rust backend and **TanStack Query** for server state management. **All types, query keys, and mutation/query options are automatically generated from Rust backend code** at `frontend/src/rpc/bindings.ts`.
+
+**Single source of truth:** The Rust backend defines all types and endpoints. Frontend TypeScript types are generated automatically — never manually define duplicated schemas or API functions.
 
 #### Per-Feature Structure
 
-Every feature **must** have this exact folder structure:
+Every feature follows this structure:
 
 ```
 features/<feature>/
-  api/
-    queryKeys.ts           ← Query key constants
-    <feature>.api.ts       ← API functions (return mocks for now)
   hooks/
-    use<Feature>.ts        ← Query hooks (GET operations)
-    use<Feature>Mutations.ts  ← Mutation hooks (POST/PATCH/DELETE)
-    use<Feature>List.ts    ← UI state hooks (filters, selection) — existing
+    use<Feature>Query.ts        ← Query hooks wrapping orpc (GET operations)
+    use<Feature>Mutations.ts    ← Mutation hooks wrapping orpc (POST/PATCH/DELETE)
+    use<Feature>List.ts         ← UI state hooks (filters, selection, local state)
   components/
-    <Feature>View.tsx      ← Presentational components
-  index.ts                 ← Barrel export (api, hooks, components)
+    <Feature>View.tsx           ← Presentational components
+  schemas/                      ← ONLY for UI-only types not in backend
+    layout.schema.ts            ← Example: ThemeMode, SchedulerState (UI-only)
+  index.ts                      ← Barrel export (hooks, components)
 ```
 
-#### Layer 1: API Functions (Pure Data Fetching)
+**What's NOT in features:**
 
-**Location:** `features/<feature>/api/<feature>.api.ts`
+- ❌ No `api/` directories (except `media/api` for multipart uploads)
+- ❌ No `schemas/` for backend types (use `@/rpc/bindings` instead)
+- ❌ No `queryKeys.ts` files (use `orpc.{resource}.{method}.queryKey()`)
+- ❌ No manual API functions (use `orpc.{resource}.{method}.mutate()`)
+
+#### Layer 1: RPC Bindings (Auto-Generated Types & Client)
+
+**Location:** `frontend/src/rpc/bindings.ts` (generated from Rust backend)
+
+**What it contains:**
+
+- All TypeScript types mirroring Rust structs
+- RPC client (`orpc`) with type-safe methods for every backend endpoint
+- Query keys: `orpc.{resource}.{method}.queryKey()`
+- Query options: `orpc.{resource}.{method}.queryOptions()`
+- Mutation options: `orpc.{resource}.{method}.mutationOptions()`
+
+**How types are generated:**
+
+1. Rust backend defines types in `backend/crates/core/src/types/`
+2. Rust handlers annotated with `#[rorpc::get("/api/...")]`, `#[rorpc::post("/api/...")]`, etc.
+3. Build script generates `frontend/src/rpc/bindings.ts` with TypeScript equivalents
+4. Frontend imports types from `@/rpc/bindings` — never manually define them
+
+**Example usage:**
+
+```typescript
+// Import types from generated bindings
+import type { Campaign, Session, Template } from "@/rpc/bindings";
+
+// Import orpc client
+import { orpc } from "@/rpc";
+
+// Use in hooks (see Layer 2 below)
+const query = useQuery(orpc.campaigns.list.queryOptions());
+const mutation = useMutation(orpc.campaigns.create.mutationOptions({ ... }));
+```
+
+#### Layer 2: Query Hooks (TanStack Query Wrappers)
+
+**Location:** `features/<feature>/hooks/use<Feature>Query.ts`
 
 **Rules:**
 
-- Return mocks from `@/mock-data` initially (Phase 1)
-- Return domain types directly — **no wrapper objects**
-- Use DTO objects for mutations with multiple params
-- Use `Partial<T>` for flexible updates
-- Add `// TODO: Phase 2 — await fetch(...)` comments for HTTP integration
-
-**Pattern:**
-
-```typescript
-// features/sessions/api/sessions.api.ts
-import type { WABridgeSession } from "@/types";
-import { MOCK_SESSIONS } from "@/mock-data";
-
-// ─── Queries ─────────────────────────────────────────────────────────────────
-
-export async function getSessions(): Promise<WABridgeSession[]> {
-  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/sessions`)
-  return MOCK_SESSIONS;
-}
-
-export async function getSession(id: string): Promise<WABridgeSession> {
-  const session = MOCK_SESSIONS.find((s) => s.id === id);
-  if (!session) throw new Error(`Session ${id} not found`);
-  return session;
-}
-
-// ─── Mutations ───────────────────────────────────────────────────────────────
-
-export type CreateSessionParams = {
-  id: string;
-  accountName: string;
-};
-
-export async function createSession(
-  params: CreateSessionParams,
-): Promise<WABridgeSession> {
-  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/sessions`, { method: 'POST', ... })
-  const newSession: WABridgeSession = {
-    id: params.id,
-    accountName: params.accountName,
-    isConnected: false,
-    messagesSentLast24h: 0,
-    limitLast24h: 1000,
-    sessionCreatedAt: new Date().toISOString(),
-    lastSeenAt: null,
-  };
-  return newSession;
-}
-
-export async function deleteSession(id: string): Promise<void> {
-  // TODO: Phase 2 — await fetch(`${API_BASE_URL}/api/sessions/${id}`, { method: 'DELETE' })
-  return;
-}
-```
-
-#### Layer 2: Query Keys (Hierarchical Cache Management)
-
-**Location:** `features/<feature>/api/queryKeys.ts`
-
-**Pattern:** Functional composition with `const base` for hierarchical invalidation.
-
-```typescript
-// features/sessions/api/queryKeys.ts
-const base = ["sessions"] as const;
-
-export const SessionQueryKeys = {
-  all: base,
-  lists: () => [...base, "list"] as const,
-  list: (filters?: SessionFilters) => [...base, "list", filters] as const,
-  details: () => [...base, "detail"] as const,
-  detail: (id: string) => [...base, "detail", id] as const,
-} as const;
-```
-
-**Invalidation examples:**
-
-```typescript
-// Invalidate ALL session queries
-queryClient.invalidateQueries({ queryKey: SessionQueryKeys.all });
-
-// Invalidate all list queries (but not details)
-queryClient.invalidateQueries({ queryKey: SessionQueryKeys.lists() });
-
-// Invalidate specific detail
-queryClient.invalidateQueries({
-  queryKey: SessionQueryKeys.detail("session-123"),
-});
-```
-
-#### Layer 3: Query Hooks (TanStack Query Wrappers)
-
-**Location:** `features/<feature>/hooks/use<Feature>.ts`
-
-**Rules:**
-
-- Import query keys from `../api/queryKeys`
-- Import API functions from `../api/<feature>.api`
+- Use `orpc.{resource}.{method}.queryOptions()` for all queries
 - Return **named exports with defaults** (e.g., `sessions: data ?? []`)
 - Use semantic boolean names (`isLoading`, `isFetching`, not generic `loading`)
+- **Never** use manual `queryKey` or `queryFn` — always use orpc-generated options
 
 **Pattern:**
 
 ```typescript
-// features/sessions/hooks/useSessions.ts
+// features/sessions/hooks/useSessionsQuery.ts
 import { useQuery } from "@tanstack/react-query";
-import { SessionQueryKeys } from "../api/queryKeys";
-import { getSessions, getSession } from "../api/sessions.api";
-import type { WABridgeSession } from "@/types";
+import { orpc } from "@/rpc";
 
 export function useSessions() {
-  const query = useQuery({
-    queryKey: SessionQueryKeys.lists(),
-    queryFn: getSessions,
-  });
+  const query = useQuery(orpc.sessions.list.queryOptions());
 
   return {
     sessions: query.data ?? [],
@@ -646,11 +625,12 @@ export function useSessions() {
 }
 
 export function useSession(id: string) {
-  const query = useQuery({
-    queryKey: SessionQueryKeys.detail(id),
-    queryFn: () => getSession(id),
-    enabled: !!id,
-  });
+  const query = useQuery(
+    orpc.sessions.getById.queryOptions({
+      input: { id },
+      enabled: !!id, // Can add TanStack Query options
+    }),
+  );
 
   return {
     session: query.data,
@@ -661,14 +641,21 @@ export function useSession(id: string) {
 }
 ```
 
-#### Layer 4: Mutation Hooks (With Cache Invalidation)
+**Why this pattern:**
+
+- `orpc.sessions.list.queryOptions()` returns a complete query configuration
+- Type-safe: TypeScript knows the exact return type from the Rust handler
+- Query key is automatically managed by rorpc
+- No manual fetch needed — rorpc handles HTTP communication
+
+#### Layer 3: Mutation Hooks (With Cache Invalidation)
 
 **Location:** `features/<feature>/hooks/use<Feature>Mutations.ts`
 
 **Rules:**
 
-- Use `useMutation` from TanStack Query
-- **ALWAYS** invalidate queries in `onSuccess` callback
+- Use `orpc.{resource}.{method}.mutationOptions()` for all mutations
+- **ALWAYS** invalidate queries in `onSuccess` callback using `orpc.{resource}.{method}.queryOptions()`
 - Use semantic names: `isCreating`, `isUpdating`, `isDeleting` (not just `isPending`)
 - Return both `mutate` and `mutateAsync` for flexibility
 - Include `reset()` for clearing errors
@@ -678,19 +665,19 @@ export function useSession(id: string) {
 ```typescript
 // features/sessions/hooks/useSessionMutations.ts
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SessionQueryKeys } from "../api/queryKeys";
-import { createSession, deleteSession } from "../api/sessions.api";
-import type { CreateSessionParams } from "../api/sessions.api";
+import { orpc } from "@/rpc";
 
 export function useCreateSession() {
   const queryClient = useQueryClient();
 
-  const mutation = useMutation({
-    mutationFn: createSession,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SessionQueryKeys.all });
-    },
-  });
+  const mutation = useMutation(
+    orpc.sessions.create.mutationOptions({
+      onSuccess: () => {
+        // Invalidate using orpc-generated query options
+        queryClient.invalidateQueries(orpc.sessions.list.queryOptions());
+      },
+    }),
+  );
 
   return {
     createSession: mutation.mutate,
@@ -704,12 +691,13 @@ export function useCreateSession() {
 export function useDeleteSession() {
   const queryClient = useQueryClient();
 
-  const mutation = useMutation({
-    mutationFn: deleteSession,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SessionQueryKeys.all });
-    },
-  });
+  const mutation = useMutation(
+    orpc.sessions.destroy.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries(orpc.sessions.list.queryOptions());
+      },
+    }),
+  );
 
   return {
     deleteSession: mutation.mutate,
@@ -718,44 +706,67 @@ export function useDeleteSession() {
     error: mutation.error,
   };
 }
+
+export function useUpdateSession() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation(
+    orpc.sessions.update.mutationOptions({
+      onSuccess: (_, variables) => {
+        // Invalidate specific detail
+        queryClient.invalidateQueries(
+          orpc.sessions.getById.queryOptions({ input: { id: variables.id } }),
+        );
+        // Invalidate list
+        queryClient.invalidateQueries(orpc.sessions.list.queryOptions());
+      },
+    }),
+  );
+
+  return {
+    updateSession: mutation.mutate,
+    updateSessionAsync: mutation.mutateAsync,
+    isUpdating: mutation.isPending,
+    error: mutation.error,
+  };
+}
 ```
 
 **Cross-feature invalidation:**
-When a mutation affects multiple features, invalidate all related query keys:
+When a mutation affects multiple features, invalidate all related caches:
 
 ```typescript
-// Example: Creating a campaign invalidates campaigns + queue + dashboard
 export function useCreateCampaign() {
   const queryClient = useQueryClient();
 
-  const mutation = useMutation({
-    mutationFn: createCampaign,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CampaignQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: QueueQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: DashboardQueryKeys.all });
-    },
-  });
+  const mutation = useMutation(
+    orpc.campaigns.create.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries(orpc.campaigns.list.queryOptions());
+        queryClient.invalidateQueries(
+          orpc.queue.list.queryOptions({ input: { campaign_id: null } }),
+        );
+      },
+    }),
+  );
 
   return {
     createCampaign: mutation.mutate,
     createCampaignAsync: mutation.mutateAsync,
     isCreating: mutation.isPending,
     error: mutation.error,
-    reset: mutation.reset,
   };
 }
 ```
 
-#### Layer 5: Route Components (Data Owners)
+#### Layer 4: Route Components (Data Owners)
 
 **Location:** `routes/$locale/<feature>.tsx`
 
 **Rules:**
 
-- Each route **owns** its data fetching via hooks
+- Each route **owns** its data fetching via query/mutation hooks
 - Route component calls hooks and passes data to presentational components
-- **No direct mock imports** in route files — use hooks only
 - Handle loading states explicitly
 - Use TanStack Router's `loader` for prefetching (optional)
 
@@ -765,7 +776,12 @@ export function useCreateCampaign() {
 // routes/$locale/sessions.tsx
 import { createFileRoute } from '@tanstack/react-router';
 import { SessionsDashboard } from '@/features/sessions';
-import { useSessions, useSessionMutations } from '@/features/sessions';
+import { useSessions } from '@/features/sessions/hooks/useSessionsQuery';
+import {
+  useSyncSession,
+  useDeleteSession,
+  useSendTestMessage,
+} from '@/features/sessions/hooks/useSessionMutations';
 
 export const Route = createFileRoute('/$locale/sessions')({
   component: SessionsRoute,
@@ -773,7 +789,9 @@ export const Route = createFileRoute('/$locale/sessions')({
 
 function SessionsRoute() {
   const { sessions, isLoading } = useSessions();
-  const { deleteSession } = useSessionMutations();
+  const { syncSession } = useSyncSession();
+  const { deleteSession } = useDeleteSession();
+  const { sendTestMessageAsync } = useSendTestMessage();
 
   if (isLoading) {
     return <div className="p-5">Loading sessions...</div>;
@@ -782,7 +800,11 @@ function SessionsRoute() {
   return (
     <SessionsDashboard
       sessions={sessions}
-      onDeleteSession={deleteSession}
+      onSyncSession={(id) => syncSession({ id })}
+      onDeleteSession={(id) => deleteSession({ id })}
+      onSendTest={async (id, phone, message) =>
+        sendTestMessageAsync({ id, phone, message })
+      }
     />
   );
 }
@@ -791,15 +813,13 @@ function SessionsRoute() {
 **With prefetching (optional):**
 
 ```typescript
-import { SessionQueryKeys } from "@/features/sessions/api/queryKeys";
-import { getSessions } from "@/features/sessions/api/sessions.api";
+import { orpc } from "@/rpc";
 
 export const Route = createFileRoute("/$locale/sessions")({
   loader: ({ context }) => {
-    return context.queryClient.ensureQueryData({
-      queryKey: SessionQueryKeys.lists(),
-      queryFn: getSessions,
-    });
+    return context.queryClient.ensureQueryData(
+      orpc.sessions.list.queryOptions(),
+    );
   },
   component: SessionsRoute,
 });
@@ -873,10 +893,10 @@ const [activeTab, setActiveTab] = useState('dashboard');
 
 #### UI State Hooks (Separate from Data Hooks)
 
-**Existing UI state hooks remain unchanged** and are composed **explicitly** with data hooks:
+**UI state hooks manage local presentation state** and are composed **explicitly** with data hooks:
 
 ```typescript
-// Existing: features/campaigns/hooks/useCampaignsList.ts
+// features/campaigns/hooks/useCampaignsList.ts — UI state only
 export function useCampaignsList(campaigns: Campaign[]) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'running' | 'paused'>('all');
@@ -894,8 +914,11 @@ export function useCampaignsList(campaigns: Campaign[]) {
 
 // Usage in route component:
 function CampaignsRoute() {
-  const { campaigns } = useCampaigns();           // ← Data hook
-  const uiState = useCampaignsList(campaigns);    // ← UI state hook
+  // Data layer — RPC query hook
+  const { campaigns } = useCampaignsQuery();
+
+  // UI state layer — receives data, manages filters
+  const uiState = useCampaignsList(campaigns);
 
   return <CampaignsList campaigns={uiState.filteredCampaigns} {...uiState} />;
 }
@@ -944,56 +967,80 @@ export const queryClient = new QueryClient({
 });
 ```
 
-#### Mock Data Consolidation
+#### Exception: Media Upload (Not in RPC Bindings)
 
-**All mock data lives in `frontend/src/mock-data/`** — features NEVER import mocks directly:
+**Media upload uses multipart form data** and is not part of the RPC bindings:
 
 ```typescript
-// ✅ CORRECT — API layer imports mocks
-// features/sessions/api/sessions.api.ts
-import { MOCK_SESSIONS } from '@/mock-data';
+// features/media/api/media.api.ts — Manual API for file upload
+export async function uploadMedia(
+  file: File,
+  mediaType: "image" | "video" | "document",
+): Promise<MediaUploadResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("media_type", mediaType);
 
-export async function getSessions(): Promise<WABridgeSession[]> {
-  return MOCK_SESSIONS;
+  const response = await fetch(`${config.apiBaseUrl}/api/media/upload`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${config.authToken}` },
+    body: formData,
+  });
+
+  if (!response.ok) throw new Error(`Upload failed: ${await response.text()}`);
+  return response.json();
 }
 
-// ❌ WRONG — Component imports mocks (DO NOT DO THIS)
-// features/sessions/components/SessionsDashboard.tsx
-import { MOCK_SESSIONS } from '@/mock-data';  // ❌ Never import in components
+// features/media/hooks/useMediaUpload.ts — Manual mutation
+export function useMediaUpload() {
+  const mutation = useMutation({
+    mutationFn: ({ file, mediaType }) => uploadMedia(file, mediaType),
+  });
 
-function SessionsDashboard() {
-  return <div>{MOCK_SESSIONS.map(...)}</div>;  // ❌ Wrong pattern
+  return {
+    uploadMedia: mutation.mutate,
+    uploadMediaAsync: mutation.mutateAsync,
+    isUploading: mutation.isPending,
+    error: mutation.error,
+  };
 }
 ```
 
-**Why:** Mock data serves as the **contract** between frontend and backend. Backend will return the same mocks initially to verify type parity before real implementation.
+This is the **only** acceptable manual API implementation — all other endpoints use RPC bindings.
 
 #### What NOT to Do
 
 ```typescript
-// ❌ WRONG — useState for server data in route
-function CampaignsRoute() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>(MOCK_CAMPAIGNS);
-  return <CampaignsList campaigns={campaigns} />;
+// ❌ WRONG — Manual API functions (use orpc instead)
+export async function getCampaigns(): Promise<Campaign[]> {
+  const response = await fetch(`${API_BASE_URL}/api/campaigns`);
+  return response.json();
 }
 
-// ❌ WRONG — Direct mock imports in components
-import { MOCK_CAMPAIGNS } from '@/mock-data';
-function CampaignsList() {
-  return <div>{MOCK_CAMPAIGNS.map(...)}</div>;
+// ❌ WRONG — Manual queryKeys (use orpc-generated keys)
+const CampaignQueryKeys = {
+  all: ["campaigns"] as const,
+  list: () => ["campaigns", "list"] as const,
+};
+
+// ❌ WRONG — Manual mutationFn (use orpc.mutationOptions())
+const mutation = useMutation({
+  mutationFn: (data) => fetch(...).then(r => r.json()),
+});
+
+// ❌ WRONG — Duplicating backend types manually
+export interface Campaign {
+  id: string;
+  title: string;
+  // ...duplicates Rust struct
 }
 
-// ❌ WRONG — setQueryData for cache updates (use invalidateQueries)
-queryClient.setQueryData(CampaignQueryKeys.all, newCampaigns);
-
-// ❌ WRONG — Wrapper response types
-export async function getCampaigns(): Promise<{ data: Campaign[] }> {
-  return { data: MOCK_CAMPAIGNS };  // Don't wrap — return direct types
-}
+// ❌ WRONG — setQueryData for cache updates
+queryClient.setQueryData(["campaigns"], newCampaigns);
 
 // ❌ WRONG — Merged data + UI hooks
 export function useCampaigns() {
-  const query = useQuery(...);
+  const query = useQuery(orpc.campaigns.list.queryOptions());
   const [search, setSearch] = useState('');  // Don't mix
   return { campaigns: query.data, search, setSearch };
 }
@@ -1002,52 +1049,67 @@ export function useCampaigns() {
 #### What TO Do
 
 ```typescript
-// ✅ CORRECT — TanStack Query in route
-function CampaignsRoute() {
-  const { campaigns } = useCampaigns();
-  return <CampaignsList campaigns={campaigns} />;
-}
+// ✅ CORRECT — Import types from RPC bindings
+import type { Campaign, Session, Template } from "@/rpc/bindings";
+import { orpc } from "@/rpc";
 
-// ✅ CORRECT — API layer imports mocks
-export async function getCampaigns(): Promise<Campaign[]> {
-  return MOCK_CAMPAIGNS;
-}
+// ✅ CORRECT — Use orpc-generated query options
+const query = useQuery(orpc.campaigns.list.queryOptions());
 
-// ✅ CORRECT — invalidateQueries for cache updates
-queryClient.invalidateQueries({ queryKey: CampaignQueryKeys.all });
+// ✅ CORRECT — Use orpc-generated mutation options
+const mutation = useMutation(
+  orpc.campaigns.create.mutationOptions({
+    onSuccess: () => {
+      queryClient.invalidateQueries(orpc.campaigns.list.queryOptions());
+    },
+  })
+);
 
-// ✅ CORRECT — Direct domain types
-export async function getCampaigns(): Promise<Campaign[]> {
-  return MOCK_CAMPAIGNS;
-}
+// ✅ CORRECT — Invalidate using orpc query options
+queryClient.invalidateQueries(orpc.campaigns.list.queryOptions());
 
 // ✅ CORRECT — Separate data and UI hooks
-const { campaigns } = useCampaigns();           // Data
-const uiState = useCampaignsList(campaigns);    // UI state
+function CampaignsRoute() {
+  const { campaigns } = useCampaignsQuery();  // Data (RPC)
+  const uiState = useCampaignsList(campaigns); // UI state
+  return <CampaignsList {...uiState} />;
+}
+
+// ✅ CORRECT — Computed types inline (not from backend)
+export interface SessionRateQuota {
+  hourlyUsed: number;
+  dailyUsed: number;
+  // Derived from Session timestamps, not a backend type
+}
 ```
 
 #### Key Principles
 
-1. **TanStack Query cache is the single source of truth** — not route `useState`
-2. **Each route owns its data** — fetches via hooks, passes to components
-3. **Components are purely presentational** — receive data as props, no data fetching
-4. **API layer is the only mock consumer** — components never import mocks
-5. **Use `invalidateQueries`, not `setQueryData`** — let TanStack Query refetch
-6. **Hierarchical query keys** — enables partial invalidation (all/lists/detail)
-7. **Explicit composition** — data hooks + UI hooks stay separate, composed in route
+1. **RPC bindings are the single source of truth** — all types come from Rust backend
+2. **Never duplicate types or API functions** — use `@/rpc/bindings` and `orpc` client
+3. **Each route owns its data** — fetches via RPC query hooks, passes to components
+4. **Components are purely presentational** — receive data as props, no data fetching
+5. **Use `invalidateQueries` with orpc options** — let TanStack Query refetch automatically
+6. **Separate data and UI hooks** — RPC hooks for server state, manager hooks for local state
+7. **Computed types live with their logic** — e.g., SessionRateQuota in useDashboard hook
+8. **Media upload is the only manual API** — everything else uses RPC bindings
 
-#### Migration Checklist Reference
+#### Backend-Frontend Type Contract
 
-For detailed per-feature migration steps, see:
+**How it works:**
 
-- **12-phase checklist:** `.ai/wayfinder/migration-checklist-template.md`
-- **Feature audit:** `.ai/wayfinder/feature-coverage-audit.md`
-- **79-task roadmap:** `.ai/blueprints/001-frontend-api-layer-migration-2026-08-30-tasks.md`
+1. Backend defines Rust types in `backend/crates/core/src/types/`
+2. Backend handlers use `#[rorpc]` attributes to expose endpoints
+3. Build generates `frontend/src/rpc/bindings.ts` with TypeScript types
+4. Frontend imports types: `import type { Campaign } from "@/rpc/bindings"`
+5. Frontend makes calls: `orpc.campaigns.create.call({ input: {...} })`
+6. TypeScript ensures type safety at compile time
+7. Rust backend ensures correctness at runtime
 
-**Implementation order:**
+**Benefits:**
 
-1. Foundation (TanStack Query setup, shared layout)
-2. Sessions (pilot — validates pattern)
-3. Templates, Customers, Campaigns, Queue, Dashboard, Reports, Settings
-
-**Success validation:** TypeScript compiles (`bunx tsc --noEmit`), all features render, CRUD operations work with mocks, TanStack Query devtools shows queries, cache invalidation works.
+- Zero manual type synchronization
+- Compile-time type safety end-to-end
+- Impossible to drift frontend/backend types
+- Refactoring in Rust automatically updates TypeScript
+- No manual API documentation needed — types ARE the docs

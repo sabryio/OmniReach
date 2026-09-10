@@ -9,9 +9,8 @@ import {
   useSendTestMessage,
   useDeleteSession,
 } from "@/features/sessions/hooks/useSessionMutations";
-import { verifyBatch } from "@/features/customers/api/contacts.api";
-import type { VerifyCompletePayload } from "@/features/customers/api/contacts.api";
 import type { WABridgeConfig } from "@/features/layout/schemas/layout.schema";
+import { orpc } from "@/rpc";
 
 const DEFAULT_CONFIG: WABridgeConfig = {
   baseUrl: "http://127.0.0.1:7171",
@@ -42,13 +41,16 @@ function SessionsRoute() {
     waId?: string;
     error?: string;
   }> => {
-    const { jobId } = await verifyBatch({ sessionId, phones: [phone] });
+    const { job_id } = await orpc.contacts.verifyBatch.call({
+      session_id: sessionId,
+      phones: [phone],
+    });
 
     return new Promise((resolve) => {
       const onComplete = (e: Event) => {
-        const payload = (e as CustomEvent<VerifyCompletePayload>).detail;
-        if (payload.job_id !== jobId) return;
-        window.removeEventListener("contact.verify_complete", onComplete);
+        const payload = (e as CustomEvent).detail;
+        if (payload.job_id !== job_id) return;
+        window.removeEventListener("contact_verify_complete", onComplete);
         const result = payload.results[0];
         if (!result) {
           resolve({ isRegistered: false, error: "No result returned" });
@@ -60,7 +62,7 @@ function SessionsRoute() {
           error: result.error ?? undefined,
         });
       };
-      window.addEventListener("contact.verify_complete", onComplete);
+      window.addEventListener("contact_verify_complete", onComplete);
     });
   };
 

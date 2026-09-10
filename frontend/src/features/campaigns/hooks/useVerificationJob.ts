@@ -5,17 +5,29 @@
  *   1. Call startJob(sessionId, phones) → fires POST /api/contacts/verify-batch
  *   2. Backend returns job_id immediately (202 Accepted)
  *   3. useSseConnection dispatches DOM CustomEvents for SSE frames:
- *        "contact.verify_progress" → updates progress state
- *        "contact.verify_complete" → sets results, marks job done
+ *        "contact_verify_progress" → updates progress state
+ *        "contact_verify_complete" → sets results, marks job done
  *   4. Caller reads { isRunning, progress, results } to drive UI
  */
 import { useState, useEffect, useCallback, useRef } from "react";
-import { verifyBatch } from "@/features/customers/api/contacts.api";
-import type {
-  VerifyProgressPayload,
-  VerifyCompletePayload,
-  VerifyResultItem,
-} from "@/features/customers/api/contacts.api";
+import { orpc } from "@/rpc";
+import type { SseEvent } from "@/rpc/bindings";
+
+// Extract verification event types from SSE discriminated union
+type VerifyProgressPayload = Extract<
+  SseEvent,
+  { type: "contact_verify_progress" }
+>["data"];
+type VerifyCompletePayload = Extract<
+  SseEvent,
+  { type: "contact_verify_complete" }
+>["data"];
+type VerifyResultItem = {
+  phone: string;
+  is_registered: boolean;
+  wa_id?: string | null;
+  error?: string | null;
+};
 
 export type VerificationProgress = {
   checked: number;
@@ -79,12 +91,12 @@ export function useVerificationJob() {
       jobIdRef.current = null;
     };
 
-    window.addEventListener("contact.verify_progress", onProgress);
-    window.addEventListener("contact.verify_complete", onComplete);
+    window.addEventListener("contact_verify_progress", onProgress);
+    window.addEventListener("contact_verify_complete", onComplete);
 
     return () => {
-      window.removeEventListener("contact.verify_progress", onProgress);
-      window.removeEventListener("contact.verify_complete", onComplete);
+      window.removeEventListener("contact_verify_progress", onProgress);
+      window.removeEventListener("contact_verify_complete", onComplete);
     };
   }, []);
 
@@ -103,9 +115,12 @@ export function useVerificationJob() {
     });
 
     try {
-      const { jobId } = await verifyBatch({ sessionId, phones });
-      jobIdRef.current = jobId;
-      setState((prev) => ({ ...prev, jobId }));
+      const { job_id } = await orpc.contacts.verifyBatch.call({
+        session_id: sessionId,
+        phones,
+      });
+      jobIdRef.current = job_id;
+      setState((prev) => ({ ...prev, jobId: job_id }));
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to start verification";

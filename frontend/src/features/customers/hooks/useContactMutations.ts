@@ -4,8 +4,8 @@ import { orpc } from "@/rpc";
 /**
  * Hook for batch contact verification via WABridge
  * Returns immediately with a job_id. Progress/results stream via SSE:
- *   - event: contact.verify_progress
- *   - event: contact.verify_complete
+ *   - event: contact_verify_progress
+ *   - event: contact_verify_complete
  */
 export function useVerifyBatchContacts() {
   const mutation = useMutation(

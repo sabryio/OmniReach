@@ -8,9 +8,7 @@
 //!   event: <event_type>
 //!   data: <json_payload>\n\n
 
-use axum::response::sse::Event;
 use rorpc::ZodTs;
-use serde_json::json;
 use tokio::sync::broadcast::{self, Receiver, Sender};
 
 /// Capacity of the broadcast channel (number of buffered events).
@@ -67,100 +65,6 @@ pub enum SseEvent {
         job_id: String,
         results: serde_json::Value,
     },
-}
-
-impl SseEvent {
-    /// Convert to an Axum `Event` with the correct `event:` type field.
-    pub fn into_axum_event(self) -> Event {
-        let (event_type, data) = match self {
-            SseEvent::CampaignCreated { campaign_id, title } => (
-                "campaign.created",
-                json!({ "campaign_id": campaign_id, "title": title }),
-            ),
-            SseEvent::CampaignStatus {
-                campaign_id,
-                status,
-            } => (
-                "campaign.status",
-                json!({ "campaign_id": campaign_id, "status": status }),
-            ),
-            SseEvent::QueueItemUpdated {
-                item_id,
-                new_status,
-                campaign_id,
-            } => (
-                "queue.item_updated",
-                json!({
-                    "item_id": item_id,
-                    "new_status": new_status,
-                    "campaign_id": campaign_id,
-                }),
-            ),
-            SseEvent::QueueItemAdded {
-                item_id,
-                campaign_id,
-                phone,
-            } => (
-                "queue.item_added",
-                json!({
-                    "item_id": item_id,
-                    "campaign_id": campaign_id,
-                    "phone": phone,
-                }),
-            ),
-            SseEvent::QueueStats {
-                pending,
-                sending,
-                sent,
-                failed,
-                held,
-            } => (
-                "queue.stats",
-                json!({
-                    "pending": pending,
-                    "sending": sending,
-                    "sent": sent,
-                    "failed": failed,
-                    "held": held,
-                }),
-            ),
-            SseEvent::SessionStatus {
-                session_id,
-                status,
-                qr_code_data,
-            } => (
-                "session.status",
-                json!({
-                    "session_id": session_id,
-                    "status": status,
-                    "qr_code_data": qr_code_data,
-                }),
-            ),
-            SseEvent::LogEntry(v) => ("log.entry", v),
-            SseEvent::ContactVerifyProgress {
-                job_id,
-                checked,
-                total,
-                registered,
-                unregistered,
-            } => (
-                "contact.verify_progress",
-                json!({
-                    "job_id": job_id,
-                    "checked": checked,
-                    "total": total,
-                    "registered": registered,
-                    "unregistered": unregistered,
-                }),
-            ),
-            SseEvent::ContactVerifyComplete { job_id, results } => (
-                "contact.verify_complete",
-                json!({ "job_id": job_id, "results": results }),
-            ),
-        };
-
-        Event::default().event(event_type).data(data.to_string())
-    }
 }
 
 /// Cheaply-cloneable broadcaster handle.

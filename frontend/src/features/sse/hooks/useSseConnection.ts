@@ -44,6 +44,8 @@ export function useSseConnection(): SseConnectionState {
     }),
   );
 
+  console.log({ latestEvent });
+
   // Handle individual events as they arrive
   useEffect(() => {
     if (!latestEvent) return;
@@ -56,9 +58,6 @@ export function useSseConnection(): SseConnectionState {
         case "campaign_created":
         case "campaign_status":
           queryClient.invalidateQueries(orpc.campaigns.list.queryOptions());
-          // queryClient.invalidateQueries({
-          //   queryKey: DashboardQueryKeys.all,
-          // });
           break;
 
         case "queue_item_updated":
@@ -68,9 +67,6 @@ export function useSseConnection(): SseConnectionState {
             orpc.queue.list.queryOptions({ input: { campaign_id: null } }),
           );
           queryClient.invalidateQueries(orpc.queue.stats.queryOptions());
-          // queryClient.invalidateQueries({
-          //   queryKey: DashboardQueryKeys.all,
-          // });
           break;
 
         case "session_status":
@@ -90,7 +86,7 @@ export function useSseConnection(): SseConnectionState {
 
         case "contact_verify_complete":
           window.dispatchEvent(
-            new CustomEvent("contact.verify_complete", { detail: data }),
+            new CustomEvent("contact_verify_complete", { detail: data }),
           );
           break;
 

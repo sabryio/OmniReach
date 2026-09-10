@@ -7,36 +7,14 @@ import { openapi } from "@orpc/openapi";
 import { asyncIteratorObject } from "@orpc/contract";
 
 // ============================================================================
-// Enum Types
+// Domain Types - Omnireach Server Handlers Contacts
 // ============================================================================
 
-export const QueueItemStatusSchema = z.union([
-  z.literal("pending"),
-  z.literal("verifying"),
-  z.literal("sending"),
-  z.literal("sent"),
-  z.literal("skipped_unregistered"),
-  z.literal("failed"),
-  z.literal("held_rate_limit"),
-  z.literal("held_time_window"),
-  z.literal("cancelled")
-]);
-
-export type QueueItemStatus = z.infer<typeof QueueItemStatusSchema>;
-
-
-// ============================================================================
-// Input Types - Omnireach Core Types Session
-// ============================================================================
-
-export const UpdateSessionInputSchema = z.object({
-  name: z.string().nullable(),
-  api_key: z.string().nullable(),
-  hourly_limit: z.number().int().nullable(),
-  daily_limit: z.number().int().nullable()
+export const VerifyBatchResponseSchema = z.object({
+  job_id: z.string()
 });
 
-export type UpdateSessionInput = z.infer<typeof UpdateSessionInputSchema>;
+export type VerifyBatchResponse = z.infer<typeof VerifyBatchResponseSchema>;
 
 
 // ============================================================================
@@ -96,65 +74,53 @@ export type LogEntry = z.infer<typeof LogEntrySchema>;
 
 
 // ============================================================================
-// Domain Types - Omnireach Server Handlers Scheduler
+// Enum Types
 // ============================================================================
 
-export const TickResponseSchema = z.object({
-  processed: z.array(ProcessedItemSchema),
-  new_logs: z.array(LogEntrySchema)
+export const SessionStatusSchema = z.union([
+  z.literal("connected"),
+  z.literal("disconnected")
+]);
+
+export type SessionStatus = z.infer<typeof SessionStatusSchema>;
+
+
+// ============================================================================
+// Domain Types - Omnireach Core Types Session
+// ============================================================================
+
+export const SessionSchema = z.object({
+  id: z.uuid(),
+  name: z.string().min(1).max(100),
+  phone_number: z.string().min(1),
+  status: SessionStatusSchema,
+  hourly_limit: z.number().int().min(1).max(10000),
+  daily_limit: z.number().int().min(1).max(100000),
+  hourly_sent_timestamps: z.array(z.number().int()),
+  daily_sent_timestamps: z.array(z.number().int()),
+  last_activity_at: z.iso.datetime({ offset: true }).nullable()
 });
 
-export type TickResponse = z.infer<typeof TickResponseSchema>;
-
-
-// ============================================================================
-// Input Types - Omnireach Core Types Template
-// ============================================================================
-
-export const CreateTemplateInputSchema = z.object({
-  title: z.string().min(1).max(200),
-  title_ar: z.string().nullable(),
-  category: z.string().min(1).max(100),
-  category_ar: z.string().nullable(),
-  text: z.string().min(1),
-  text_ar: z.string().nullable(),
-  image_url: z.string().nullable(),
-  image_file_name: z.string().nullable(),
-  suggested_variables: z.array(z.string())
-});
-
-export type CreateTemplateInput = z.infer<typeof CreateTemplateInputSchema>;
-
-
-// ============================================================================
-// Input Types - Omnireach Core Types Settings
-// ============================================================================
-
-export const UpdateSettingsInputSchema = z.object({
-  scheduler_start_hour: z.number().int().nullable(),
-  scheduler_end_hour: z.number().int().nullable(),
-  scheduler_strict_time_window: z.boolean().nullable(),
-  wabridge_base_url: z.string().nullable(),
-  wabridge_timeout_ms: z.number().int().nullable()
-});
-
-export type UpdateSettingsInput = z.infer<typeof UpdateSettingsInputSchema>;
+export type Session = z.infer<typeof SessionSchema>;
 
 
 // ============================================================================
 // Enum Types
 // ============================================================================
 
-export const CampaignStatusSchema = z.union([
-  z.literal("draft"),
-  z.literal("scheduled"),
-  z.literal("running"),
-  z.literal("paused"),
-  z.literal("completed"),
-  z.literal("cancelled")
+export const SseEventSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("campaign_created"), data: z.object({ campaign_id: z.string(), title: z.string() }) }),
+  z.object({ type: z.literal("campaign_status"), data: z.object({ campaign_id: z.string(), status: z.string() }) }),
+  z.object({ type: z.literal("queue_item_updated"), data: z.object({ item_id: z.string(), new_status: z.string(), campaign_id: z.string() }) }),
+  z.object({ type: z.literal("queue_item_added"), data: z.object({ item_id: z.string(), campaign_id: z.string(), phone: z.string() }) }),
+  z.object({ type: z.literal("queue_stats"), data: z.object({ pending: z.number().int(), sending: z.number().int(), sent: z.number().int(), failed: z.number().int(), held: z.number().int() }) }),
+  z.object({ type: z.literal("session_status"), data: z.object({ session_id: z.string(), status: z.string(), qr_code_data: z.string().nullable() }) }),
+  z.object({ type: z.literal("log_entry"), data: z.record(z.string(), z.unknown()) }),
+  z.object({ type: z.literal("contact_verify_progress"), data: z.object({ job_id: z.string(), checked: z.number().int(), total: z.number().int(), registered: z.number().int(), unregistered: z.number().int() }) }),
+  z.object({ type: z.literal("contact_verify_complete"), data: z.object({ job_id: z.string(), results: z.record(z.string(), z.unknown()) }) })
 ]);
 
-export type CampaignStatus = z.infer<typeof CampaignStatusSchema>;
+export type SseEvent = z.infer<typeof SseEventSchema>;
 
 export const ContactVerificationStatusSchema = z.union([
   z.literal("unverified"),
@@ -165,6 +131,43 @@ export const ContactVerificationStatusSchema = z.union([
 ]);
 
 export type ContactVerificationStatus = z.infer<typeof ContactVerificationStatusSchema>;
+
+
+// ============================================================================
+// Request Types
+// ============================================================================
+
+export const SendTestRequestSchema = z.object({
+  phone: z.string(),
+  message: z.string()
+});
+
+export type SendTestRequest = z.infer<typeof SendTestRequestSchema>;
+
+
+// ============================================================================
+// Domain Types - Omnireach Server Handlers Media
+// ============================================================================
+
+export const UploadResponseSchema = z.object({
+  media_ref: z.string(),
+  expires_at: z.string(),
+  url: z.string()
+});
+
+export type UploadResponse = z.infer<typeof UploadResponseSchema>;
+
+
+// ============================================================================
+// Request Types
+// ============================================================================
+
+export const VerifyBatchRequestSchema = z.object({
+  session_id: z.string(),
+  phones: z.array(z.string())
+});
+
+export type VerifyBatchRequest = z.infer<typeof VerifyBatchRequestSchema>;
 
 
 // ============================================================================
@@ -189,80 +192,33 @@ export type Contact = z.infer<typeof ContactSchema>;
 
 
 // ============================================================================
-// Domain Types - Omnireach Core Types Campaign
-// ============================================================================
-
-export const CampaignSchema = z.object({
-  id: z.uuid(),
-  title: z.string().min(1).max(200),
-  template_text: z.string().min(1),
-  image_url: z.string().nullable(),
-  image_file_name: z.string().nullable(),
-  media_ref: z.string().nullable(),
-  session_ids: z.array(z.uuid()),
-  status: CampaignStatusSchema,
-  created_at: z.iso.datetime({ offset: true }),
-  started_at: z.iso.datetime({ offset: true }).nullable(),
-  completed_at: z.iso.datetime({ offset: true }).nullable(),
-  scheduled_for: z.iso.datetime({ offset: true }).nullable(),
-  total_contacts: z.number().int(),
-  verified_contacts: z.number().int(),
-  unregistered_count: z.number().int(),
-  sent_count: z.number().int(),
-  skipped_count: z.number().int(),
-  failed_count: z.number().int(),
-  is_archived: z.boolean(),
-  archived_at: z.iso.datetime({ offset: true }).nullable(),
-  contacts: z.array(ContactSchema)
-});
-
-export type Campaign = z.infer<typeof CampaignSchema>;
-
-
-// ============================================================================
-// Request Types
-// ============================================================================
-
-export const SendTestRequestSchema = z.object({
-  phone: z.string(),
-  message: z.string()
-});
-
-export type SendTestRequest = z.infer<typeof SendTestRequestSchema>;
-
-
-// ============================================================================
 // Enum Types
 // ============================================================================
 
-export const SessionStatusSchema = z.union([
-  z.literal("connected"),
-  z.literal("disconnected")
+export const CampaignStatusSchema = z.union([
+  z.literal("draft"),
+  z.literal("scheduled"),
+  z.literal("running"),
+  z.literal("paused"),
+  z.literal("completed"),
+  z.literal("cancelled")
 ]);
 
-export type SessionStatus = z.infer<typeof SessionStatusSchema>;
+export type CampaignStatus = z.infer<typeof CampaignStatusSchema>;
 
+export const QueueItemStatusSchema = z.union([
+  z.literal("pending"),
+  z.literal("verifying"),
+  z.literal("sending"),
+  z.literal("sent"),
+  z.literal("skipped_unregistered"),
+  z.literal("failed"),
+  z.literal("held_rate_limit"),
+  z.literal("held_time_window"),
+  z.literal("cancelled")
+]);
 
-// ============================================================================
-// Domain Types - Omnireach Core Types Template
-// ============================================================================
-
-export const TemplateSchema = z.object({
-  id: z.uuid(),
-  title: z.string().min(1).max(200),
-  title_ar: z.string().nullable(),
-  category: z.string().min(1).max(100),
-  category_ar: z.string().nullable(),
-  text: z.string().min(1),
-  text_ar: z.string().nullable(),
-  image_url: z.string().nullable(),
-  image_file_name: z.string().nullable(),
-  suggested_variables: z.array(z.string()),
-  created_at: z.iso.datetime({ offset: true }),
-  updated_at: z.iso.datetime({ offset: true })
-});
-
-export type Template = z.infer<typeof TemplateSchema>;
+export type QueueItemStatus = z.infer<typeof QueueItemStatusSchema>;
 
 
 // ============================================================================
@@ -294,76 +250,22 @@ export type QueueItem = z.infer<typeof QueueItemSchema>;
 
 
 // ============================================================================
-// Domain Types - Omnireach Store Queue
+// Input Types - Omnireach Core Types Template
 // ============================================================================
 
-export const QueueStatsSchema = z.object({
-  pending: z.number().int(),
-  sending: z.number().int(),
-  sent: z.number().int(),
-  failed: z.number().int(),
-  held: z.number().int()
+export const CreateTemplateInputSchema = z.object({
+  title: z.string().min(1).max(200),
+  title_ar: z.string().nullable(),
+  category: z.string().min(1).max(100),
+  category_ar: z.string().nullable(),
+  text: z.string().min(1),
+  text_ar: z.string().nullable(),
+  image_url: z.string().nullable(),
+  image_file_name: z.string().nullable(),
+  suggested_variables: z.array(z.string())
 });
 
-export type QueueStats = z.infer<typeof QueueStatsSchema>;
-
-
-// ============================================================================
-// Domain Types - Omnireach Server Handlers Media
-// ============================================================================
-
-export const UploadResponseSchema = z.object({
-  media_ref: z.string(),
-  expires_at: z.string(),
-  url: z.string()
-});
-
-export type UploadResponse = z.infer<typeof UploadResponseSchema>;
-
-
-// ============================================================================
-// Domain Types - Omnireach Core Types Settings
-// ============================================================================
-
-export const AppSettingsSchema = z.object({
-  scheduler_start_hour: z.number().int().min(0).max(23),
-  scheduler_end_hour: z.number().int().min(0).max(23),
-  scheduler_strict_time_window: z.boolean(),
-  wabridge_base_url: z.string().min(1),
-  wabridge_timeout_ms: z.number().int().min(100).max(60000)
-});
-
-export type AppSettings = z.infer<typeof AppSettingsSchema>;
-
-
-// ============================================================================
-// Request Types
-// ============================================================================
-
-export const TickRequestSchema = z.object({
-  item_ids: z.array(z.uuid())
-});
-
-export type TickRequest = z.infer<typeof TickRequestSchema>;
-
-
-// ============================================================================
-// Domain Types - Omnireach Core Types Session
-// ============================================================================
-
-export const SessionSchema = z.object({
-  id: z.uuid(),
-  name: z.string().min(1).max(100),
-  phone_number: z.string().min(1),
-  status: SessionStatusSchema,
-  hourly_limit: z.number().int().min(1).max(10000),
-  daily_limit: z.number().int().min(1).max(100000),
-  hourly_sent_timestamps: z.array(z.number().int()),
-  daily_sent_timestamps: z.array(z.number().int()),
-  last_activity_at: z.iso.datetime({ offset: true }).nullable()
-});
-
-export type Session = z.infer<typeof SessionSchema>;
+export type CreateTemplateInput = z.infer<typeof CreateTemplateInputSchema>;
 
 
 // ============================================================================
@@ -378,22 +280,73 @@ export type ListQueueQuery = z.infer<typeof ListQueueQuerySchema>;
 
 
 // ============================================================================
-// Enum Types
+// Domain Types - Omnireach Core Types Template
 // ============================================================================
 
-export const SseEventSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("campaign_created"), data: z.object({ campaign_id: z.string(), title: z.string() }) }),
-  z.object({ type: z.literal("campaign_status"), data: z.object({ campaign_id: z.string(), status: z.string() }) }),
-  z.object({ type: z.literal("queue_item_updated"), data: z.object({ item_id: z.string(), new_status: z.string(), campaign_id: z.string() }) }),
-  z.object({ type: z.literal("queue_item_added"), data: z.object({ item_id: z.string(), campaign_id: z.string(), phone: z.string() }) }),
-  z.object({ type: z.literal("queue_stats"), data: z.object({ pending: z.number().int(), sending: z.number().int(), sent: z.number().int(), failed: z.number().int(), held: z.number().int() }) }),
-  z.object({ type: z.literal("session_status"), data: z.object({ session_id: z.string(), status: z.string(), qr_code_data: z.string().nullable() }) }),
-  z.object({ type: z.literal("log_entry"), data: z.record(z.string(), z.unknown()) }),
-  z.object({ type: z.literal("contact_verify_progress"), data: z.object({ job_id: z.string(), checked: z.number().int(), total: z.number().int(), registered: z.number().int(), unregistered: z.number().int() }) }),
-  z.object({ type: z.literal("contact_verify_complete"), data: z.object({ job_id: z.string(), results: z.record(z.string(), z.unknown()) }) })
-]);
+export const TemplateSchema = z.object({
+  id: z.uuid(),
+  title: z.string().min(1).max(200),
+  title_ar: z.string().nullable(),
+  category: z.string().min(1).max(100),
+  category_ar: z.string().nullable(),
+  text: z.string().min(1),
+  text_ar: z.string().nullable(),
+  image_url: z.string().nullable(),
+  image_file_name: z.string().nullable(),
+  suggested_variables: z.array(z.string()),
+  created_at: z.iso.datetime({ offset: true }),
+  updated_at: z.iso.datetime({ offset: true })
+});
 
-export type SseEvent = z.infer<typeof SseEventSchema>;
+export type Template = z.infer<typeof TemplateSchema>;
+
+
+// ============================================================================
+// Input Types - Omnireach Core Types Template
+// ============================================================================
+
+export const UpdateTemplateInputSchema = z.object({
+  title: z.string().nullable(),
+  title_ar: z.string().nullable(),
+  category: z.string().nullable(),
+  category_ar: z.string().nullable(),
+  text: z.string().nullable(),
+  text_ar: z.string().nullable(),
+  image_url: z.string().nullable(),
+  image_file_name: z.string().nullable(),
+  suggested_variables: z.array(z.string()).nullable()
+});
+
+export type UpdateTemplateInput = z.infer<typeof UpdateTemplateInputSchema>;
+
+
+// ============================================================================
+// Input Types - Omnireach Core Types Session
+// ============================================================================
+
+export const UpdateSessionInputSchema = z.object({
+  name: z.string().nullable(),
+  api_key: z.string().nullable(),
+  hourly_limit: z.number().int().nullable(),
+  daily_limit: z.number().int().nullable()
+});
+
+export type UpdateSessionInput = z.infer<typeof UpdateSessionInputSchema>;
+
+
+// ============================================================================
+// Domain Types - Omnireach Store Queue
+// ============================================================================
+
+export const QueueStatsSchema = z.object({
+  pending: z.number().int(),
+  sending: z.number().int(),
+  sent: z.number().int(),
+  failed: z.number().int(),
+  held: z.number().int()
+});
+
+export type QueueStats = z.infer<typeof QueueStatsSchema>;
 
 
 // ============================================================================
@@ -434,12 +387,57 @@ export type CreateCampaignInput = z.infer<typeof CreateCampaignInputSchema>;
 // Request Types
 // ============================================================================
 
-export const VerifyBatchRequestSchema = z.object({
-  session_id: z.string(),
-  phones: z.array(z.string())
+export const TickRequestSchema = z.object({
+  item_ids: z.array(z.uuid())
 });
 
-export type VerifyBatchRequest = z.infer<typeof VerifyBatchRequestSchema>;
+export type TickRequest = z.infer<typeof TickRequestSchema>;
+
+
+// ============================================================================
+// Domain Types - Omnireach Core Types Campaign
+// ============================================================================
+
+export const CampaignSchema = z.object({
+  id: z.uuid(),
+  title: z.string().min(1).max(200),
+  template_text: z.string().min(1),
+  image_url: z.string().nullable(),
+  image_file_name: z.string().nullable(),
+  media_ref: z.string().nullable(),
+  session_ids: z.array(z.uuid()),
+  status: CampaignStatusSchema,
+  created_at: z.iso.datetime({ offset: true }),
+  started_at: z.iso.datetime({ offset: true }).nullable(),
+  completed_at: z.iso.datetime({ offset: true }).nullable(),
+  scheduled_for: z.iso.datetime({ offset: true }).nullable(),
+  total_contacts: z.number().int(),
+  verified_contacts: z.number().int(),
+  unregistered_count: z.number().int(),
+  sent_count: z.number().int(),
+  skipped_count: z.number().int(),
+  failed_count: z.number().int(),
+  is_archived: z.boolean(),
+  archived_at: z.iso.datetime({ offset: true }).nullable(),
+  contacts: z.array(ContactSchema)
+});
+
+export type Campaign = z.infer<typeof CampaignSchema>;
+
+
+// ============================================================================
+// Domain Types - Omnireach Core Types Settings
+// ============================================================================
+
+export const AppSettingsSchema = z.object({
+  scheduler_start_hour: z.number().int().min(0).max(23),
+  scheduler_end_hour: z.number().int().min(0).max(23),
+  scheduler_strict_time_window: z.boolean(),
+  wabridge_base_url: z.string().min(1),
+  wabridge_timeout_ms: z.number().int().min(100).max(60000)
+});
+
+export type AppSettings = z.infer<typeof AppSettingsSchema>;
 
 
 // ============================================================================
@@ -458,33 +456,30 @@ export type CreateSessionInput = z.infer<typeof CreateSessionInputSchema>;
 
 
 // ============================================================================
-// Input Types - Omnireach Core Types Template
+// Input Types - Omnireach Core Types Settings
 // ============================================================================
 
-export const UpdateTemplateInputSchema = z.object({
-  title: z.string().nullable(),
-  title_ar: z.string().nullable(),
-  category: z.string().nullable(),
-  category_ar: z.string().nullable(),
-  text: z.string().nullable(),
-  text_ar: z.string().nullable(),
-  image_url: z.string().nullable(),
-  image_file_name: z.string().nullable(),
-  suggested_variables: z.array(z.string()).nullable()
+export const UpdateSettingsInputSchema = z.object({
+  scheduler_start_hour: z.number().int().nullable(),
+  scheduler_end_hour: z.number().int().nullable(),
+  scheduler_strict_time_window: z.boolean().nullable(),
+  wabridge_base_url: z.string().nullable(),
+  wabridge_timeout_ms: z.number().int().nullable()
 });
 
-export type UpdateTemplateInput = z.infer<typeof UpdateTemplateInputSchema>;
+export type UpdateSettingsInput = z.infer<typeof UpdateSettingsInputSchema>;
 
 
 // ============================================================================
-// Domain Types - Omnireach Server Handlers Contacts
+// Domain Types - Omnireach Server Handlers Scheduler
 // ============================================================================
 
-export const VerifyBatchResponseSchema = z.object({
-  job_id: z.string()
+export const TickResponseSchema = z.object({
+  processed: z.array(ProcessedItemSchema),
+  new_logs: z.array(LogEntrySchema)
 });
 
-export type VerifyBatchResponse = z.infer<typeof VerifyBatchResponseSchema>;
+export type TickResponse = z.infer<typeof TickResponseSchema>;
 
 // ============================================================================
 // Error Schemas

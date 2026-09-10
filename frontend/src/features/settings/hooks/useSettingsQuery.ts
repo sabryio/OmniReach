@@ -1,21 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { SettingsQueryKeys } from "../api/queryKeys";
-import { getSettings } from "../api/settings.api";
-import { type AppSettings } from "../schemas/settings.schema";
+import { orpc } from "@/rpc";
+import type { AppSettings } from "@/rpc/bindings";
 
 const DEFAULT_SETTINGS: AppSettings = {
-  schedulerStartHour: 9,
-  schedulerEndHour: 21,
-  schedulerStrictTimeWindow: true,
-  wabridgeBaseUrl: "http://localhost:7171",
-  wabridgeTimeoutMs: 5000,
+  scheduler_start_hour: 9,
+  scheduler_end_hour: 21,
+  scheduler_strict_time_window: true,
+  wabridge_base_url: "http://localhost:7171",
+  wabridge_timeout_ms: 5000,
 };
 
 export function useSettingsQuery() {
-  const query = useQuery({
-    queryKey: SettingsQueryKeys.config(),
-    queryFn: getSettings,
-  });
+  const query = useQuery(orpc.settings.load.queryOptions());
   return {
     settings: query.data ?? DEFAULT_SETTINGS,
     isLoading: query.isLoading,

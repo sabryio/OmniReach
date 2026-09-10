@@ -6,7 +6,7 @@ import {
   useUpdateTemplate,
   useDeleteTemplate,
 } from "@/features/templates";
-import type { Template } from "@/features/templates";
+import type { Template } from "@/rpc/bindings";
 
 export const Route = createFileRoute("/$locale/templates")({
   component: TemplatesRoute,
@@ -25,10 +25,17 @@ function TemplatesRoute() {
   const { deleteTemplateAsync } = useDeleteTemplate();
 
   // UI state layer — pass templates from query and mutations explicitly
+  // Wrap mutations to match the structure expected by useTemplateManager
   const templateManager = useTemplateManager(templates, {
     createTemplateAsync,
-    updateTemplateAsync,
-    deleteTemplateAsync,
+    updateTemplateAsync: async (params) => {
+      // Transform { id, input: {...} } to { id, ...input }
+      return updateTemplateAsync({ id: params.id, ...params.input });
+    },
+    deleteTemplateAsync: async (id) => {
+      // Transform string id to { id }
+      return deleteTemplateAsync({ id });
+    },
   });
 
   const handleUseTemplateInCampaign = (template: Template) => {

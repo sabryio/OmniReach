@@ -1,9 +1,9 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import type {
-  Template,
   CreateTemplateInput,
+  Template,
   UpdateTemplateInput,
-} from "../schemas/template.schema";
+} from "@/rpc/bindings";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 
 /**
  * Comprehensive hook for TemplatesView component.
@@ -93,9 +93,9 @@ export function useTemplateManager(
       title: "",
       category: "Pharmacy",
       text: "Hello {{name}}, your prescription for {{prescription}} is ready for pickup at our pharmacy.",
-      imageUrl: "",
-      imageFileName: "",
-      suggestedVariables: ["name", "prescription"],
+      image_url: "",
+      image_file_name: "",
+      suggested_variables: ["name", "prescription"],
     });
     setIsEditorOpen(true);
   }, []);
@@ -146,7 +146,7 @@ export function useTemplateManager(
       const tag = `{{${varName}}}`;
       const newText =
         currentText + (currentText.endsWith(" ") ? "" : " ") + tag + " ";
-      const currentVars = prev.suggestedVariables ?? [];
+      const currentVars = prev.suggested_variables ?? [];
       return {
         ...prev,
         text: newText,
@@ -166,10 +166,10 @@ export function useTemplateManager(
       const title = editingTemplate.title.trim();
       const text = editingTemplate.text.trim();
       const category = editingTemplate.category?.trim() ?? "Custom";
-      const imageUrl = editingTemplate.imageUrl?.trim() || undefined;
+      const imageUrl = editingTemplate.image_url?.trim() || null;
       const imageFileName =
-        editingTemplate.imageFileName ||
-        (imageUrl ? "attached_image.jpg" : undefined);
+        editingTemplate.image_file_name ||
+        (imageUrl ? "attached_image.jpg" : null);
 
       const detectedVars: string[] = [];
       for (const match of text.matchAll(/\{\{([a-zA-Z0-9_-]+)\}\}/g)) {
@@ -184,12 +184,15 @@ export function useTemplateManager(
             title,
             category,
             text,
-            imageUrl,
-            imageFileName,
-            suggestedVariables:
+            image_url: imageUrl,
+            image_file_name: imageFileName,
+            suggested_variables:
               detectedVars.length > 0
                 ? detectedVars
-                : (editingTemplate.suggestedVariables ?? ["name"]),
+                : (editingTemplate.suggested_variables ?? ["name"]),
+            title_ar: null,
+            category_ar: null,
+            text_ar: null,
           };
           const updated = await mutations.updateTemplateAsync({
             id: editingTemplate.id,
@@ -200,14 +203,14 @@ export function useTemplateManager(
           // Create new template via backend
           const input: CreateTemplateInput = {
             title,
-            titleAr: null,
+            title_ar: null,
             category,
-            categoryAr: null,
+            category_ar: null,
             text,
-            textAr: null,
-            imageUrl: imageUrl ?? null,
-            imageFileName: imageFileName ?? null,
-            suggestedVariables:
+            text_ar: null,
+            image_url: imageUrl ?? null,
+            image_file_name: imageFileName ?? null,
+            suggested_variables:
               detectedVars.length > 0 ? detectedVars : ["name", "prescription"],
           };
           const created = await mutations.createTemplateAsync(input);
@@ -259,15 +262,8 @@ export function useTemplateManager(
       e?.stopPropagation();
 
       const input: CreateTemplateInput = {
+        ...tmpl,
         title: `${tmpl.title} (Copy)`,
-        titleAr: tmpl.titleAr,
-        category: tmpl.category,
-        categoryAr: tmpl.categoryAr,
-        text: tmpl.text,
-        textAr: tmpl.textAr,
-        imageUrl: tmpl.imageUrl ?? null,
-        imageFileName: tmpl.imageFileName ?? null,
-        suggestedVariables: tmpl.suggestedVariables,
       };
 
       try {

@@ -20,7 +20,7 @@ import {
   Tag,
   Layers,
 } from "lucide-react";
-import type { Template } from "../schemas/template.schema";
+import type { Template } from "@/rpc/bindings";
 
 // ─── Constants (UI-only, not data) ───────────────────────────────────────────
 
@@ -254,7 +254,7 @@ export function TemplatesView({
                         <span className="text-[10px] px-2 py-0.5 rounded font-mono uppercase tracking-wider bg-muted text-primary border border-border font-medium">
                           {tmpl.category}
                         </span>
-                        {tmpl.imageUrl && (
+                        {tmpl.image_url && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-success/10 text-success border border-success/20 flex items-center gap-1">
                             <ImageIcon className="w-2.5 h-2.5" />
                             <span>Image</span>
@@ -276,7 +276,7 @@ export function TemplatesView({
                     <div className="flex items-center justify-between pt-1 border-t border-border/50 text-[10px] text-muted-foreground">
                       <div className="flex items-center gap-1 font-mono text-[9px]">
                         <Tag className="w-2.5 h-2.5" />
-                        <span>{tmpl.suggestedVariables.join(", ")}</span>
+                        <span>{tmpl.suggested_variables.join(", ")}</span>
                       </div>
                       <div className="flex items-center gap-1 opacity-90 group-hover:opacity-100">
                         <button
@@ -332,7 +332,7 @@ export function TemplatesView({
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {selectedTemplate.text.length} characters •{" "}
-                    {selectedTemplate.suggestedVariables.length} variables
+                    {selectedTemplate.suggested_variables.length} variables
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -384,7 +384,7 @@ export function TemplatesView({
                     Available Merge Variables:
                   </h4>
                   <div className="flex flex-wrap gap-1.5">
-                    {selectedTemplate.suggestedVariables.map((v) => (
+                    {selectedTemplate.suggested_variables.map((v) => (
                       <span
                         key={v}
                         className="px-2.5 py-1 rounded-md bg-primary/10 text-primary text-[11px] font-mono border border-primary/20 hover:bg-primary/20 transition-colors cursor-default"
@@ -395,7 +395,7 @@ export function TemplatesView({
                   </div>
                 </div>
 
-                {selectedTemplate.imageUrl && (
+                {selectedTemplate.image_url && (
                   <div className="space-y-2">
                     <h4 className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
                       Media Attachment:
@@ -403,7 +403,7 @@ export function TemplatesView({
                     <div className="flex items-center gap-3 p-3 rounded-lg bg-success/5 border border-success/20">
                       <div className="w-12 h-12 rounded-lg overflow-hidden border border-success/30 shrink-0">
                         <img
-                          src={selectedTemplate.imageUrl}
+                          src={selectedTemplate.image_url}
                           alt=""
                           className="w-full h-full object-cover"
                         />
@@ -412,7 +412,7 @@ export function TemplatesView({
                         <div className="flex items-center gap-2 mb-1">
                           <ImageIcon className="w-3.5 h-3.5 text-success" />
                           <span className="text-xs font-medium text-foreground truncate">
-                            {selectedTemplate.imageFileName ??
+                            {selectedTemplate.image_file_name ??
                               "attached_image.jpg"}
                           </span>
                         </div>
@@ -440,7 +440,7 @@ export function TemplatesView({
                     </span>
                     <p className="text-xs text-foreground">
                       {new Date(
-                        selectedTemplate.createdAt ?? Date.now(),
+                        selectedTemplate.created_at ?? Date.now(),
                       ).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
@@ -453,7 +453,7 @@ export function TemplatesView({
                       Variables
                     </span>
                     <p className="text-xs text-foreground font-mono">
-                      {selectedTemplate.suggestedVariables.length} merge tags
+                      {selectedTemplate.suggested_variables.length} merge tags
                     </p>
                   </div>
                   <div className="space-y-1">
@@ -551,10 +551,10 @@ export function TemplatesView({
 
                       <div className="relative flex justify-start animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="max-w-[85%] bg-[#005c4b] rounded-lg rounded-tl-sm p-2.5 shadow-lg">
-                          {selectedTemplate.imageUrl && (
+                          {selectedTemplate.image_url && (
                             <div className="mb-2 rounded-lg overflow-hidden">
                               <img
-                                src={selectedTemplate.imageUrl}
+                                src={selectedTemplate.image_url}
                                 alt=""
                                 className="w-full h-48 object-cover"
                               />
@@ -782,10 +782,10 @@ export function TemplatesView({
                 <label className="block text-xs text-muted-foreground mb-1.5 font-medium">
                   Attachment (Optional)
                 </label>
-                {editingTemplate.imageUrl ? (
+                {editingTemplate.image_url ? (
                   <div className="relative">
                     <img
-                      src={editingTemplate.imageUrl}
+                      src={editingTemplate.image_url}
                       alt="Preview"
                       className="w-full h-40 object-cover rounded-lg border border-border"
                     />
@@ -838,8 +838,8 @@ export function TemplatesView({
                         onClick={() =>
                           setEditingTemplate({
                             ...editingTemplate,
-                            imageUrl: preset.url,
-                            imageFileName: preset.fileName,
+                            image_url: preset.url,
+                            image_file_name: preset.fileName,
                           })
                         }
                         className="rounded-lg overflow-hidden border-2 border-border hover:border-primary transition-all group"

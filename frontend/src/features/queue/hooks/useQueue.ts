@@ -1,8 +1,5 @@
 import { useState, useMemo } from "react";
-import type {
-  QueueItemStatus,
-} from "../schemas/queue.schema";
-import type { LogEntry, QueueItem } from "@/rpc/bindings";
+import type { LogEntry, QueueItem, QueueItemStatus } from "@/rpc/bindings";
 
 type LogLevel = "all" | "info" | "warn" | "error" | "success";
 type QueueFilter = QueueItemStatus | "all";

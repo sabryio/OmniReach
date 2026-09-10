@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import type { Template } from "@/features/templates";
-import type { Campaign, Contact, QueueItem } from "@/rpc/bindings";
+import type { Campaign, Contact, QueueItem, Template } from "@/rpc/bindings";
 
 /**
  * Comprehensive hook for CampaignsList component
@@ -200,7 +199,7 @@ export function useCampaignWizard() {
   );
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [templateText, setTemplateText] = useState("");
-  const [imageUrl, setImageUrl] = useState<string | undefined>();
+  const [imageUrl, setImageUrl] = useState<string | null>();
   const [campaignTitle, setCampaignTitle] = useState("");
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
 
@@ -224,7 +223,7 @@ export function useCampaignWizard() {
 
   const initFromTemplate = useCallback((t: Template) => {
     setTemplateText(t.text);
-    setImageUrl(t.imageUrl ?? undefined);
+    setImageUrl(t.image_url);
     setCampaignTitle(t.title);
     setStep("composer");
   }, []);

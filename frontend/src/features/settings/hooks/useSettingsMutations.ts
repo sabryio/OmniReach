@@ -1,15 +1,15 @@
+import { orpc } from "@/rpc";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SettingsQueryKeys } from "../api/queryKeys";
-import { updateSettings } from "../api/settings.api";
 
 export function useUpdateSettings() {
   const queryClient = useQueryClient();
-  const mutation = useMutation({
-    mutationFn: updateSettings,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: SettingsQueryKeys.all });
-    },
-  });
+  const mutation = useMutation(
+    orpc.settings.update.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries(orpc.settings.load.queryOptions());
+      },
+    }),
+  );
   return {
     updateSettings: mutation.mutate,
     updateSettingsAsync: mutation.mutateAsync,

@@ -29,7 +29,7 @@ import type {
   SchedulerState,
   WABridgeConfig,
 } from "@/features/layout/schemas/layout.schema";
-import type { AppSettings } from "@/features/settings";
+import type { AppSettings } from "@/rpc/bindings";
 
 export const Route = createFileRoute("/$locale")({
   beforeLoad: ({ params }) => {
@@ -71,8 +71,8 @@ const DEFAULT_CONFIG: WABridgeConfig = {
 /** Map backend AppSettings → frontend WABridgeConfig */
 function toConfig(s: AppSettings): WABridgeConfig {
   return {
-    baseUrl: s.wabridgeBaseUrl,
-    timeoutMs: s.wabridgeTimeoutMs,
+    baseUrl: s.wabridge_base_url,
+    timeoutMs: s.wabridge_timeout_ms,
     useSimulationMode: false,
     simulatedNetworkLatencyMs: 0,
     simulatedUnregisteredRate: 0,
@@ -82,9 +82,9 @@ function toConfig(s: AppSettings): WABridgeConfig {
 /** Map backend AppSettings → partial SchedulerState */
 function toSchedulerPatch(s: AppSettings): Partial<SchedulerState> {
   return {
-    customWindowStartHour: s.schedulerStartHour,
-    customWindowEndHour: s.schedulerEndHour,
-    strictTimeWindow: s.schedulerStrictTimeWindow,
+    customWindowStartHour: s.scheduler_start_hour,
+    customWindowEndHour: s.scheduler_end_hour,
+    strictTimeWindow: s.scheduler_strict_time_window,
   };
 }
 
@@ -280,19 +280,26 @@ function SharedLayout() {
         themeColor={layout.themeColor}
         onSaveConfig={async (newConfig) => {
           await updateSettingsAsync({
-            wabridgeBaseUrl: newConfig.baseUrl,
-            wabridgeTimeoutMs: newConfig.timeoutMs,
-            schedulerStartHour: schedulerState.customWindowStartHour,
-            schedulerEndHour: schedulerState.customWindowEndHour,
-            schedulerStrictTimeWindow: schedulerState.strictTimeWindow,
+            wabridge_base_url: newConfig.baseUrl,
+            wabridge_timeout_ms: newConfig.timeoutMs,
+            scheduler_start_hour: schedulerState.customWindowStartHour,
+            scheduler_end_hour: schedulerState.customWindowEndHour,
+            scheduler_strict_time_window: schedulerState.strictTimeWindow,
           });
         }}
         onSetThemeColor={layout.setThemeColor}
         onToggleThemeMode={layout.toggleThemeMode}
         onSetStrictTimeWindow={(strict) => {
           setSchedulerState((p) => ({ ...p, strictTimeWindow: strict }));
-          updateSettingsAsync({ schedulerStrictTimeWindow: strict });
+          updateSettingsAsync({
+            scheduler_strict_time_window: strict,
+            scheduler_start_hour: null,
+            scheduler_end_hour: null,
+            wabridge_base_url: null,
+            wabridge_timeout_ms: null
+          });
         }}
+
         onSetTimeWindowHours={(startHour, endHour) => {
           setSchedulerState((p) => ({
             ...p,
@@ -300,8 +307,11 @@ function SharedLayout() {
             customWindowEndHour: endHour,
           }));
           updateSettingsAsync({
-            schedulerStartHour: startHour,
-            schedulerEndHour: endHour,
+            scheduler_start_hour: startHour,
+            scheduler_end_hour: endHour,
+            scheduler_strict_time_window: null,
+            wabridge_base_url: null,
+            wabridge_timeout_ms: null
           });
         }}
         onSetSimulatedHourOffset={(offset) =>

@@ -1,5 +1,4 @@
 // Schemas (Single Source of Truth)
-export * from "./schemas/queue.schema";
 // Query hooks
 export * from "./hooks/useQueueQuery";
 export * from "./hooks/useQueueMutations";

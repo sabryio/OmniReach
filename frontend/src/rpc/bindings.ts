@@ -6,55 +6,102 @@ import { oc } from "@orpc/contract";
 import { openapi } from "@orpc/openapi";
 import { asyncIteratorObject } from "@orpc/contract";
 
-export const QueueStatsSchema = z.object({
-  pending: z.number().int(),
-  sending: z.number().int(),
-  sent: z.number().int(),
-  failed: z.number().int(),
-  held: z.number().int()
+// ============================================================================
+// SSE Event Types
+// ============================================================================
+
+export const ProcessedItemSchema = z.object({
+  item_id: z.uuid(),
+  new_status: z.string(),
+  sent_at: z.number().int().nullable(),
+  error: z.string().nullable(),
+  response_payload: z.string().nullable()
 });
 
-export type QueueStats = z.infer<typeof QueueStatsSchema>;
+export type ProcessedItem = z.infer<typeof ProcessedItemSchema>;
 
-export const UploadResponseSchema = z.object({
-  media_ref: z.string(),
-  expires_at: z.string(),
-  url: z.string()
+
+// ============================================================================
+// Input Types - Omnireach Core Types Session
+// ============================================================================
+
+export const CreateSessionInputSchema = z.object({
+  name: z.string().min(1).max(100),
+  phone_number: z.string().min(1),
+  api_key: z.string().min(1),
+  hourly_limit: z.number().int().nullable(),
+  daily_limit: z.number().int().nullable()
 });
 
-export type UploadResponse = z.infer<typeof UploadResponseSchema>;
+export type CreateSessionInput = z.infer<typeof CreateSessionInputSchema>;
 
-export const UpdateSettingsInputSchema = z.object({
-  scheduler_start_hour: z.number().int().optional(),
-  scheduler_end_hour: z.number().int().optional(),
-  scheduler_strict_time_window: z.boolean().optional(),
-  wabridge_base_url: z.string().optional(),
-  wabridge_timeout_ms: z.number().int().optional()
+
+// ============================================================================
+// Domain Types - Omnireach Core Types Template
+// ============================================================================
+
+export const TemplateSchema = z.object({
+  id: z.uuid(),
+  title: z.string().min(1).max(200),
+  title_ar: z.string().nullable(),
+  category: z.string().min(1).max(100),
+  category_ar: z.string().nullable(),
+  text: z.string().min(1),
+  text_ar: z.string().nullable(),
+  image_url: z.string().nullable(),
+  image_file_name: z.string().nullable(),
+  suggested_variables: z.array(z.string()),
+  created_at: z.iso.datetime({ offset: true }),
+  updated_at: z.iso.datetime({ offset: true })
 });
 
-export type UpdateSettingsInput = z.infer<typeof UpdateSettingsInputSchema>;
+export type Template = z.infer<typeof TemplateSchema>;
 
-export const ContactVerificationStatusSchema = z.union([
-  z.literal("unverified"),
-  z.literal("checking"),
-  z.literal("registered"),
-  z.literal("unregistered"),
-  z.literal("error")
+
+// ============================================================================
+// Enum Types
+// ============================================================================
+
+export const LogLevelSchema = z.union([
+  z.literal("info"),
+  z.literal("warn"),
+  z.literal("error"),
+  z.literal("success")
 ]);
 
-export type ContactVerificationStatus = z.infer<typeof ContactVerificationStatusSchema>;
+export type LogLevel = z.infer<typeof LogLevelSchema>;
 
-export const CreateContactInputSchema = z.object({
-  name: z.string().min(1).max(200),
-  raw_phone: z.string(),
-  formatted_phone: z.string(),
-  normalized_phone: z.string().min(1),
-  custom_fields: z.record(z.string(), z.string()),
-  verification_status: ContactVerificationStatusSchema.optional(),
-  wa_id: z.string().optional()
+export const LogCategorySchema = z.union([
+  z.literal("verification"),
+  z.literal("send"),
+  z.literal("rate_limit"),
+  z.literal("scheduler"),
+  z.literal("session"),
+  z.literal("system")
+]);
+
+export type LogCategory = z.infer<typeof LogCategorySchema>;
+
+
+// ============================================================================
+// Domain Types - Omnireach Core Types Log Entry
+// ============================================================================
+
+export const LogEntrySchema = z.object({
+  id: z.uuid(),
+  timestamp: z.iso.datetime({ offset: true }),
+  level: LogLevelSchema,
+  category: LogCategorySchema,
+  message: z.string().min(1),
+  details: z.record(z.string(), z.unknown()).nullable()
 });
 
-export type CreateContactInput = z.infer<typeof CreateContactInputSchema>;
+export type LogEntry = z.infer<typeof LogEntrySchema>;
+
+
+// ============================================================================
+// Enum Types
+// ============================================================================
 
 export const CampaignStatusSchema = z.union([
   z.literal("draft"),
@@ -67,17 +114,261 @@ export const CampaignStatusSchema = z.union([
 
 export type CampaignStatus = z.infer<typeof CampaignStatusSchema>;
 
+export const ContactVerificationStatusSchema = z.union([
+  z.literal("unverified"),
+  z.literal("checking"),
+  z.literal("registered"),
+  z.literal("unregistered"),
+  z.literal("error")
+]);
+
+export type ContactVerificationStatus = z.infer<typeof ContactVerificationStatusSchema>;
+
+
+// ============================================================================
+// Domain Types - Omnireach Core Types Contact
+// ============================================================================
+
+export const ContactSchema = z.object({
+  id: z.uuid(),
+  campaign_id: z.uuid(),
+  name: z.string().min(1).max(200),
+  raw_phone: z.string(),
+  formatted_phone: z.string(),
+  normalized_phone: z.string().min(1),
+  custom_fields: z.record(z.string(), z.string()),
+  verification_status: ContactVerificationStatusSchema,
+  verification_error: z.string().nullable(),
+  verified_at: z.iso.datetime({ offset: true }).nullable(),
+  wa_id: z.string().nullable()
+});
+
+export type Contact = z.infer<typeof ContactSchema>;
+
+
+// ============================================================================
+// Domain Types - Omnireach Core Types Campaign
+// ============================================================================
+
+export const CampaignSchema = z.object({
+  id: z.uuid(),
+  title: z.string().min(1).max(200),
+  template_text: z.string().min(1),
+  image_url: z.string().nullable(),
+  image_file_name: z.string().nullable(),
+  media_ref: z.string().nullable(),
+  session_ids: z.array(z.uuid()),
+  status: CampaignStatusSchema,
+  created_at: z.iso.datetime({ offset: true }),
+  started_at: z.iso.datetime({ offset: true }).nullable(),
+  completed_at: z.iso.datetime({ offset: true }).nullable(),
+  scheduled_for: z.iso.datetime({ offset: true }).nullable(),
+  total_contacts: z.number().int(),
+  verified_contacts: z.number().int(),
+  unregistered_count: z.number().int(),
+  sent_count: z.number().int(),
+  skipped_count: z.number().int(),
+  failed_count: z.number().int(),
+  is_archived: z.boolean(),
+  archived_at: z.iso.datetime({ offset: true }).nullable(),
+  contacts: z.array(ContactSchema)
+});
+
+export type Campaign = z.infer<typeof CampaignSchema>;
+
+
+// ============================================================================
+// Input Types - Omnireach Core Types Contact
+// ============================================================================
+
+export const CreateContactInputSchema = z.object({
+  name: z.string().min(1).max(200),
+  raw_phone: z.string(),
+  formatted_phone: z.string(),
+  normalized_phone: z.string().min(1),
+  custom_fields: z.record(z.string(), z.string()),
+  verification_status: ContactVerificationStatusSchema.nullable(),
+  wa_id: z.string().nullable()
+});
+
+export type CreateContactInput = z.infer<typeof CreateContactInputSchema>;
+
+
+// ============================================================================
+// Domain Types - Omnireach Server Handlers Media
+// ============================================================================
+
+export const UploadResponseSchema = z.object({
+  media_ref: z.string(),
+  expires_at: z.string(),
+  url: z.string()
+});
+
+export type UploadResponse = z.infer<typeof UploadResponseSchema>;
+
+
+// ============================================================================
+// Domain Types - Omnireach Store Queue
+// ============================================================================
+
+export const QueueStatsSchema = z.object({
+  pending: z.number().int(),
+  sending: z.number().int(),
+  sent: z.number().int(),
+  failed: z.number().int(),
+  held: z.number().int()
+});
+
+export type QueueStats = z.infer<typeof QueueStatsSchema>;
+
+
+// ============================================================================
+// Enum Types
+// ============================================================================
+
+export const SessionStatusSchema = z.union([
+  z.literal("connected"),
+  z.literal("disconnected")
+]);
+
+export type SessionStatus = z.infer<typeof SessionStatusSchema>;
+
+
+// ============================================================================
+// Domain Types - Omnireach Core Types Session
+// ============================================================================
+
+export const SessionSchema = z.object({
+  id: z.uuid(),
+  name: z.string().min(1).max(100),
+  phone_number: z.string().min(1),
+  status: SessionStatusSchema,
+  hourly_limit: z.number().int().min(1).max(10000),
+  daily_limit: z.number().int().min(1).max(100000),
+  hourly_sent_timestamps: z.array(z.number().int()),
+  daily_sent_timestamps: z.array(z.number().int()),
+  last_activity_at: z.iso.datetime({ offset: true }).nullable()
+});
+
+export type Session = z.infer<typeof SessionSchema>;
+
+
+// ============================================================================
+// Request Types
+// ============================================================================
+
+export const SendTestRequestSchema = z.object({
+  phone: z.string(),
+  message: z.string()
+});
+
+export type SendTestRequest = z.infer<typeof SendTestRequestSchema>;
+
+
+// ============================================================================
+// Input Types - Omnireach Server Handlers Queue
+// ============================================================================
+
+export const ListQueueQuerySchema = z.object({
+  campaign_id: z.uuid().nullable()
+});
+
+export type ListQueueQuery = z.infer<typeof ListQueueQuerySchema>;
+
+
+// ============================================================================
+// Input Types - Omnireach Core Types Template
+// ============================================================================
+
+export const CreateTemplateInputSchema = z.object({
+  title: z.string().min(1).max(200),
+  title_ar: z.string().nullable(),
+  category: z.string().min(1).max(100),
+  category_ar: z.string().nullable(),
+  text: z.string().min(1),
+  text_ar: z.string().nullable(),
+  image_url: z.string().nullable(),
+  image_file_name: z.string().nullable(),
+  suggested_variables: z.array(z.string())
+});
+
+export type CreateTemplateInput = z.infer<typeof CreateTemplateInputSchema>;
+
+
+// ============================================================================
+// Request Types
+// ============================================================================
+
+export const VerifyBatchRequestSchema = z.object({
+  session_id: z.string(),
+  phones: z.array(z.string())
+});
+
+export type VerifyBatchRequest = z.infer<typeof VerifyBatchRequestSchema>;
+
+
+// ============================================================================
+// Input Types - Omnireach Core Types Settings
+// ============================================================================
+
+export const UpdateSettingsInputSchema = z.object({
+  scheduler_start_hour: z.number().int().nullable(),
+  scheduler_end_hour: z.number().int().nullable(),
+  scheduler_strict_time_window: z.boolean().nullable(),
+  wabridge_base_url: z.string().nullable(),
+  wabridge_timeout_ms: z.number().int().nullable()
+});
+
+export type UpdateSettingsInput = z.infer<typeof UpdateSettingsInputSchema>;
+
+
+// ============================================================================
+// Domain Types - Omnireach Core Types Settings
+// ============================================================================
+
+export const AppSettingsSchema = z.object({
+  scheduler_start_hour: z.number().int().min(0).max(23),
+  scheduler_end_hour: z.number().int().min(0).max(23),
+  scheduler_strict_time_window: z.boolean(),
+  wabridge_base_url: z.string().min(1),
+  wabridge_timeout_ms: z.number().int().min(100).max(60000)
+});
+
+export type AppSettings = z.infer<typeof AppSettingsSchema>;
+
+
+// ============================================================================
+// Input Types - Omnireach Core Types Campaign
+// ============================================================================
+
 export const CreateCampaignInputSchema = z.object({
   title: z.string().min(1).max(200),
   template_text: z.string().min(1),
-  image_url: z.string().optional(),
-  media_ref: z.string().optional(),
+  image_url: z.string().nullable(),
+  media_ref: z.string().nullable(),
   session_ids: z.array(z.uuid()),
   contacts: z.array(CreateContactInputSchema),
-  status: CampaignStatusSchema.optional()
+  status: CampaignStatusSchema.nullable()
 });
 
 export type CreateCampaignInput = z.infer<typeof CreateCampaignInputSchema>;
+
+
+// ============================================================================
+// Domain Types - Omnireach Server Handlers Scheduler
+// ============================================================================
+
+export const TickResponseSchema = z.object({
+  processed: z.array(ProcessedItemSchema),
+  new_logs: z.array(LogEntrySchema)
+});
+
+export type TickResponse = z.infer<typeof TickResponseSchema>;
+
+
+// ============================================================================
+// Enum Types
+// ============================================================================
 
 export const QueueItemStatusSchema = z.union([
   z.literal("pending"),
@@ -93,177 +384,57 @@ export const QueueItemStatusSchema = z.union([
 
 export type QueueItemStatus = z.infer<typeof QueueItemStatusSchema>;
 
+
+// ============================================================================
+// Domain Types - Omnireach Core Types Queue Item
+// ============================================================================
+
 export const QueueItemSchema = z.object({
   id: z.uuid(),
   campaign_id: z.uuid(),
   campaign_title: z.string().min(1).max(200),
   contact_id: z.uuid(),
   phone: z.string().min(1),
-  recipient_name: z.string().optional(),
+  recipient_name: z.string().nullable(),
   rendered_text: z.string(),
-  image_url: z.string().optional(),
-  media_ref: z.string().optional(),
+  image_url: z.string().nullable(),
+  media_ref: z.string().nullable(),
   status: QueueItemStatusSchema,
-  assigned_session_id: z.uuid().optional(),
+  assigned_session_id: z.uuid().nullable(),
   attempts: z.number().int(),
-  last_error: z.string().optional(),
-  sent_at: z.iso.datetime({ offset: true }).optional(),
-  scheduled_for: z.iso.datetime({ offset: true }).optional(),
-  rate_limit_hold_until: z.iso.datetime({ offset: true }).optional(),
-  time_window_hold_until: z.iso.datetime({ offset: true }).optional(),
-  response_payload: z.string().optional()
+  last_error: z.string().nullable(),
+  sent_at: z.iso.datetime({ offset: true }).nullable(),
+  scheduled_for: z.iso.datetime({ offset: true }).nullable(),
+  rate_limit_hold_until: z.iso.datetime({ offset: true }).nullable(),
+  time_window_hold_until: z.iso.datetime({ offset: true }).nullable(),
+  response_payload: z.string().nullable()
 });
 
 export type QueueItem = z.infer<typeof QueueItemSchema>;
 
-export const ContactSchema = z.object({
-  id: z.uuid(),
-  campaign_id: z.uuid(),
-  name: z.string().min(1).max(200),
-  raw_phone: z.string(),
-  formatted_phone: z.string(),
-  normalized_phone: z.string().min(1),
-  custom_fields: z.record(z.string(), z.string()),
-  verification_status: ContactVerificationStatusSchema,
-  verification_error: z.string().optional(),
-  verified_at: z.iso.datetime({ offset: true }).optional(),
-  wa_id: z.string().optional()
-});
 
-export type Contact = z.infer<typeof ContactSchema>;
-
-export const CampaignSchema = z.object({
-  id: z.uuid(),
-  title: z.string().min(1).max(200),
-  template_text: z.string().min(1),
-  image_url: z.string().optional(),
-  image_file_name: z.string().optional(),
-  media_ref: z.string().optional(),
-  session_ids: z.array(z.uuid()),
-  status: CampaignStatusSchema,
-  created_at: z.iso.datetime({ offset: true }),
-  started_at: z.iso.datetime({ offset: true }).optional(),
-  completed_at: z.iso.datetime({ offset: true }).optional(),
-  scheduled_for: z.iso.datetime({ offset: true }).optional(),
-  total_contacts: z.number().int(),
-  verified_contacts: z.number().int(),
-  unregistered_count: z.number().int(),
-  sent_count: z.number().int(),
-  skipped_count: z.number().int(),
-  failed_count: z.number().int(),
-  is_archived: z.boolean(),
-  archived_at: z.iso.datetime({ offset: true }).optional(),
-  contacts: z.array(ContactSchema)
-});
-
-export type Campaign = z.infer<typeof CampaignSchema>;
-
-export const CreateSessionInputSchema = z.object({
-  name: z.string().min(1).max(100),
-  phone_number: z.string().min(1),
-  api_key: z.string().min(1),
-  hourly_limit: z.number().int().optional(),
-  daily_limit: z.number().int().optional()
-});
-
-export type CreateSessionInput = z.infer<typeof CreateSessionInputSchema>;
-
-export const TemplateSchema = z.object({
-  id: z.uuid(),
-  title: z.string().min(1).max(200),
-  title_ar: z.string().optional(),
-  category: z.string().min(1).max(100),
-  category_ar: z.string().optional(),
-  text: z.string().min(1),
-  text_ar: z.string().optional(),
-  image_url: z.string().optional(),
-  image_file_name: z.string().optional(),
-  suggested_variables: z.array(z.string()),
-  created_at: z.iso.datetime({ offset: true }),
-  updated_at: z.iso.datetime({ offset: true })
-});
-
-export type Template = z.infer<typeof TemplateSchema>;
-
-export const VerifyBatchResponseSchema = z.object({
-  job_id: z.string()
-});
-
-export type VerifyBatchResponse = z.infer<typeof VerifyBatchResponseSchema>;
-
-export const AppSettingsSchema = z.object({
-  scheduler_start_hour: z.number().int().min(0).max(23),
-  scheduler_end_hour: z.number().int().min(0).max(23),
-  scheduler_strict_time_window: z.boolean(),
-  wabridge_base_url: z.string().min(1),
-  wabridge_timeout_ms: z.number().int().min(100).max(60000)
-});
-
-export type AppSettings = z.infer<typeof AppSettingsSchema>;
-
-export const LogCategorySchema = z.union([
-  z.literal("verification"),
-  z.literal("send"),
-  z.literal("rate_limit"),
-  z.literal("scheduler"),
-  z.literal("session"),
-  z.literal("system")
-]);
-
-export type LogCategory = z.infer<typeof LogCategorySchema>;
+// ============================================================================
+// Input Types - Omnireach Core Types Template
+// ============================================================================
 
 export const UpdateTemplateInputSchema = z.object({
-  title: z.string().optional(),
-  title_ar: z.string().optional(),
-  category: z.string().optional(),
-  category_ar: z.string().optional(),
-  text: z.string().optional(),
-  text_ar: z.string().optional(),
-  image_url: z.string().optional(),
-  image_file_name: z.string().optional(),
-  suggested_variables: z.array(z.string()).optional()
+  title: z.string().nullable(),
+  title_ar: z.string().nullable(),
+  category: z.string().nullable(),
+  category_ar: z.string().nullable(),
+  text: z.string().nullable(),
+  text_ar: z.string().nullable(),
+  image_url: z.string().nullable(),
+  image_file_name: z.string().nullable(),
+  suggested_variables: z.array(z.string()).nullable()
 });
 
 export type UpdateTemplateInput = z.infer<typeof UpdateTemplateInputSchema>;
 
-export const SseEventSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("campaign_created"), data: z.object({ campaign_id: z.string(), title: z.string() }) }),
-  z.object({ type: z.literal("campaign_status"), data: z.object({ campaign_id: z.string(), status: z.string() }) }),
-  z.object({ type: z.literal("queue_item_updated"), data: z.object({ item_id: z.string(), new_status: z.string(), campaign_id: z.string() }) }),
-  z.object({ type: z.literal("queue_item_added"), data: z.object({ item_id: z.string(), campaign_id: z.string(), phone: z.string() }) }),
-  z.object({ type: z.literal("queue_stats"), data: z.object({ pending: z.number().int(), sending: z.number().int(), sent: z.number().int(), failed: z.number().int(), held: z.number().int() }) }),
-  z.object({ type: z.literal("session_status"), data: z.object({ session_id: z.string(), status: z.string(), qr_code_data: z.string().optional() }) }),
-  z.object({ type: z.literal("log_entry"), data: z.record(z.string(), z.unknown()) }),
-  z.object({ type: z.literal("contact_verify_progress"), data: z.object({ job_id: z.string(), checked: z.number().int(), total: z.number().int(), registered: z.number().int(), unregistered: z.number().int() }) }),
-  z.object({ type: z.literal("contact_verify_complete"), data: z.object({ job_id: z.string(), results: z.record(z.string(), z.unknown()) }) })
-]);
 
-export type SseEvent = z.infer<typeof SseEventSchema>;
-
-export const LogLevelSchema = z.union([
-  z.literal("info"),
-  z.literal("warn"),
-  z.literal("error"),
-  z.literal("success")
-]);
-
-export type LogLevel = z.infer<typeof LogLevelSchema>;
-
-export const SessionStatusSchema = z.union([
-  z.literal("connected"),
-  z.literal("disconnected")
-]);
-
-export type SessionStatus = z.infer<typeof SessionStatusSchema>;
-
-export const UpdateSessionInputSchema = z.object({
-  name: z.string().optional(),
-  api_key: z.string().optional(),
-  hourly_limit: z.number().int().optional(),
-  daily_limit: z.number().int().optional()
-});
-
-export type UpdateSessionInput = z.infer<typeof UpdateSessionInputSchema>;
+// ============================================================================
+// Request Types
+// ============================================================================
 
 export const TickRequestSchema = z.object({
   item_ids: z.array(z.uuid())
@@ -271,81 +442,79 @@ export const TickRequestSchema = z.object({
 
 export type TickRequest = z.infer<typeof TickRequestSchema>;
 
-export const LogEntrySchema = z.object({
-  id: z.uuid(),
-  timestamp: z.iso.datetime({ offset: true }),
-  level: LogLevelSchema,
-  category: LogCategorySchema,
-  message: z.string().min(1),
-  details: z.record(z.string(), z.unknown()).optional()
+
+// ============================================================================
+// Enum Types
+// ============================================================================
+
+export const SseEventSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("campaign_created"), data: z.object({ campaign_id: z.string(), title: z.string() }) }),
+  z.object({ type: z.literal("campaign_status"), data: z.object({ campaign_id: z.string(), status: z.string() }) }),
+  z.object({ type: z.literal("queue_item_updated"), data: z.object({ item_id: z.string(), new_status: z.string(), campaign_id: z.string() }) }),
+  z.object({ type: z.literal("queue_item_added"), data: z.object({ item_id: z.string(), campaign_id: z.string(), phone: z.string() }) }),
+  z.object({ type: z.literal("queue_stats"), data: z.object({ pending: z.number().int(), sending: z.number().int(), sent: z.number().int(), failed: z.number().int(), held: z.number().int() }) }),
+  z.object({ type: z.literal("session_status"), data: z.object({ session_id: z.string(), status: z.string(), qr_code_data: z.string().nullable() }) }),
+  z.object({ type: z.literal("log_entry"), data: z.record(z.string(), z.unknown()) }),
+  z.object({ type: z.literal("contact_verify_progress"), data: z.object({ job_id: z.string(), checked: z.number().int(), total: z.number().int(), registered: z.number().int(), unregistered: z.number().int() }) }),
+  z.object({ type: z.literal("contact_verify_complete"), data: z.object({ job_id: z.string(), results: z.record(z.string(), z.unknown()) }) })
+]);
+
+export type SseEvent = z.infer<typeof SseEventSchema>;
+
+
+// ============================================================================
+// Domain Types - Omnireach Server Handlers Contacts
+// ============================================================================
+
+export const VerifyBatchResponseSchema = z.object({
+  job_id: z.string()
 });
 
-export type LogEntry = z.infer<typeof LogEntrySchema>;
+export type VerifyBatchResponse = z.infer<typeof VerifyBatchResponseSchema>;
 
-export const SessionSchema = z.object({
-  id: z.uuid(),
-  name: z.string().min(1).max(100),
-  phone_number: z.string().min(1),
-  status: SessionStatusSchema,
-  hourly_limit: z.number().int().min(1).max(10000),
-  daily_limit: z.number().int().min(1).max(100000),
-  hourly_sent_timestamps: z.array(z.number().int()),
-  daily_sent_timestamps: z.array(z.number().int()),
-  last_activity_at: z.iso.datetime({ offset: true }).optional()
+
+// ============================================================================
+// Input Types - Omnireach Core Types Session
+// ============================================================================
+
+export const UpdateSessionInputSchema = z.object({
+  name: z.string().nullable(),
+  api_key: z.string().nullable(),
+  hourly_limit: z.number().int().nullable(),
+  daily_limit: z.number().int().nullable()
 });
 
-export type Session = z.infer<typeof SessionSchema>;
+export type UpdateSessionInput = z.infer<typeof UpdateSessionInputSchema>;
 
-export const ProcessedItemSchema = z.object({
-  item_id: z.uuid(),
-  new_status: z.string(),
-  sent_at: z.number().int().optional(),
-  error: z.string().optional(),
-  response_payload: z.string().optional()
-});
+// ============================================================================
+// Error Schemas
+// ============================================================================
 
-export type ProcessedItem = z.infer<typeof ProcessedItemSchema>;
+const StandardApiErrors = {
+  NOT_FOUND: {
+    data: z.string()
+  },
+  BAD_REQUEST: {
+    data: z.string()
+  },
+  CONFLICT: {
+    data: z.string()
+  },
+  UNAUTHORIZED: {},
+  STORE: {
+    data: z.unknown()
+  },
+  GLUE: {
+    data: z.unknown()
+  },
+  INTERNAL: {
+    data: z.string()
+  },
+} as const;
 
-export const TickResponseSchema = z.object({
-  processed: z.array(ProcessedItemSchema),
-  new_logs: z.array(LogEntrySchema)
-});
-
-export type TickResponse = z.infer<typeof TickResponseSchema>;
-
-export const SendTestRequestSchema = z.object({
-  phone: z.string(),
-  message: z.string()
-});
-
-export type SendTestRequest = z.infer<typeof SendTestRequestSchema>;
-
-export const CreateTemplateInputSchema = z.object({
-  title: z.string().min(1).max(200),
-  title_ar: z.string().optional(),
-  category: z.string().min(1).max(100),
-  category_ar: z.string().optional(),
-  text: z.string().min(1),
-  text_ar: z.string().optional(),
-  image_url: z.string().optional(),
-  image_file_name: z.string().optional(),
-  suggested_variables: z.array(z.string())
-});
-
-export type CreateTemplateInput = z.infer<typeof CreateTemplateInputSchema>;
-
-export const VerifyBatchRequestSchema = z.object({
-  session_id: z.string(),
-  phones: z.array(z.string())
-});
-
-export type VerifyBatchRequest = z.infer<typeof VerifyBatchRequestSchema>;
-
-export const ListQueueQuerySchema = z.object({
-  campaign_id: z.uuid().optional()
-});
-
-export type ListQueueQuery = z.infer<typeof ListQueueQuerySchema>;
+// ============================================================================
+// API Contract
+// ============================================================================
 
 export const contract = {
   campaigns: {
@@ -353,279 +522,59 @@ export const contract = {
       .meta(openapi({ method: "POST", path: "/api/campaigns/{id}/retry-failed" }))
       .input(z.object({ id: z.uuid() }))
       .output(z.record(z.string(), z.unknown()))
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     unarchive: oc
       .meta(openapi({ method: "POST", path: "/api/campaigns/{id}/unarchive" }))
       .input(z.object({ id: z.uuid() }))
       .output(CampaignSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     archive: oc
       .meta(openapi({ method: "POST", path: "/api/campaigns/{id}/archive" }))
       .input(z.object({ id: z.uuid() }))
       .output(CampaignSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     resume: oc
       .meta(openapi({ method: "POST", path: "/api/campaigns/{id}/resume" }))
       .input(z.object({ id: z.uuid() }))
       .output(CampaignSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     pause: oc
       .meta(openapi({ method: "POST", path: "/api/campaigns/{id}/pause" }))
       .input(z.object({ id: z.uuid() }))
       .output(CampaignSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     destroy: oc
       .meta(openapi({ method: "DELETE", path: "/api/campaigns/{id}" }))
       .input(z.object({ id: z.uuid() }))
       .output(z.void())
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     update: oc
       .meta(openapi({ method: "PATCH", path: "/api/campaigns/{id}" }))
       .input(z.object({ id: z.uuid() }))
       .output(CampaignSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     create: oc
       .meta(openapi({ method: "POST", path: "/api/campaigns" }))
       .input(CreateCampaignInputSchema)
       .output(CampaignSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     getById: oc
       .meta(openapi({ method: "GET", path: "/api/campaigns/{id}" }))
       .input(z.object({ id: z.uuid() }))
       .output(CampaignSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     list: oc
       .meta(openapi({ method: "GET", path: "/api/campaigns" }))
       .input(z.void())
       .output(z.array(CampaignSchema))
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
   },
   contacts: {
     verifyBatch: oc
       .meta(openapi({ method: "POST", path: "/api/contacts/verify-batch" }))
       .input(VerifyBatchRequestSchema)
       .output(VerifyBatchResponseSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
   },
   events: {
     events: oc
@@ -638,562 +587,122 @@ export const contract = {
       .meta(openapi({ method: "DELETE", path: "/api/logs" }))
       .input(z.void())
       .output(z.void())
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     list: oc
       .meta(openapi({ method: "GET", path: "/api/logs" }))
       .input(z.void())
       .output(z.array(LogEntrySchema))
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
   },
   queue: {
     retry: oc
       .meta(openapi({ method: "POST", path: "/api/queue/{id}/retry" }))
       .input(z.object({ id: z.uuid() }))
       .output(QueueItemSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     cancel: oc
       .meta(openapi({ method: "POST", path: "/api/queue/{id}/cancel" }))
       .input(z.object({ id: z.uuid() }))
       .output(QueueItemSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     stats: oc
       .meta(openapi({ method: "GET", path: "/api/queue/stats" }))
       .input(z.void())
       .output(QueueStatsSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     list: oc
       .meta(openapi({ method: "GET", path: "/api/queue" }))
       .input(ListQueueQuerySchema)
       .output(z.array(QueueItemSchema))
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
   },
   scheduler: {
     tick: oc
       .meta(openapi({ method: "POST", path: "/api/scheduler/tick" }))
       .input(TickRequestSchema)
       .output(TickResponseSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
   },
   sessions: {
     sendTest: oc
       .meta(openapi({ method: "POST", path: "/api/sessions/{id}/send-test" }))
       .input(z.object({ id: z.uuid() }).extend(SendTestRequestSchema.shape))
       .output(z.void())
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     resetLimits: oc
       .meta(openapi({ method: "POST", path: "/api/sessions/{id}/reset-limits" }))
       .input(z.object({ id: z.uuid() }))
       .output(SessionSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     sync: oc
       .meta(openapi({ method: "POST", path: "/api/sessions/{id}/sync" }))
       .input(z.object({ id: z.uuid() }))
       .output(SessionSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     destroy: oc
       .meta(openapi({ method: "DELETE", path: "/api/sessions/{id}" }))
       .input(z.object({ id: z.uuid() }))
       .output(z.void())
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     update: oc
       .meta(openapi({ method: "PATCH", path: "/api/sessions/{id}" }))
       .input(z.object({ id: z.uuid() }).extend(UpdateSessionInputSchema.shape))
       .output(SessionSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     create: oc
       .meta(openapi({ method: "POST", path: "/api/sessions" }))
       .input(CreateSessionInputSchema)
       .output(SessionSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     getById: oc
       .meta(openapi({ method: "GET", path: "/api/sessions/{id}" }))
       .input(z.object({ id: z.uuid() }))
       .output(SessionSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     list: oc
       .meta(openapi({ method: "GET", path: "/api/sessions" }))
       .input(z.void())
       .output(z.array(SessionSchema))
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
   },
   settings: {
     update: oc
       .meta(openapi({ method: "PATCH", path: "/api/settings" }))
       .input(UpdateSettingsInputSchema)
       .output(AppSettingsSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     load: oc
       .meta(openapi({ method: "GET", path: "/api/settings" }))
       .input(z.void())
       .output(AppSettingsSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
   },
   templates: {
     destroy: oc
       .meta(openapi({ method: "DELETE", path: "/api/templates/{id}" }))
       .input(z.object({ id: z.uuid() }))
       .output(z.void())
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     update: oc
       .meta(openapi({ method: "PATCH", path: "/api/templates/{id}" }))
       .input(z.object({ id: z.uuid() }).extend(UpdateTemplateInputSchema.shape))
       .output(TemplateSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     create: oc
       .meta(openapi({ method: "POST", path: "/api/templates" }))
       .input(CreateTemplateInputSchema)
       .output(TemplateSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     getById: oc
       .meta(openapi({ method: "GET", path: "/api/templates/{id}" }))
       .input(z.object({ id: z.uuid() }))
       .output(TemplateSchema)
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
     list: oc
       .meta(openapi({ method: "GET", path: "/api/templates" }))
       .input(z.void())
       .output(z.array(TemplateSchema))
-      .errors({
-        NOT_FOUND: {
-          data: z.string()
-        },
-        BAD_REQUEST: {
-          data: z.string()
-        },
-        CONFLICT: {
-          data: z.string()
-        },
-        UNAUTHORIZED: {},
-        STORE: {
-          data: z.unknown()
-        },
-        GLUE: {
-          data: z.unknown()
-        },
-        INTERNAL: {
-          data: z.string()
-        }
-      }),
+      .errors(StandardApiErrors),
   },
 } as const;
 
